@@ -51,7 +51,7 @@ type Logger interface {
 	Flush()
 }
 
-type zapLogger struct {
+type ZapLogger struct {
 	zapLogger *zap.Logger
 	level     zapcore.Level
 }
@@ -105,7 +105,7 @@ func Init(level, format string) {
 }
 
 // New create logger by opts which can custmoized by command arguments.
-func New(opts *Options) *zapLogger {
+func New(opts *Options) *ZapLogger {
 	if opts == nil {
 		opts = NewOptions()
 	}
@@ -154,7 +154,7 @@ func New(opts *Options) *zapLogger {
 	if err != nil {
 		panic(err)
 	}
-	logger := &zapLogger{
+	logger := &ZapLogger{
 		zapLogger: l.Named(opts.Name),
 		level:     loggerConfig.Level.Level(),
 	}
@@ -165,10 +165,10 @@ func New(opts *Options) *zapLogger {
 // WithValues creates a child logger and adds adds Zap fields to it.
 func WithValues(keysAndValues ...interface{}) Logger { return std.WithValues(keysAndValues...) }
 
-func (l *zapLogger) WithValues(keysAndValues ...interface{}) Logger {
+func (l *ZapLogger) WithValues(keysAndValues ...interface{}) Logger {
 	newLogger := l.zapLogger.With(handleFields(l.zapLogger, keysAndValues)...)
 
-	return &zapLogger{
+	return &ZapLogger{
 		zapLogger: newLogger,
 	}
 }
@@ -177,10 +177,10 @@ func (l *zapLogger) WithValues(keysAndValues ...interface{}) Logger {
 // periods. By default, Loggers are unnamed.
 func WithName(s string) Logger { return std.WithName(s) }
 
-func (l *zapLogger) WithName(name string) Logger {
+func (l *ZapLogger) WithName(name string) Logger {
 	newLogger := l.zapLogger.Named(name)
 
-	return &zapLogger{
+	return &ZapLogger{
 		zapLogger: newLogger,
 	}
 }
@@ -189,7 +189,7 @@ func (l *zapLogger) WithName(name string) Logger {
 // log entries. Applications should take care to call Sync before exiting.
 func Flush() { std.Flush() }
 
-func (l *zapLogger) Flush() {
+func (l *ZapLogger) Flush() {
 	_ = l.zapLogger.Sync()
 }
 
@@ -198,7 +198,7 @@ func Debug(msg string, fields ...Field) {
 	std.zapLogger.Debug(msg, fields...)
 }
 
-func (l *zapLogger) Debug(msg string, fields ...Field) {
+func (l *ZapLogger) Debug(msg string, fields ...Field) {
 	l.zapLogger.Debug(msg, fields...)
 }
 
@@ -207,7 +207,7 @@ func Debugf(format string, v ...interface{}) {
 	std.zapLogger.Sugar().Debugf(format, v...)
 }
 
-func (l *zapLogger) Debugf(format string, v ...interface{}) {
+func (l *ZapLogger) Debugf(format string, v ...interface{}) {
 	l.zapLogger.Sugar().Debugf(format, v...)
 }
 
@@ -216,7 +216,7 @@ func Debugw(msg string, keysAndValues ...interface{}) {
 	std.zapLogger.Sugar().Debugw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Debugw(msg string, keysAndValues ...interface{}) {
+func (l *ZapLogger) Debugw(msg string, keysAndValues ...interface{}) {
 	l.zapLogger.Sugar().Debugw(msg, keysAndValues...)
 }
 
@@ -225,7 +225,7 @@ func Info(msg string, fields ...Field) {
 	std.zapLogger.Info(msg, fields...)
 }
 
-func (l *zapLogger) Info(msg string, fields ...Field) {
+func (l *ZapLogger) Info(msg string, fields ...Field) {
 	l.zapLogger.Info(msg, fields...)
 }
 
@@ -234,7 +234,7 @@ func Infof(format string, v ...interface{}) {
 	std.zapLogger.Sugar().Infof(format, v...)
 }
 
-func (l *zapLogger) Infof(format string, v ...interface{}) {
+func (l *ZapLogger) Infof(format string, v ...interface{}) {
 	l.zapLogger.Sugar().Infof(format, v...)
 }
 
@@ -243,7 +243,7 @@ func Infow(msg string, keysAndValues ...interface{}) {
 	std.zapLogger.Sugar().Infow(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Infow(msg string, keysAndValues ...interface{}) {
+func (l *ZapLogger) Infow(msg string, keysAndValues ...interface{}) {
 	l.zapLogger.Sugar().Infow(msg, keysAndValues...)
 }
 
@@ -252,7 +252,7 @@ func Warn(msg string, fields ...Field) {
 	std.zapLogger.Warn(msg, fields...)
 }
 
-func (l *zapLogger) Warn(msg string, fields ...Field) {
+func (l *ZapLogger) Warn(msg string, fields ...Field) {
 	l.zapLogger.Warn(msg, fields...)
 }
 
@@ -261,7 +261,7 @@ func Warnf(format string, v ...interface{}) {
 	std.zapLogger.Sugar().Warnf(format, v...)
 }
 
-func (l *zapLogger) Warnf(format string, v ...interface{}) {
+func (l *ZapLogger) Warnf(format string, v ...interface{}) {
 	l.zapLogger.Sugar().Warnf(format, v...)
 }
 
@@ -270,7 +270,7 @@ func Warnw(msg string, keysAndValues ...interface{}) {
 	std.zapLogger.Sugar().Warnw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Warnw(msg string, keysAndValues ...interface{}) {
+func (l *ZapLogger) Warnw(msg string, keysAndValues ...interface{}) {
 	l.zapLogger.Sugar().Warnw(msg, keysAndValues...)
 }
 
@@ -279,7 +279,7 @@ func Error(msg string, fields ...Field) {
 	std.zapLogger.Error(msg, fields...)
 }
 
-func (l *zapLogger) Error(msg string, fields ...Field) {
+func (l *ZapLogger) Error(msg string, fields ...Field) {
 	l.zapLogger.Error(msg, fields...)
 }
 
@@ -288,18 +288,18 @@ func Errorf(format string, v ...interface{}) {
 	std.zapLogger.Sugar().Errorf(format, v...)
 }
 
-func (l *zapLogger) Errorf(format string, v ...interface{}) {
+func (l *ZapLogger) Errorf(format string, v ...interface{}) {
 	l.zapLogger.Sugar().Errorf(format, v...)
 }
 
 func ErrorR(format string, v ...interface{}) error {
 	std.zapLogger.Sugar().Errorf(format, v...)
-	return fmt.Errorf(format, v)
+	return fmt.Errorf(format, v...)
 }
 
-func (l *zapLogger) ErrorR(format string, v ...interface{}) error {
+func (l *ZapLogger) ErrorR(format string, v ...interface{}) error {
 	l.zapLogger.Sugar().Errorf(format, v...)
-	return fmt.Errorf(format, v)
+	return fmt.Errorf(format, v...)
 }
 
 // Errorw method output error level log.
@@ -307,7 +307,7 @@ func Errorw(msg string, keysAndValues ...interface{}) {
 	std.zapLogger.Sugar().Errorw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Errorw(msg string, keysAndValues ...interface{}) {
+func (l *ZapLogger) Errorw(msg string, keysAndValues ...interface{}) {
 	l.zapLogger.Sugar().Errorw(msg, keysAndValues...)
 }
 
@@ -316,7 +316,7 @@ func Panic(msg string, fields ...Field) {
 	std.zapLogger.Panic(msg, fields...)
 }
 
-func (l *zapLogger) Panic(msg string, fields ...Field) {
+func (l *ZapLogger) Panic(msg string, fields ...Field) {
 	l.zapLogger.Panic(msg, fields...)
 }
 
@@ -325,7 +325,7 @@ func Panicf(format string, v ...interface{}) {
 	std.zapLogger.Sugar().Panicf(format, v...)
 }
 
-func (l *zapLogger) Panicf(format string, v ...interface{}) {
+func (l *ZapLogger) Panicf(format string, v ...interface{}) {
 	l.zapLogger.Sugar().Panicf(format, v...)
 }
 
@@ -334,7 +334,7 @@ func Panicw(msg string, keysAndValues ...interface{}) {
 	std.zapLogger.Sugar().Panicw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Panicw(msg string, keysAndValues ...interface{}) {
+func (l *ZapLogger) Panicw(msg string, keysAndValues ...interface{}) {
 	l.zapLogger.Sugar().Panicw(msg, keysAndValues...)
 }
 
@@ -343,7 +343,7 @@ func Fatal(msg string, fields ...Field) {
 	std.zapLogger.Fatal(msg, fields...)
 }
 
-func (l *zapLogger) Fatal(msg string, fields ...Field) {
+func (l *ZapLogger) Fatal(msg string, fields ...Field) {
 	l.zapLogger.Fatal(msg, fields...)
 }
 
@@ -352,7 +352,7 @@ func Fatalf(format string, v ...interface{}) {
 	std.zapLogger.Sugar().Fatalf(format, v...)
 }
 
-func (l *zapLogger) Fatalf(format string, v ...interface{}) {
+func (l *ZapLogger) Fatalf(format string, v ...interface{}) {
 	l.zapLogger.Sugar().Fatalf(format, v...)
 }
 
@@ -361,12 +361,12 @@ func Fatalw(msg string, keysAndValues ...interface{}) {
 	std.zapLogger.Sugar().Fatalw(msg, keysAndValues...)
 }
 
-func (l *zapLogger) Fatalw(msg string, keysAndValues ...interface{}) {
+func (l *ZapLogger) Fatalw(msg string, keysAndValues ...interface{}) {
 	l.zapLogger.Sugar().Fatalw(msg, keysAndValues...)
 }
 
 //nolint:predeclared
-func (l *zapLogger) clone() *zapLogger {
+func (l *ZapLogger) clone() *ZapLogger {
 	copy := *l
 
 	return &copy

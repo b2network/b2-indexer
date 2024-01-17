@@ -56,7 +56,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			return err
 		}
 
-		db, err := GetDbContextFromCmd(cmd)
+		db, err := GetDBContextFromCmd(cmd)
 		if err != nil {
 			logger.Errorw("failed to get db context", "error", err.Error())
 			return err
@@ -84,7 +84,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 	return nil
 }
 
-func GetDbContextFromCmd(cmd *cobra.Command) (*gorm.DB, error) {
+func GetDBContextFromCmd(cmd *cobra.Command) (*gorm.DB, error) {
 	if v := cmd.Context().Value(DBContextKey); v != nil {
 		db := v.(*gorm.DB)
 		return db, nil

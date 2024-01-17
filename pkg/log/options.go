@@ -10,8 +10,7 @@ import (
 
 const (
 	consoleFormat = "console"
-	// nolint unused
-	jsonFormat = "json"
+	jsonFormat    = "json"
 )
 
 var validLevels = []string{"debug", "info", "warn", "error", "panic", "fatal"}
