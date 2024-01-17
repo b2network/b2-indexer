@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 
 	"github.com/b2network/b2-indexer/internal/server"
@@ -8,27 +9,46 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   "b2-indexer",
-	Short: "index tx",
-	Long:  "b2-indexer is a application that index bitcoin tx",
-}
+const (
+	FlagHome = "home"
+)
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	rootCmd.AddCommand(StartCmd())
-
-	err := rootCmd.Execute()
+	err := rootCmd().Execute()
 	if err != nil {
 		os.Exit(1)
 	}
 }
 
-func StartCmd() *cobra.Command {
+func rootCmd() *cobra.Command {
+	rootCmd := &cobra.Command{
+		Use:   "b2-indexer",
+		Short: "index tx",
+		Long:  "b2-indexer is a application that index bitcoin tx",
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			ctx := context.Background()
+			ctx = context.WithValue(ctx, server.ServerContextKey, server.NewDefaultContext())
+			cmd.SetContext(ctx)
+		},
+	}
+
+	rootCmd.AddCommand(startCmd())
+	return rootCmd
+}
+
+func startCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "start",
 		Short: "start index tx service",
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
+			home, err := cmd.Flags().GetString(FlagHome)
+			if err != nil {
+				return err
+			}
+			return server.InterceptConfigsPreRunHandler(cmd, home)
+		},
 		Run: func(cmd *cobra.Command, args []string) {
 			err := server.Start(GetServerContextFromCmd(cmd), cmd)
 			if err != nil {
@@ -36,7 +56,7 @@ func StartCmd() *cobra.Command {
 			}
 		},
 	}
-
+	cmd.Flags().String(FlagHome, "", "The application home directory")
 	return cmd
 }
 

@@ -149,7 +149,7 @@ func TestLocalParseTx(t *testing.T) {
 			height: 2540186,
 			dest: []*types.BitcoinTxParseResult{
 				{
-					TxId:   "317ce1cc2f987c95d19ba13044c6298953d91c82274a2c34d7ac92a8df3dab0f",
+					TxID:   "317ce1cc2f987c95d19ba13044c6298953d91c82274a2c34d7ac92a8df3dab0f",
 					TxType: bitcoin.TxTypeTransfer,
 					Index:  350,
 					From:   []string{"tb1qravmtnqvtpnmugeg7q90ck69lzznflu4w9amnw"},
@@ -166,7 +166,7 @@ func TestLocalParseTx(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		results, err := indexer.ParseBlock(tc.height, 0)
+		results, _, err := indexer.ParseBlock(tc.height, 0)
 		require.NoError(t, err)
 		require.Equal(t, results, tc.dest)
 	}

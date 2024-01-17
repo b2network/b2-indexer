@@ -88,7 +88,7 @@ func TestLocalDeposit(t *testing.T) {
 
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
-			hex, err := bridge.Deposit(tc.args[0].(string), tc.args[1].(string), tc.args[2].(int64))
+			hex, _, err := bridge.Deposit(tc.args[0].(string), tc.args[1].(string), tc.args[2].(int64))
 			if err != nil {
 				assert.Equal(t, tc.err, err)
 			}

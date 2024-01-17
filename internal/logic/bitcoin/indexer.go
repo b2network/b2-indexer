@@ -55,10 +55,10 @@ func NewBitcoinIndexer(
 
 // ParseBlock parse block data by block height
 // NOTE: Currently, only transfer transactions are supported.
-func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxParseResult, error) {
+func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxParseResult, *wire.BlockHeader, error) {
 	blockResult, err := b.getBlockByHeight(height)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	blockParsedResult := make([]*types.BitcoinTxParseResult, 0)
@@ -71,13 +71,13 @@ func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxPar
 
 		parseTxs, err := b.parseTx(v, k)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		blockParsedResult = append(blockParsedResult, parseTxs...)
 	}
 
-	return blockParsedResult, nil
+	return blockParsedResult, &blockResult.Header, nil
 }
 
 // getBlockByHeight returns a raw block from the server given its height
@@ -107,7 +107,7 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (parsedResult []*type
 				return nil, fmt.Errorf("vin parse err:%w", err)
 			}
 			parsedResult = append(parsedResult, &types.BitcoinTxParseResult{
-				TxId:   txResult.TxHash().String(),
+				TxID:   txResult.TxHash().String(),
 				TxType: TxTypeTransfer,
 				Index:  int64(index),
 				Value:  v.Value,

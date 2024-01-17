@@ -47,3 +47,23 @@ all: build
 build-all: tools build lint test vulncheck
 
 .PHONY: distclean clean build-all
+
+###############################################################################
+###                                Linting                                  ###
+###############################################################################
+
+lint:
+	@@test -n "$$golangci-lint version | awk '$4 >= 1.42')"
+	golangci-lint run --out-format=tab -n
+
+format:
+	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*"  -not -name '*.pb.go' -not -name '*.pb.gw.go' | xargs gofumpt -d -e -extra
+
+lint-fix:
+	golangci-lint run --fix --out-format=tab --issues-exit-code=0
+.PHONY: lint lint-fix lint-py
+
+format-fix:
+	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*" -not -name '*.pb.go' -not -name '*.pb.gw.go' | xargs gofumpt -w -s
+	find . -name '*.go' -type f -not -path "./vendor*" -not -path "*.git*"  -not -name '*.pb.go' -not -name '*.pb.gw.go' | xargs misspell -w
+.PHONY: format

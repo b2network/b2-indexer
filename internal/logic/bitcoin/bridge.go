@@ -70,20 +70,20 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string) (*Bridge, error
 }
 
 // Deposit to ethereum
-func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (string, error) {
+func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (string, string, error) {
 	if bitcoinAddress == "" {
-		return "", fmt.Errorf("bitcoin address is empty")
+		return "", "", fmt.Errorf("bitcoin address is empty")
 	}
 
 	if hash == "" {
-		return "", fmt.Errorf("tx id is empty")
+		return "", "", fmt.Errorf("tx id is empty")
 	}
 
 	ctx := context.Background()
 
 	toAddress, err := b.BitcoinAddressToEthAddress(bitcoinAddress)
 	if err != nil {
-		return "", fmt.Errorf("btc address to eth address err:%w", err)
+		return "", "", fmt.Errorf("btc address to eth address err:%w", err)
 	}
 
 	// TODO: hash check
@@ -94,22 +94,28 @@ func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (stri
 
 	data, err := b.ABIPack(b.ABI, "deposit", common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
 	if err != nil {
-		return "", fmt.Errorf("abi pack err:%w", err)
+		return "", "", fmt.Errorf("abi pack err:%w", err)
 	}
 
 	receipt, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, 0)
 	if err != nil {
-		return "", fmt.Errorf("eth call err:%w", err)
+		return "", "", fmt.Errorf("eth call err:%w", err)
 	}
 
 	if receipt.Status != 1 {
 		receiptStr, err := receipt.MarshalJSON()
 		if err != nil {
-			return "", err
+			return "", "", err
 		}
-		return "", fmt.Errorf("tx failed, receipt:%s", receiptStr)
+
+		// TODO: 解析log
+		// for _, log := range receipt.Logs {
+		// 	fmt.Println(log)
+		// }
+
+		return "", "", fmt.Errorf("tx failed, receipt:%s", receiptStr)
 	}
-	return receipt.TxHash.String(), nil
+	return receipt.TxHash.String(), toAddress, nil
 }
 
 // Transfer to ethereum

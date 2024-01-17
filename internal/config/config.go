@@ -15,7 +15,13 @@ type Config struct {
 	// The root directory for all data.
 	// This should be set in viper so it can unmarshal into this struct
 	RootDir  string `mapstructure:"home" env:"HOME"`
-	LogLevel string `env:"LOG_LEVEL" envDefault:"info"`
+	LogLevel string `mapstructure:"log-level" env:"LOG_LEVEL" envDefault:"info"`
+	// "console","json"
+	LogFormat               string `mapstructure:"log-format" env:"LOG_FORMAT" envDefault:"console"`
+	DatabaseSource          string `mapstructure:"database-source" env:"DATABASE_SOURCE" envDefault:"postgres://postgres:postgres@127.0.0.1:5432/b2-indexer"`
+	DatabaseMaxIdleConns    int    `mapstructure:"database-max-idle-conns"  env:"DATABASE_MAX_IDLE_CONNS" envDefault:"10"`
+	DatabaseMaxOpenConns    int    `mapstructure:"database-max-open-conns" env:"DATABASE_MAX_OPEN_CONNS" envDefault:"20"`
+	DatabaseConnMaxLifetime int    `mapstructure:"database-conn-max-lifetime" env:"DATABASE_CONN_MAX_LIFETIME" envDefault:"3600"`
 }
 
 // BitconConfig defines the bitcoin config
@@ -162,5 +168,16 @@ func DefaultConfig() *Config {
 	return &Config{
 		RootDir:  "",
 		LogLevel: "info",
+	}
+}
+
+func DefaultBitcoinConfig() *BitconConfig {
+	return &BitconConfig{
+		EnableIndexer: false,
+		NetworkName:   "mainnet",
+		RPCHost:       "127.0.0.1",
+		RPCUser:       "",
+		RPCPass:       "",
+		RPCPort:       "8332",
 	}
 }
