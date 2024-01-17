@@ -9,44 +9,44 @@ var _ Logger = (*nopLogger)(nil)
 func NewNopLogger() Logger { return &nopLogger{} }
 
 // info level
-func (nopLogger) Info(_ string, _ ...Field)                    {}
-func (nopLogger) Infof(format string, v ...interface{})        {}
-func (nopLogger) Infow(_ string, keysAndValues ...interface{}) {}
+func (nopLogger) Info(_ string, _ ...Field)        {}
+func (nopLogger) Infof(_ string, _ ...interface{}) {}
+func (nopLogger) Infow(_ string, _ ...interface{}) {}
 
 // debug level
-func (nopLogger) Debug(_ string, _ ...Field)                    {}
-func (nopLogger) Debugf(format string, v ...interface{})        {}
-func (nopLogger) Debugw(_ string, keysAndValues ...interface{}) {}
+func (nopLogger) Debug(_ string, _ ...Field)        {}
+func (nopLogger) Debugf(_ string, _ ...interface{}) {}
+func (nopLogger) Debugw(_ string, _ ...interface{}) {}
 
 // warn level
-func (nopLogger) Warn(_ string, _ ...Field)                    {}
-func (nopLogger) Warnf(format string, v ...interface{})        {}
-func (nopLogger) Warnw(_ string, keysAndValues ...interface{}) {}
+func (nopLogger) Warn(_ string, _ ...Field)        {}
+func (nopLogger) Warnf(_ string, _ ...interface{}) {}
+func (nopLogger) Warnw(_ string, _ ...interface{}) {}
 
 // error level
-func (nopLogger) Error(_ string, _ ...Field)                    {}
-func (nopLogger) Errorf(format string, v ...interface{})        {}
-func (nopLogger) Errorw(_ string, keysAndValues ...interface{}) {}
-func (nopLogger) ErrorR(format string, v ...interface{}) error  { return nil }
+func (nopLogger) Error(_ string, _ ...Field)              {}
+func (nopLogger) Errorf(_ string, _ ...interface{})       {}
+func (nopLogger) Errorw(_ string, _ ...interface{})       {}
+func (nopLogger) ErrorR(_ string, _ ...interface{}) error { return nil }
 
 // panic level
-func (nopLogger) Panic(_ string, _ ...Field)                    {}
-func (nopLogger) Panicf(format string, v ...interface{})        {}
-func (nopLogger) Panicw(_ string, keysAndValues ...interface{}) {}
+func (nopLogger) Panic(_ string, _ ...Field)        {}
+func (nopLogger) Panicf(_ string, _ ...interface{}) {}
+func (nopLogger) Panicw(_ string, _ ...interface{}) {}
 
 // fatal level
-func (nopLogger) Fatal(_ string, _ ...Field)                    {}
-func (nopLogger) Fatalf(format string, v ...interface{})        {}
-func (nopLogger) Fatalw(_ string, keysAndValues ...interface{}) {}
+func (nopLogger) Fatal(_ string, _ ...Field)        {}
+func (nopLogger) Fatalf(_ string, _ ...interface{}) {}
+func (nopLogger) Fatalw(_ string, _ ...interface{}) {}
 
 // WithValues adds some key-value pairs of context to a logger.
-func (nopLogger) WithValues(keysAndValues ...interface{}) Logger { return nopLogger{} }
+func (nopLogger) WithValues(_ ...interface{}) Logger { return nopLogger{} }
 
 // WithName adds a new element to the logger's name.
 // Successive calls with WithName continue to append
 // suffixes to the logger's name.  It's strongly recommended
 // that name segments contain only letters, digits, and hyphens
-// (see the package documentation for more information).
+// (see the package documentation for more in_ion).
 func (nopLogger) WithName(name string) Logger { return nopLogger{} }
 
 // Flush calls the underlying Core's Sync method, flushing any buffered

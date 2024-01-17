@@ -365,9 +365,9 @@ func (l *ZapLogger) Fatalw(msg string, keysAndValues ...interface{}) {
 	l.zapLogger.Sugar().Fatalw(msg, keysAndValues...)
 }
 
-//nolint:predeclared
-func (l *ZapLogger) clone() *ZapLogger {
-	copy := *l
+// //nolint:predeclared
+// func (l *ZapLogger) clone() *ZapLogger {
+// 	copy := *l
 
-	return &copy
-}
+// 	return &copy
+// }
