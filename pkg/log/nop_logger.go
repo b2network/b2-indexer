@@ -39,16 +39,8 @@ func (nopLogger) Fatal(_ string, _ ...Field)        {}
 func (nopLogger) Fatalf(_ string, _ ...interface{}) {}
 func (nopLogger) Fatalw(_ string, _ ...interface{}) {}
 
-// WithValues adds some key-value pairs of context to a logger.
 func (nopLogger) WithValues(_ ...interface{}) Logger { return nopLogger{} }
 
-// WithName adds a new element to the logger's name.
-// Successive calls with WithName continue to append
-// suffixes to the logger's name.  It's strongly recommended
-// that name segments contain only letters, digits, and hyphens
-// (see the package documentation for more in_ion).
-func (nopLogger) WithName(name string) Logger { return nopLogger{} }
+func (nopLogger) WithName(_ string) Logger { return nopLogger{} }
 
-// Flush calls the underlying Core's Sync method, flushing any buffered
-// log entries. Applications should take care to call Sync before exiting.
 func (nopLogger) Flush() {}
