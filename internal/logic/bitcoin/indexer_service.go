@@ -192,6 +192,8 @@ func (bis *IndexerService) OnStart() error {
 			}
 			btcIndex.BtcIndexBlock = i
 			btcIndex.BtcIndexTx = 0
+			currentBlock = i
+			currentTxIndex = 0
 
 			if err := bis.db.Save(&btcIndex).Error; err != nil {
 				bis.log.Errorw("failed to set bitcoin index block", "error", err)
