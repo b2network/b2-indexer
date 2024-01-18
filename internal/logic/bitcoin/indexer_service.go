@@ -95,9 +95,6 @@ func (bis *IndexerService) OnStart() error {
 	// set default value
 	currentBlock = btcIndex.BtcIndexBlock
 	currentTxIndex = btcIndex.BtcIndexTx
-	// TODO: test
-	currentBlock = 2573078
-	currentTxIndex = 0
 
 	ticker := time.NewTicker(NewBlockWaitTimeout)
 	for {
