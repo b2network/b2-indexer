@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
@@ -13,6 +14,7 @@ import (
 
 	b2aa "github.com/b2network/b2-go-aa-utils"
 	"github.com/b2network/b2-indexer/internal/config"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -70,85 +72,66 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string) (*Bridge, error
 }
 
 // Deposit to ethereum
-func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (string, string, error) {
+func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (*types.Transaction, []byte, string, error) {
 	if bitcoinAddress == "" {
-		return "", "", fmt.Errorf("bitcoin address is empty")
+		return nil, nil, "", fmt.Errorf("bitcoin address is empty")
 	}
 
 	if hash == "" {
-		return "", "", fmt.Errorf("tx id is empty")
+		return nil, nil, "", fmt.Errorf("tx id is empty")
 	}
 
 	ctx := context.Background()
 
 	toAddress, err := b.BitcoinAddressToEthAddress(bitcoinAddress)
 	if err != nil {
-		return "", "", fmt.Errorf("btc address to eth address err:%w", err)
+		return nil, nil, "", fmt.Errorf("btc address to eth address err:%w", err)
 	}
 
 	// TODO: hash check
-	// txHash, err := chainhash.NewHashFromStr(hash)
-	// if err != nil {
-	// 	return "", err
-	// }
-
-	data, err := b.ABIPack(b.ABI, "deposit", common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
+	txHash, err := chainhash.NewHashFromStr(hash)
 	if err != nil {
-		return "", "", fmt.Errorf("abi pack err:%w", err)
+		return nil, nil, "", err
 	}
 
-	receipt, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, 0)
+	data, err := b.ABIPack(b.ABI, "depositV2", txHash, common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
 	if err != nil {
-		return "", "", fmt.Errorf("eth call err:%w", err)
+		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
 	}
 
-	if receipt.Status != 1 {
-		receiptStr, err := receipt.MarshalJSON()
-		if err != nil {
-			return "", "", err
-		}
-
-		// TODO: 解析log
-		// for _, log := range receipt.Logs {
-		// 	fmt.Println(log)
-		// }
-
-		return "", "", fmt.Errorf("tx failed, receipt:%s", receiptStr)
+	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, 0)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("eth call err:%w", err)
 	}
-	return receipt.TxHash.String(), toAddress, nil
+
+	return tx, data, toAddress, nil
 }
 
 // Transfer to ethereum
-func (b *Bridge) Transfer(bitcoinAddress string, amount int64) (string, error) {
+// TODO: temp handle, future remove
+func (b *Bridge) Transfer(bitcoinAddress string, amount int64) (*types.Transaction, error) {
 	if bitcoinAddress == "" {
-		return "", fmt.Errorf("bitcoin address is empty")
+		return nil, fmt.Errorf("bitcoin address is empty")
 	}
 
 	ctx := context.Background()
 
 	toAddress, err := b.BitcoinAddressToEthAddress(bitcoinAddress)
 	if err != nil {
-		return "", fmt.Errorf("btc address to eth address err:%w", err)
+		return nil, fmt.Errorf("btc address to eth address err:%w", err)
 	}
 
 	receipt, err := b.sendTransaction(ctx, b.EthPrivKey, common.HexToAddress(toAddress), nil, amount*10000000000)
 	if err != nil {
-		return "", fmt.Errorf("eth call err:%w", err)
+		return nil, fmt.Errorf("eth call err:%w", err)
 	}
 
-	if receipt.Status != 1 {
-		receiptStr, err := receipt.MarshalJSON()
-		if err != nil {
-			return "", err
-		}
-		return "", fmt.Errorf("tx failed, receipt:%s", receiptStr)
-	}
-	return receipt.TxHash.String(), nil
+	return receipt, nil
 }
 
 func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey,
 	toAddress common.Address, data []byte, value int64,
-) (*types.Receipt, error) {
+) (*types.Transaction, error) {
 	client, err := ethclient.Dial(b.EthRPCURL)
 	if err != nil {
 		return nil, err
@@ -198,8 +181,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		return nil, err
 	}
 
-	// wait tx confirm
-	return bind.WaitMined(ctx, client, signedTx)
+	return signedTx, nil
 }
 
 // ABIPack the given method name to conform the ABI. Method call's data
@@ -223,4 +205,37 @@ func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress string) (string, erro
 		return "", err
 	}
 	return targetEthAddress.String(), nil
+}
+
+// WaitMined wait tx mined
+func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte) (*types.Receipt, error) {
+	client, err := ethclient.Dial(b.EthRPCURL)
+	if err != nil {
+		return nil, err
+	}
+
+	receipt, err := bind.WaitMined(ctx, client, tx)
+	if err != nil {
+		return nil, err
+	}
+
+	if receipt.Status != 1 {
+		// TODO: by EstimateGas parse error
+		// callMsg := ethereum.CallMsg{
+		// 	To: &b.ContractAddress,
+		// }
+		// if abiPackData != nil {
+		// 	callMsg.Data = abiPackData
+		// }
+		// _, err := client.EstimateGas(ctx, callMsg)
+		// if err != nil {
+		// 	return nil, err
+		// }
+		receiptJSON, err := json.Marshal(receipt)
+		if err != nil {
+			return nil, err
+		}
+		return nil, fmt.Errorf("tx wait mined failed:%s", string(receiptJSON))
+	}
+	return receipt, nil
 }

@@ -65,7 +65,6 @@ func InterceptConfigsPreRunHandler(cmd *cobra.Command, home string) error {
 	if err != nil {
 		return err
 	}
-
 	db, err := NewDB(cfg)
 	if err != nil {
 		return err

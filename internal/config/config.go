@@ -14,14 +14,14 @@ import (
 type Config struct {
 	// The root directory for all data.
 	// This should be set in viper so it can unmarshal into this struct
-	RootDir  string `mapstructure:"home" env:"HOME"`
-	LogLevel string `mapstructure:"log-level" env:"LOG_LEVEL" envDefault:"info"`
+	RootDir  string `mapstructure:"root-dir" env:"INDEXER_ROOT_DIR"`
+	LogLevel string `mapstructure:"log-level" env:"INDEXER_LOG_LEVEL" envDefault:"info"`
 	// "console","json"
-	LogFormat               string `mapstructure:"log-format" env:"LOG_FORMAT" envDefault:"console"`
-	DatabaseSource          string `mapstructure:"database-source" env:"DATABASE_SOURCE" envDefault:"postgres://postgres:postgres@127.0.0.1:5432/b2-indexer"`
-	DatabaseMaxIdleConns    int    `mapstructure:"database-max-idle-conns"  env:"DATABASE_MAX_IDLE_CONNS" envDefault:"10"`
-	DatabaseMaxOpenConns    int    `mapstructure:"database-max-open-conns" env:"DATABASE_MAX_OPEN_CONNS" envDefault:"20"`
-	DatabaseConnMaxLifetime int    `mapstructure:"database-conn-max-lifetime" env:"DATABASE_CONN_MAX_LIFETIME" envDefault:"3600"`
+	LogFormat               string `mapstructure:"log-format" env:"INDEXER_LOG_FORMAT" envDefault:"console"`
+	DatabaseSource          string `mapstructure:"database-source" env:"INDEXER_DATABASE_SOURCE" envDefault:"postgres://postgres:postgres@127.0.0.1:5432/b2-indexer"`
+	DatabaseMaxIdleConns    int    `mapstructure:"database-max-idle-conns"  env:"INDEXER_DATABASE_MAX_IDLE_CONNS" envDefault:"10"`
+	DatabaseMaxOpenConns    int    `mapstructure:"database-max-open-conns" env:"INDEXER_DATABASE_MAX_OPEN_CONNS" envDefault:"20"`
+	DatabaseConnMaxLifetime int    `mapstructure:"database-conn-max-lifetime" env:"INDEXER_DATABASE_CONN_MAX_LIFETIME" envDefault:"3600"`
 }
 
 // BitconConfig defines the bitcoin config
@@ -40,8 +40,6 @@ type BitconConfig struct {
 	WalletName string `mapstructure:"wallet-name" env:"BITCOIN_WALLET_NAME"`
 	// EnableIndexer defines whether to enable the indexer
 	EnableIndexer bool `mapstructure:"enable-indexer" env:"BITCOIN_ENABLE_INDEXER"`
-	// EnableCommitter defines whether to enable the committer
-	EnableCommitter bool `mapstructure:"enable-committer" env:"BITCOIN_ENABLE_COMMITTER"`
 	// IndexerListenAddress defines the address to listen on
 	IndexerListenAddress string `mapstructure:"indexer-listen-address" env:"BITCOIN_INDEXER_LISTEN_ADDRESS"`
 	// Bridge defines the bridge config
@@ -82,6 +80,7 @@ const (
 	BitcoinConfigFileName  = "bitcoin.toml"
 	AppConfigFileName      = "app.toml"
 	BitcoinConfigEnvPrefix = "BITCOIN"
+	AppConfigEnvPrefix     = "APP"
 )
 
 func LoadConfig(homePath string) (*Config, error) {
@@ -90,7 +89,7 @@ func LoadConfig(homePath string) (*Config, error) {
 	v := viper.New()
 	v.SetConfigFile(configFile)
 
-	v.SetEnvPrefix(BitcoinConfigEnvPrefix)
+	v.SetEnvPrefix(AppConfigEnvPrefix)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 

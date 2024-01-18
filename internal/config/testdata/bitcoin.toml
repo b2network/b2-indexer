@@ -4,7 +4,6 @@ rpc-port = 8332
 rpc-user = "b2node"
 rpc-pass = "b2node"
 wallet-name = "b2node"
-destination = "tb1qgm39cu009lyvq93afx47pp4h9wxq5x92lxxgnz"
 enable-indexer = true
 indexer-listen-address = "tb1qfhhxljfajcppfhwa09uxwty5dz4xwfptnqmvtv"
 fee = 200000
@@ -22,10 +21,3 @@ aa-kernel-factory = "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DFF4"
 enable-listener = true
 deposit = "0x01bee1bfa4116bd0440a1108ef6cb6a2f6eb9b611d8f53260aec20d39e84ee88"
 withdraw = "0xda335c6ae73006d1145bdcf9a98bc76d789b653b13fe6200e6fc4c5dd54add85"
-
-[state]
-host = "localhost"
-port = 5432
-user = "state_user"
-pass = "state_password"
-db-name = "state_db"

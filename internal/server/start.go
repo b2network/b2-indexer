@@ -67,8 +67,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			return err
 		}
 
-		bindexerService := bitcoin.NewIndexerService(bidxer, bridge, db, bidxLogger)
-		// bindexerService.SetLogger(logger)
+		bindexerService := bitcoin.NewIndexerService(bidxer, db, bidxLogger)
 
 		errCh := make(chan error)
 		go func() {
@@ -79,6 +78,27 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 
 		select {
 		case err := <-errCh:
+			return err
+		case <-time.After(5 * time.Second): // assume server started successfully
+		}
+
+		// start l1->l2 bridge service
+		bridgeLoggerOpt := logger.NewOptions()
+		bridgeLoggerOpt.Format = ctx.Config.LogFormat
+		bridgeLoggerOpt.Level = ctx.Config.LogLevel
+		bridgeLoggerOpt.EnableColor = true
+		bridgeLoggerOpt.Name = "[bridge-deposit]"
+		bridgeLogger := logger.New(bridgeLoggerOpt)
+		bridgeService := bitcoin.NewBridgeDepositService(bridge, db, bridgeLogger)
+		bridgeErrCh := make(chan error)
+		go func() {
+			if err := bridgeService.OnStart(); err != nil {
+				bridgeErrCh <- err
+			}
+		}()
+
+		select {
+		case err := <-bridgeErrCh:
 			return err
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}

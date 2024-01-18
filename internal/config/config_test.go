@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfig(t *testing.T) {
+func TestBitcoinConfig(t *testing.T) {
 	// clean BITCOIN env set
 	// This is because the value set by the environment variable affects viper reading file
 	os.Unsetenv("BITCOIN_NETWORK_NAME")
@@ -46,7 +46,7 @@ func TestConfig(t *testing.T) {
 	require.Equal(t, "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DFF4", config.Bridge.AAKernelFactory)
 }
 
-func TestConfigEnv(t *testing.T) {
+func TestBitcoinConfigEnv(t *testing.T) {
 	os.Setenv("BITCOIN_NETWORK_NAME", "testnet")
 	os.Setenv("BITCOIN_RPC_HOST", "127.0.0.1")
 	os.Setenv("BITCOIN_RPC_PORT", "8888")
@@ -60,7 +60,6 @@ func TestConfigEnv(t *testing.T) {
 	os.Setenv("BITCOIN_BRIDGE_ETH_PRIV_KEY", "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
 	os.Setenv("BITCOIN_BRIDGE_ABI", "aaa.abi")
 	os.Setenv("BITCOIN_BRIDGE_GAS_LIMIT", "23333")
-	os.Setenv("BITCOIN_ENABLE_COMMITTER", "false")
 	os.Setenv("BITCOIN_BRIDGE_AA_SCA_REGISTRY", "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DF23")
 	os.Setenv("BITCOIN_BRIDGE_AA_KERNEL_FACTORY", "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DF24")
 	os.Setenv("BITCOIN_EVM_ENABLE_LISTENER", "false")
@@ -125,4 +124,43 @@ func TestChainParams(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConfig(t *testing.T) {
+	os.Unsetenv("INDEXER_ROOT_DIR")
+	os.Unsetenv("INDEXER_LOG_LEVEL")
+	os.Unsetenv("INDEXER_LOG_FORMAT")
+	os.Unsetenv("INDEXER_DATABASE_SOURCE")
+	os.Unsetenv("INDEXER_DATABASE_MAX_IDLE_CONNS")
+	os.Unsetenv("INDEXER_DATABASE_MAX_OPEN_CONNS")
+	os.Unsetenv("INDEXER_DATABASE_CONN_MAX_LIFETIME")
+
+	config, err := config.LoadConfig("./testdata")
+	require.NoError(t, err)
+	require.Equal(t, "/data/b2-indexer", config.RootDir)
+	require.Equal(t, "debug", config.LogLevel)
+	require.Equal(t, "json", config.LogFormat)
+	require.Equal(t, "testtest", config.DatabaseSource)
+	require.Equal(t, 12, config.DatabaseMaxIdleConns)
+	require.Equal(t, 22, config.DatabaseMaxOpenConns)
+	require.Equal(t, 2100, config.DatabaseConnMaxLifetime)
+}
+
+func TestConfigEnv(t *testing.T) {
+	os.Setenv("INDEXER_ROOT_DIR", "/data/test")
+	os.Setenv("INDEXER_LOG_LEVEL", "debug")
+	os.Setenv("INDEXER_LOG_FORMAT", "json")
+	os.Setenv("INDEXER_DATABASE_SOURCE", "testtest")
+	os.Setenv("INDEXER_DATABASE_MAX_IDLE_CONNS", "12")
+	os.Setenv("INDEXER_DATABASE_MAX_OPEN_CONNS", "22")
+	os.Setenv("INDEXER_DATABASE_CONN_MAX_LIFETIME", "2100")
+	config, err := config.LoadConfig("./")
+	require.NoError(t, err)
+	require.Equal(t, "/data/test", config.RootDir)
+	require.Equal(t, "debug", config.LogLevel)
+	require.Equal(t, "json", config.LogFormat)
+	require.Equal(t, "testtest", config.DatabaseSource)
+	require.Equal(t, 12, config.DatabaseMaxIdleConns)
+	require.Equal(t, 22, config.DatabaseMaxOpenConns)
+	require.Equal(t, 2100, config.DatabaseConnMaxLifetime)
 }

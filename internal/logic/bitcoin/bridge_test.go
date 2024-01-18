@@ -1,7 +1,9 @@
 package bitcoin_test
 
 import (
+	"context"
 	"errors"
+	"fmt"
 	"math/big"
 	"os"
 	"path"
@@ -18,9 +20,14 @@ import (
 func TestNewBridge(t *testing.T) {
 	abiPath := path.Join("./testdata")
 
+	ABI := ""
+
 	abi, err := os.ReadFile(path.Join("./testdata", "abi.json"))
 	if err != nil {
-		t.Fatal(err)
+		// load default abi
+		ABI = config.DefaultDepositAbi
+	} else {
+		ABI = string(abi)
 	}
 
 	privateKey, err := crypto.HexToECDSA("0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef")
@@ -44,7 +51,7 @@ func TestNewBridge(t *testing.T) {
 	assert.Equal(t, bridgeCfg.EthRPCURL, bridge.EthRPCURL)
 	assert.Equal(t, common.HexToAddress("0x123456789abcdef"), bridge.ContractAddress)
 	assert.Equal(t, privateKey, bridge.EthPrivKey)
-	assert.Equal(t, string(abi), bridge.ABI)
+	assert.Equal(t, ABI, bridge.ABI)
 	assert.Equal(t, common.HexToAddress("0x123456789abcdefgh"), bridge.AASCARegistry)
 	assert.Equal(t, common.HexToAddress("0x123456789abcdefg"), bridge.AAKernelFactory)
 }
@@ -88,7 +95,7 @@ func TestLocalDeposit(t *testing.T) {
 
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
-			hex, _, err := bridge.Deposit(tc.args[0].(string), tc.args[1].(string), tc.args[2].(int64))
+			hex, _, _, err := bridge.Deposit(tc.args[0].(string), tc.args[1].(string), tc.args[2].(int64))
 			if err != nil {
 				assert.Equal(t, tc.err, err)
 			}
@@ -223,4 +230,57 @@ func bridgeWithConfig(t *testing.T) *bitcoin.Bridge {
 	bridge, err := bitcoin.NewBridge(config.Bridge, "./testdata")
 	require.NoError(t, err)
 	return bridge
+}
+
+func TestLocalWaitMined(t *testing.T) {
+	bridge := bridgeWithConfig(t)
+	testCase := []struct {
+		name string
+		args []interface{}
+		err  error
+	}{
+		{
+			name: "success",
+			args: []interface{}{
+				"337fd15bd884524c8bc4c3b44e6839c013b4ad951972af454f926e0b6bdc5704",
+				"tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy1",
+				int64(1234),
+			},
+			err: nil,
+		},
+		{
+			name: "fail: address empty",
+			args: []interface{}{
+				"1c7fd15bd884524c8bc4c3b44e6839c013b4ad951972af454f926e0b6bdc570f",
+				"",
+				int64(1234),
+			},
+			err: errors.New("bitcoin address is empty"),
+		},
+		{
+			name: "fail: tx id empty",
+			args: []interface{}{
+				"",
+				"tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
+				int64(1234),
+			},
+			err: errors.New("tx id is empty"),
+		},
+	}
+
+	for _, tc := range testCase {
+		t.Run(tc.name, func(t *testing.T) {
+			fmt.Println("uuid:", tc.args[0].(string))
+			b2Tx, abiPackData, _, err := bridge.Deposit(tc.args[0].(string), tc.args[1].(string), tc.args[2].(int64))
+			if err != nil {
+				assert.Equal(t, tc.err, err)
+			}
+			_, err = bridge.WaitMined(context.Background(), b2Tx, abiPackData)
+			if err != nil {
+				t.Error(err)
+			}
+
+			t.Log(b2Tx)
+		})
+	}
 }
