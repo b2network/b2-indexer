@@ -127,7 +127,6 @@ func (bis *IndexerService) OnStart() error {
 				bis.log.Errorw("parseblock", "error", err.Error(), "currentBlock", i, "currentTxIndex", currentTxIndex)
 				continue
 			}
-			time.Sleep(5 * time.Second)
 			if len(txResults) > 0 {
 				for _, v := range txResults {
 					// if from is listen address, skip
