@@ -138,12 +138,12 @@ func TestConfig(t *testing.T) {
 	config, err := config.LoadConfig("./testdata")
 	require.NoError(t, err)
 	require.Equal(t, "/data/b2-indexer", config.RootDir)
-	require.Equal(t, "debug", config.LogLevel)
+	require.Equal(t, "info", config.LogLevel)
 	require.Equal(t, "json", config.LogFormat)
-	require.Equal(t, "testtest", config.DatabaseSource)
-	require.Equal(t, 12, config.DatabaseMaxIdleConns)
-	require.Equal(t, 22, config.DatabaseMaxOpenConns)
-	require.Equal(t, 2100, config.DatabaseConnMaxLifetime)
+	require.Equal(t, "postgres://postgres:postgres@127.0.0.2:5432/b2-indexer", config.DatabaseSource)
+	require.Equal(t, 1, config.DatabaseMaxIdleConns)
+	require.Equal(t, 2, config.DatabaseMaxOpenConns)
+	require.Equal(t, 3600, config.DatabaseConnMaxLifetime)
 }
 
 func TestConfigEnv(t *testing.T) {

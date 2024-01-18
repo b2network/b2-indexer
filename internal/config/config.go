@@ -78,7 +78,7 @@ type EvmConfig struct {
 
 const (
 	BitcoinConfigFileName  = "bitcoin.toml"
-	AppConfigFileName      = "app.toml"
+	AppConfigFileName      = "indexer.toml"
 	BitcoinConfigEnvPrefix = "BITCOIN"
 	AppConfigEnvPrefix     = "APP"
 )
@@ -106,7 +106,7 @@ func LoadConfig(homePath string) (*Config, error) {
 		return &config, nil
 	}
 
-	err = viper.Unmarshal(&config)
+	err = v.Unmarshal(&config)
 	if err != nil {
 		return nil, err
 	}
