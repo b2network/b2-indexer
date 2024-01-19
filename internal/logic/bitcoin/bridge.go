@@ -14,7 +14,6 @@ import (
 
 	b2aa "github.com/b2network/b2-go-aa-utils"
 	"github.com/b2network/b2-indexer/internal/config"
-	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -89,12 +88,12 @@ func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (*typ
 	}
 
 	// TODO: hash check
-	txHash, err := chainhash.NewHashFromStr(hash)
-	if err != nil {
-		return nil, nil, "", err
-	}
+	// txHash, err := chainhash.NewHashFromStr(hash)
+	// if err != nil {
+	// 	return nil, nil, "", err
+	// }
 
-	data, err := b.ABIPack(b.ABI, "depositV2", txHash, common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
+	data, err := b.ABIPack(b.ABI, "deposit", common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
 	}

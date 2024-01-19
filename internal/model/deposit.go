@@ -31,8 +31,6 @@ type Deposit struct {
 	BtcValue         int64     `json:"btc_value" gorm:"comment:bitcoin transfer value"`
 	B2TxHash         string    `json:"b2_tx_hash" gorm:"type:varchar(66);not null;index;comment:b2 network tx hash"`
 	B2TxStatus       int       `json:"b2_tx_status" gorm:"type:SMALLINT"`
-	B2L1TxHash       string    `json:"b2_l1_tx_hash" gorm:"type:varchar(66);not null;index;comment:b2 l1 network tx hash"`
-	B2L1TxStatus     int       `json:"b2_l1_tx_status" gorm:"type:SMALLINT"`
 	B2EoaTxHash      string    `json:"b2_eoa_tx_hash" gorm:"type:varchar(66);not null;comment:b2 network eoa tx hash"`
 	B2EoaTxStatus    int       `json:"b2_eoa_tx_status" gorm:"type:SMALLINT"`
 	BtcBlockTime     time.Time `json:"btc_block_time"`
@@ -49,8 +47,6 @@ type DepositColumns struct {
 	BtcFromAAAddress string
 	BtcValue         string
 	B2TxHash         string
-	B2L1TxHash       string
-	B2L1TxStatus     string
 	B2TxStatus       string
 	B2EoaTxHash      string
 	B2EoaTxStatus    string
@@ -73,8 +69,6 @@ func (Deposit) Column() DepositColumns {
 		BtcFromAAAddress: "btc_from_aa_address",
 		BtcValue:         "btc_value",
 		B2TxHash:         "b2_tx_hash",
-		B2L1TxHash:       "b2_l1_tx_hash",
-		B2L1TxStatus:     "b2_l1_tx_status",
 		B2TxStatus:       "b2_tx_status",
 		B2EoaTxHash:      "b2_eoa_tx_hash",
 		B2EoaTxStatus:    "b2_eoa_tx_status",

@@ -17,7 +17,7 @@ const (
 	BatchDepositWaitTimeout  = 10 * time.Second
 	BatchDepositLimit        = 100
 	WaitMinedTimeout         = 10 * time.Minute
-	HandleDepositTimeout     = 200 * time.Millisecond
+	HandleDepositTimeout     = 100 * time.Millisecond
 )
 
 // BridgeDepositService l1->l2

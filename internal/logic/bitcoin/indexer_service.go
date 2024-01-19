@@ -18,7 +18,7 @@ const (
 
 	NewBlockWaitTimeout = 60 * time.Second
 
-	IndexTxTimeout    = 200 * time.Millisecond
+	IndexTxTimeout    = 100 * time.Millisecond
 	IndexBlockTimeout = 2 * time.Second
 )
 
@@ -146,11 +146,13 @@ func (bis *IndexerService) OnStart() error {
 						btcIndex,
 					)
 					if err != nil {
-						bis.log.Errorw("failed to save bitcoin index tx", "error", err)
+						bis.log.Errorw("failed to save bitcoin index tx", "error", err,
+							"data", v)
+					} else {
+						bis.log.Infow("bitcoin indexer save bitcoin index tx success", "data", v)
 					}
 
 					time.Sleep(IndexTxTimeout)
-					bis.log.Infow("index btc tx", "data", v)
 				}
 			}
 			currentBlock = i
@@ -158,11 +160,13 @@ func (bis *IndexerService) OnStart() error {
 			btcIndex.BtcIndexBlock = currentBlock
 			btcIndex.BtcIndexTx = currentTxIndex
 			if err := bis.db.Save(&btcIndex).Error; err != nil {
-				bis.log.Errorw("failed to set bitcoin index block", "error", err)
+				bis.log.Errorw("failed to save bitcoin index block", "error", err, "currentBlock", i,
+					"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
+			} else {
+				bis.log.Infow("bitcoin indexer parsed", "currentBlock", i,
+					"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
 			}
 
-			bis.log.Infow("bitcoin indexer parsed", "currentBlock", i,
-				"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
 			time.Sleep(IndexBlockTimeout)
 		}
 	}
