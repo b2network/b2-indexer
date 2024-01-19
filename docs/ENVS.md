@@ -1,6 +1,5 @@
 # Run-time environment variables
 
-
 ## Indexer configuration
 
 | Variable | Type| Description | Compulsoriness | Default value | Example value |
@@ -13,10 +12,7 @@
 | INDEXER_DATABASE_MAX_OPEN_CONNS | `number` | database max open conns| - | `20` | `20` |
 | INDEXER_DATABASE_CONN_MAX_LIFETIME | `number` | database max lifetime| - | `3600` | `3600` |
 
-
-
 ## Bitcoin configuration
-
 
 | Variable | Type| Description | Compulsoriness | Default value | Example value |
 | --- | --- | --- | --- | --- | --- |
