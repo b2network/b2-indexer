@@ -65,7 +65,6 @@ func (bis *BridgeDepositService) OnStart() error {
 			err := bis.HandleDeposit(deposit)
 			if err != nil {
 				bis.log.Errorw("handle deposit failed", "error", err, "deposit", deposit)
-				continue
 			}
 
 			time.Sleep(HandleDepositTimeout)
