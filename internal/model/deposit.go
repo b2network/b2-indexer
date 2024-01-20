@@ -7,12 +7,15 @@ import (
 const (
 	BtcTxTypeTransfer = 0 // transfer
 
-	DepositB2TxStatusSuccess               = 0 // success
-	DepositB2TxStatusPending               = 1 // pending
-	DepositB2TxStatusFailed                = 2 // deposit invoke failed
-	DepositB2TxStatusWaitMinedFailed       = 3 // deposit wait mined failed
-	DepositB2TxStatusTxHashExist           = 4 // tx hash exist, deposit have been called
-	DepositB2TxStatusWaitMinedStatusFailed = 5 // deposit wait mined status failed, status != 1
+	DepositB2TxStatusSuccess                    = 0 // success
+	DepositB2TxStatusPending                    = 1 // pending
+	DepositB2TxStatusFailed                     = 2 // deposit invoke failed
+	DepositB2TxStatusWaitMinedFailed            = 3 // deposit wait mined failed
+	DepositB2TxStatusTxHashExist                = 4 // tx hash exist, deposit have been called
+	DepositB2TxStatusWaitMinedStatusFailed      = 5 // deposit wait mined status failed, status != 1
+	DepositB2TxStatusInsufficientBalance        = 6 // deposit insufficient balance
+	DepositB2TxStatusContextDeadlineExceeded    = 7 // deposit client context deadline exceeded
+	DepostiB2TxStatusFromAccountGasInsufficient = 8 // deposit evm from account gas insufficient
 
 	DepositB2EoaTxStatusSuccess         = 0 // eoa transfer success
 	DepositB2EoaTxStatusPending         = 1 // eoa transfer pending

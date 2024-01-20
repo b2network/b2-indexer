@@ -26,8 +26,10 @@ import (
 )
 
 var (
-	ErrBrdigeDepositTxHashExist = errors.New("non-repeatable processing")
-	ErrBridgeWaitMinedStatus    = errors.New("tx wait mined status failed")
+	ErrBrdigeDepositTxHashExist                 = errors.New("non-repeatable processing")
+	ErrBrdigeDepositContractInsufficientBalance = errors.New("insufficient balance")
+	ErrBridgeWaitMinedStatus                    = errors.New("tx wait mined status failed")
+	ErrBridgeFromGasInsufficient                = errors.New("gas required exceeds allowanc")
 )
 
 // Bridge bridge
@@ -167,16 +169,24 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		callMsg.Data = data
 	}
 
-	// use estimated gas only check deposit uuid err
+	// use eth_estimateGas only check deposit err
 	_, err = client.EstimateGas(ctx, callMsg)
 	if err != nil {
-		// handled tx hash err
-		if strings.Contains(err.Error(), ErrBrdigeDepositTxHashExist.Error()) {
-			return nil, ErrBrdigeDepositTxHashExist
-		}
 		// Other errors may occur that need to be handled
 		// The estimated gas cannot block the sending of a transaction
 		b.logger.Errorw("estimate gas err", "error", err.Error())
+		if strings.Contains(err.Error(), ErrBrdigeDepositTxHashExist.Error()) {
+			return nil, ErrBrdigeDepositTxHashExist
+		}
+
+		if strings.Contains(err.Error(), ErrBrdigeDepositContractInsufficientBalance.Error()) {
+			return nil, ErrBrdigeDepositContractInsufficientBalance
+		}
+
+		if strings.Contains(err.Error(), ErrBridgeFromGasInsufficient.Error()) {
+			return nil, ErrBridgeFromGasInsufficient
+		}
+
 	}
 	legacyTx := types.LegacyTx{
 		Nonce:    nonce,
@@ -247,7 +257,7 @@ func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte)
 	}
 
 	if receipt.Status != 1 {
-		b.logger.Errorw("wati mined status err", "error", ErrBridgeWaitMinedStatus, "receipt", receipt)
+		b.logger.Errorw("wait mined status err", "error", ErrBridgeWaitMinedStatus, "receipt", receipt)
 		return receipt, ErrBridgeWaitMinedStatus
 	}
 	return receipt, nil

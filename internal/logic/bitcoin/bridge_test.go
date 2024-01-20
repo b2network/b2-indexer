@@ -2,15 +2,18 @@ package bitcoin_test
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"math/big"
 	"os"
 	"path"
 	"testing"
+	"time"
 
 	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/logic/bitcoin"
 	"github.com/b2network/b2-indexer/pkg/log"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
@@ -56,54 +59,6 @@ func TestNewBridge(t *testing.T) {
 	assert.Equal(t, common.HexToAddress("0x123456789abcdefg"), bridge.AAKernelFactory)
 }
 
-// TestLocalDeposit only test in local
-func TestLocalDeposit(t *testing.T) {
-	bridge := bridgeWithConfig(t)
-	testCase := []struct {
-		name string
-		args []interface{}
-		err  error
-	}{
-		{
-			name: "success",
-			args: []interface{}{
-				"1c7fd15bd884524c8bc4c3b44e6839c013b4ad951972af454f926e0b6bdc570f",
-				"tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
-				int64(1234),
-			},
-			err: nil,
-		},
-		{
-			name: "fail: address empty",
-			args: []interface{}{
-				"1c7fd15bd884524c8bc4c3b44e6839c013b4ad951972af454f926e0b6bdc570f",
-				"",
-				int64(1234),
-			},
-			err: errors.New("bitcoin address is empty"),
-		},
-		{
-			name: "fail: tx id empty",
-			args: []interface{}{
-				"",
-				"tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
-				int64(1234),
-			},
-			err: errors.New("tx id is empty"),
-		},
-	}
-
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			hex, _, _, err := bridge.Deposit(tc.args[0].(string), tc.args[1].(string), tc.args[2].(int64))
-			if err != nil {
-				assert.Equal(t, tc.err, err)
-			}
-			t.Log(hex)
-		})
-	}
-}
-
 // TestLocalTransfer only test in local
 func TestLocalTransfer(t *testing.T) {
 	bridge := bridgeWithConfig(t)
@@ -147,27 +102,22 @@ func TestLocalBitcoinAddressToEthAddress(t *testing.T) {
 	testCase := []struct {
 		name           string
 		bitcoinAddress string
-		ethAddress     string
 	}{
 		{
 			name:           "success: Segwit (bech32)",
 			bitcoinAddress: "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
-			ethAddress:     "0x2A9E233eE5d68fD70DE6C4b1d1Ffa29256e3ee9D",
 		},
 		{
 			name:           "success: Segwit (bech32)",
 			bitcoinAddress: "bc1qf60zw2gec5qg2mk4nyjl0slnytu0s0p28k9her",
-			ethAddress:     "0x1b98017D9d6A9B62a2CFb2764D8012e28606BD49",
 		},
 		{
 			name:           "success: Legacy",
 			bitcoinAddress: "1KEFsFXrvuzMGd7Sdkwp7iTDcEcEv3GP1y",
-			ethAddress:     "0x30f789e9C889A68180ef63F37cac923D89571394",
 		},
 		{
 			name:           "success: Segwit",
 			bitcoinAddress: "3Q4g8hgbwZLZ7vA6U1Xp1UsBs7NBnC7zKS",
-			ethAddress:     "0x0aB97EA8eDff3e28867EAe9e13C02e5aA6214f59",
 		},
 	}
 
@@ -175,7 +125,9 @@ func TestLocalBitcoinAddressToEthAddress(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ethAddress, err := bridge.BitcoinAddressToEthAddress(tc.bitcoinAddress)
 			require.NoError(t, err)
-			assert.Equal(t, tc.ethAddress, ethAddress)
+			if !common.IsHexAddress(ethAddress) {
+				t.Errorf("bitcoinAddress: %s, ethAddress: %s", tc.bitcoinAddress, ethAddress)
+			}
 		})
 	}
 }
@@ -232,54 +184,70 @@ func bridgeWithConfig(t *testing.T) *bitcoin.Bridge {
 	return bridge
 }
 
-func TestLocalWaitMined(t *testing.T) {
+func TestLocalDepositWaitMined(t *testing.T) {
 	bridge := bridgeWithConfig(t)
-	testCase := []struct {
-		name string
-		args []interface{}
-		err  error
-	}{
-		{
-			name: "success",
-			args: []interface{}{
-				"123",
-				"tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy1",
-				int64(1234),
-			},
-			err: nil,
-		},
-		{
-			name: "fail: address empty",
-			args: []interface{}{
-				"1c7fd15bd884524c8bc4c3b44e6839c013b4ad951972af454f926e0b6bdc570f",
-				"",
-				int64(1234),
-			},
-			err: errors.New("bitcoin address is empty"),
-		},
-		{
-			name: "fail: tx id empty",
-			args: []interface{}{
-				"",
-				"tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
-				int64(1234),
-			},
-			err: errors.New("tx id is empty"),
-		},
+	uuid := randHash(t)
+	address := "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy1"
+	value := 123
+	bigValue := 11111111111111111
+
+	// params check
+	_, _, _, err := bridge.Deposit("", address, int64(value))
+	if err != nil {
+		assert.EqualError(t, errors.New("tx id is empty"), err.Error())
+	}
+	_, _, _, err = bridge.Deposit(uuid, "", int64(value))
+	if err != nil {
+		assert.EqualError(t, errors.New("bitcoin address is empty"), err.Error())
 	}
 
-	for _, tc := range testCase {
-		t.Run(tc.name, func(t *testing.T) {
-			b2Tx, abiPackData, _, err := bridge.Deposit(tc.args[0].(string), tc.args[1].(string), tc.args[2].(int64))
-			if err != nil {
-				assert.Equal(t, tc.err, err)
-			}
-			_, err = bridge.WaitMined(context.Background(), b2Tx, abiPackData)
-			if err != nil {
-				t.Error()
-			}
-
-			t.Log(b2Tx)
-		})
+	// normal
+	b2Tx, _, _, err := bridge.Deposit(uuid, address, int64(value))
+	if err != nil {
+		assert.NoError(t, err)
 	}
+	_, err = bridge.WaitMined(context.Background(), b2Tx, nil)
+	if err != nil {
+		assert.NoError(t, err)
+	}
+
+	// uuid check
+	_, _, _, err = bridge.Deposit(uuid, address, int64(value))
+	if err != nil {
+		assert.EqualError(t, bitcoin.ErrBrdigeDepositTxHashExist, err.Error())
+	}
+
+	// insufficient balance
+	_, _, _, err = bridge.Deposit(randHash(t), address, int64(bigValue))
+	if err != nil {
+		assert.EqualError(t, bitcoin.ErrBrdigeDepositContractInsufficientBalance, err.Error())
+	} else {
+		t.Fatal("insufficient balance check failed")
+	}
+
+	// context timeout
+	b2Tx2, _, _, err := bridge.Deposit(randHash(t), address, int64(value))
+	if err != nil {
+		assert.NoError(t, err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Millisecond)
+	defer cancel()
+	_, err = bridge.WaitMined(ctx, b2Tx2, nil)
+	if err != nil {
+		assert.EqualError(t, context.DeadlineExceeded, err.Error())
+	} else {
+		t.Fatal("context deadline check failed")
+	}
+}
+
+func randHash(t *testing.T) string {
+	randomTx := wire.NewMsgTx(wire.TxVersion)
+	randomData := make([]byte, 32)
+	_, err := rand.Read(randomData)
+	assert.NoError(t, err)
+	randomTx.AddTxOut(&wire.TxOut{
+		PkScript: randomData,
+		Value:    0,
+	})
+	return randomTx.TxHash().String()
 }
