@@ -4,16 +4,19 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
 	"net/url"
 	"os"
 	"path"
+	"strings"
 
 	b2aa "github.com/b2network/b2-go-aa-utils"
 	"github.com/b2network/b2-indexer/internal/config"
+	"github.com/b2network/b2-indexer/pkg/log"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -22,7 +25,10 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
-var ErrBrdigeDepositTxIDExist = errors.New("non-repeatable processing")
+var (
+	ErrBrdigeDepositTxHashExist = errors.New("non-repeatable processing")
+	ErrBridgeWaitMinedStatus    = errors.New("tx wait mined status failed")
+)
 
 // Bridge bridge
 // TODO: only L1 -> L2, More calls may be supported later
@@ -35,10 +41,11 @@ type Bridge struct {
 	// AA contract address
 	AASCARegistry   common.Address
 	AAKernelFactory common.Address
+	logger          log.Logger
 }
 
 // NewBridge new bridge
-func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string) (*Bridge, error) {
+func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger) (*Bridge, error) {
 	rpcURL, err := url.ParseRequestURI(bridgeCfg.EthRPCURL)
 	if err != nil {
 		return nil, err
@@ -67,6 +74,7 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string) (*Bridge, error
 		GasLimit:        bridgeCfg.GasLimit,
 		AASCARegistry:   common.HexToAddress(bridgeCfg.AASCARegistry),
 		AAKernelFactory: common.HexToAddress(bridgeCfg.AAKernelFactory),
+		logger:          log,
 	}, nil
 }
 
@@ -87,20 +95,19 @@ func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (*typ
 		return nil, nil, "", fmt.Errorf("btc address to eth address err:%w", err)
 	}
 
-	// TODO: hash check
-	// txHash, err := chainhash.NewHashFromStr(hash)
-	// if err != nil {
-	// 	return nil, nil, "", err
-	// }
+	txHash, err := chainhash.NewHashFromStr(hash)
+	if err != nil {
+		return nil, nil, "", err
+	}
 
-	data, err := b.ABIPack(b.ABI, "deposit", common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
+	data, err := b.ABIPack(b.ABI, "depositV2", txHash, common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
 	}
 
 	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, 0)
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("eth call err:%w", err)
+		return nil, nil, "", err
 	}
 
 	return tx, data, toAddress, nil
@@ -149,7 +156,28 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	if err != nil {
 		return nil, err
 	}
+	callMsg := ethereum.CallMsg{
+		From:     crypto.PubkeyToAddress(*publicKeyECDSA),
+		To:       &toAddress,
+		Value:    big.NewInt(value),
+		Gas:      b.GasLimit,
+		GasPrice: gasPrice,
+	}
+	if data != nil {
+		callMsg.Data = data
+	}
 
+	// use estimated gas only check deposit uuid err
+	_, err = client.EstimateGas(ctx, callMsg)
+	if err != nil {
+		// handled tx hash err
+		if strings.Contains(err.Error(), ErrBrdigeDepositTxHashExist.Error()) {
+			return nil, ErrBrdigeDepositTxHashExist
+		}
+		// Other errors may occur that need to be handled
+		// The estimated gas cannot block the sending of a transaction
+		b.logger.Errorw("estimate gas err", "error", err.Error())
+	}
 	legacyTx := types.LegacyTx{
 		Nonce:    nonce,
 		To:       &toAddress,
@@ -207,7 +235,7 @@ func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress string) (string, erro
 }
 
 // WaitMined wait tx mined
-func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte) (*types.Receipt, error) {
+func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, abiPackData []byte) (*types.Receipt, error) {
 	client, err := ethclient.Dial(b.EthRPCURL)
 	if err != nil {
 		return nil, err
@@ -217,24 +245,11 @@ func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte)
 	if err != nil {
 		return nil, err
 	}
+	receipt.Status = 0
 
 	if receipt.Status != 1 {
-		// TODO: by EstimateGas parse error
-		// callMsg := ethereum.CallMsg{
-		// 	To: &b.ContractAddress,
-		// }
-		// if abiPackData != nil {
-		// 	callMsg.Data = abiPackData
-		// }
-		// _, err := client.EstimateGas(ctx, callMsg)
-		// if err != nil {
-		// 	return nil, err
-		// }
-		receiptJSON, err := json.Marshal(receipt)
-		if err != nil {
-			return nil, err
-		}
-		return nil, fmt.Errorf("tx wait mined failed:%s", string(receiptJSON))
+		b.logger.Errorw("wati mined status err", "error", ErrBridgeWaitMinedStatus, "receipt", receipt)
+		return receipt, ErrBridgeWaitMinedStatus
 	}
 	return receipt, nil
 }

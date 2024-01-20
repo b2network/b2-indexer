@@ -10,6 +10,7 @@ import (
 
 	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/logic/bitcoin"
+	"github.com/b2network/b2-indexer/pkg/log"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
@@ -44,7 +45,7 @@ func TestNewBridge(t *testing.T) {
 		AAKernelFactory: "0x123456789abcdefg",
 	}
 
-	bridge, err := bitcoin.NewBridge(bridgeCfg, abiPath)
+	bridge, err := bitcoin.NewBridge(bridgeCfg, abiPath, log.NewNopLogger())
 	assert.NoError(t, err)
 	assert.NotNil(t, bridge)
 	assert.Equal(t, bridgeCfg.EthRPCURL, bridge.EthRPCURL)
@@ -223,10 +224,10 @@ func TestABIPack(t *testing.T) {
 }
 
 func bridgeWithConfig(t *testing.T) *bitcoin.Bridge {
-	config, err := config.LoadBitcoinConfig("./testdata")
+	config, err := config.LoadBitcoinConfig("")
 	require.NoError(t, err)
 
-	bridge, err := bitcoin.NewBridge(config.Bridge, "./testdata")
+	bridge, err := bitcoin.NewBridge(config.Bridge, "./testdata", log.NewNopLogger())
 	require.NoError(t, err)
 	return bridge
 }
@@ -241,7 +242,7 @@ func TestLocalWaitMined(t *testing.T) {
 		{
 			name: "success",
 			args: []interface{}{
-				"337fd15bd884524c8bc4c3b44e6839c013b4ad951972af454f926e0b6bdc5704",
+				"123",
 				"tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy1",
 				int64(1234),
 			},
@@ -275,7 +276,7 @@ func TestLocalWaitMined(t *testing.T) {
 			}
 			_, err = bridge.WaitMined(context.Background(), b2Tx, abiPackData)
 			if err != nil {
-				t.Error(err)
+				t.Error()
 			}
 
 			t.Log(b2Tx)

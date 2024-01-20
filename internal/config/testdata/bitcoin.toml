@@ -3,6 +3,7 @@ rpc-host = "localhost"
 rpc-port = 8332
 rpc-user = "b2node"
 rpc-pass = "b2node"
+disable-tls = true
 wallet-name = "b2node"
 enable-indexer = true
 indexer-listen-address = "tb1qfhhxljfajcppfhwa09uxwty5dz4xwfptnqmvtv"

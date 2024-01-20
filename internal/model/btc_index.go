@@ -7,5 +7,5 @@ type BtcIndex struct {
 }
 
 func (BtcIndex) TableName() string {
-	return "`btc_index`"
+	return "btc_index"
 }

@@ -21,6 +21,7 @@
 | BITCOIN_RPC_PORT | `string` | bitcoin rpc port | Required |  | `8332` |
 | BITCOIN_RPC_USER | `string` | bitcoin rpc user | Required |  |  |
 | BITCOIN_RPC_PASS | `string` | bitcoin rpc password| Required |  |  |
+| BITCOIN_DISABLE_TLS | `bool` | bitcoin disable tls| Required |`true`  |  |
 | BITCOIN_WALLET_NAME | `string` | bitcoin wallet name| Required |  |  |
 | BITCOIN_ENABLE_INDEXER | `bool` | enable indexer service | Required |  | `false true` |
 | BITCOIN_INDEXER_LISTEN_ADDRESS | `string` | indexer service listen btc address | Required |  |  |

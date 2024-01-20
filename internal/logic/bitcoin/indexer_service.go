@@ -122,10 +122,17 @@ func (bis *IndexerService) OnStart() error {
 		}
 
 		for i := currentBlock; i <= latestBlock; i++ {
+			bis.log.Infow("start parse block", "currentBlock", i, "currentTxIndex", currentTxIndex)
 			txResults, blockHeader, err := bis.txIdxr.ParseBlock(i, currentTxIndex)
 			if err != nil {
-				bis.log.Errorw("parseblock", "error", err.Error(), "currentBlock", i, "currentTxIndex", currentTxIndex)
-				continue
+				bis.log.Errorw("parse block unknown err", "error", err.Error(), "currentBlock", i, "currentTxIndex", currentTxIndex)
+				if currentTxIndex == 0 {
+					currentBlock = i - 1
+				} else {
+					currentBlock = i
+					currentTxIndex--
+				}
+				break
 			}
 			if len(txResults) > 0 {
 				for _, v := range txResults {
@@ -196,6 +203,7 @@ func (bis *IndexerService) SaveParsedResult(
 			BtcFroms:       string(froms),
 			B2TxStatus:     b2TxStatus,
 			BtcBlockTime:   btcBlockTime,
+			B2TxRetry:      0,
 		}
 		err = tx.Save(&deposit).Error
 		if err != nil {

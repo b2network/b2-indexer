@@ -36,6 +36,8 @@ type BitconConfig struct {
 	RPCUser string `mapstructure:"rpc-user" env:"BITCOIN_RPC_USER"`
 	// RPCPass defines the bitcoin rpc password
 	RPCPass string `mapstructure:"rpc-pass" env:"BITCOIN_RPC_PASS"`
+	// DisableTLS defines the bitcoin whether tls is required
+	DisableTLS bool `mapstructure:"disable-tls" env:"BITCOIN_DISABLE_TLS" envDefault:"true"`
 	// WalletName defines the bitcoin wallet name
 	WalletName string `mapstructure:"wallet-name" env:"BITCOIN_WALLET_NAME"`
 	// EnableIndexer defines whether to enable the indexer

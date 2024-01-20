@@ -25,8 +25,8 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			Host:         bitcoinCfg.RPCHost + ":" + bitcoinCfg.RPCPort,
 			User:         bitcoinCfg.RPCUser,
 			Pass:         bitcoinCfg.RPCPass,
-			HTTPPostMode: true, // Bitcoin core only supports HTTP POST mode
-			DisableTLS:   true, // Bitcoin core does not provide TLS by default
+			HTTPPostMode: true,                  // Bitcoin core only supports HTTP POST mode
+			DisableTLS:   bitcoinCfg.DisableTLS, // Bitcoin core does not provide TLS by default
 		}, nil)
 		if err != nil {
 			logger.Errorw("failed to create bitcoin client", "error", err.Error())
@@ -52,12 +52,6 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		_, err = bidxer.BlockChainInfo()
 		if err != nil {
 			logger.Errorw("failed to get bitcoin core status", "error", err.Error())
-			return err
-		}
-
-		bridge, err := bitcoin.NewBridge(bitcoinCfg.Bridge, path.Join(home, "config"))
-		if err != nil {
-			logger.Errorw("failed to create bitcoin bridge", "error", err.Error())
 			return err
 		}
 
@@ -89,6 +83,13 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		bridgeLoggerOpt.EnableColor = true
 		bridgeLoggerOpt.Name = "[bridge-deposit]"
 		bridgeLogger := logger.New(bridgeLoggerOpt)
+
+		bridge, err := bitcoin.NewBridge(bitcoinCfg.Bridge, path.Join(home, "config"), bridgeLogger)
+		if err != nil {
+			logger.Errorw("failed to create bitcoin bridge", "error", err.Error())
+			return err
+		}
+
 		bridgeService := bitcoin.NewBridgeDepositService(bridge, db, bridgeLogger)
 		bridgeErrCh := make(chan error)
 		go func() {
