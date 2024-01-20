@@ -235,7 +235,7 @@ func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress string) (string, erro
 }
 
 // WaitMined wait tx mined
-func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, abiPackData []byte) (*types.Receipt, error) {
+func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte) (*types.Receipt, error) {
 	client, err := ethclient.Dial(b.EthRPCURL)
 	if err != nil {
 		return nil, err
