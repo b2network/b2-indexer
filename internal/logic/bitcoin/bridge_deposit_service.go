@@ -141,7 +141,6 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 					"btcTxHash", deposit.BtcTxHash,
 					"data", deposit)
 			}
-
 		}
 	}
 
