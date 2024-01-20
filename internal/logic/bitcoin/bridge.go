@@ -245,7 +245,6 @@ func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte)
 	if err != nil {
 		return nil, err
 	}
-	receipt.Status = 0
 
 	if receipt.Status != 1 {
 		b.logger.Errorw("wati mined status err", "error", ErrBridgeWaitMinedStatus, "receipt", receipt)
