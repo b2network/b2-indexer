@@ -85,7 +85,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 	// set init status
 	deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusPending
 	// send deposit tx
-	b2Tx, abiPackData, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, deposit.BtcFrom, deposit.BtcValue)
+	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, deposit.BtcFrom, deposit.BtcValue)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrBrdigeDepositTxHashExist):
@@ -110,8 +110,9 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 			deposit.B2TxRetry++
 			if deposit.B2TxRetry >= DepositRetry {
 				deposit.B2TxStatus = model.DepositB2TxStatusFailed
-				bis.log.Errorw("invoke deposit send tx unknown err",
+				bis.log.Errorw("invoke deposit send tx retry exceed max",
 					"error", err.Error(),
+					"retryMax", DepositRetry,
 					"btcTxHash", deposit.BtcTxHash,
 					"data", deposit)
 			} else {
@@ -134,11 +135,12 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 		// wait tx mined, may be wait long time so set timeout ctx
 		ctx1, cancel1 := context.WithTimeout(context.Background(), WaitMinedTimeout)
 		defer cancel1()
-		b2txReceipt, err := bis.bridge.WaitMined(ctx1, b2Tx, abiPackData)
+		b2txReceipt, err := bis.bridge.WaitMined(ctx1, b2Tx, nil)
 		if err != nil {
 			// try eoa transfer, only b2tx recepit status != 1
 			// NOTE: eoa tx is temp handle, It will be removed in the future
-			if errors.Is(err, ErrBridgeWaitMinedStatus) {
+			switch {
+			case errors.Is(err, ErrBridgeWaitMinedStatus):
 				deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedStatusFailed
 				bis.log.Errorw("invoke deposit wait mined err try again by eoa transfer",
 					"error", err.Error(),
@@ -171,7 +173,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 							"data", deposit)
 					}
 				}
-			} else if errors.Is(err, context.DeadlineExceeded) {
+			case errors.Is(err, context.DeadlineExceeded):
 				// handle ctx deadline timeout
 				// Indicates that the chain is unavailable at this time
 				// This particular error needs to be recorded and handled manually
@@ -180,7 +182,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 					"error", err.Error(),
 					"btcTxHash", deposit.BtcTxHash,
 					"data", deposit)
-			} else {
+			default:
 				deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedFailed
 				bis.log.Errorw("invoke deposit wait mined unknown err",
 					"error", err.Error(),
