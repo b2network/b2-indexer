@@ -102,7 +102,7 @@ func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (*typ
 		return nil, nil, "", err
 	}
 
-	data, err := b.ABIPack(b.ABI, "depositV2", txHash, common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
+	data, err := b.ABIPack(b.ABI, "depositV2", common.BytesToHash(txHash.CloneBytes()), common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
 	}
