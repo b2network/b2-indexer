@@ -17,10 +17,11 @@ const (
 	DepositB2TxStatusContextDeadlineExceeded    = 7 // deposit client context deadline exceeded
 	DepostiB2TxStatusFromAccountGasInsufficient = 8 // deposit evm from account gas insufficient
 
-	DepositB2EoaTxStatusSuccess         = 0 // eoa transfer success
-	DepositB2EoaTxStatusPending         = 1 // eoa transfer pending
-	DepositB2EoaTxStatusFailed          = 2 // eoa transfer failed
-	DepositB2EoaTxStatusWaitMinedFailed = 3 // eoa transfer wait mined failed
+	DepositB2EoaTxStatusSuccess                 = 0 // eoa transfer success
+	DepositB2EoaTxStatusPending                 = 1 // eoa transfer pending
+	DepositB2EoaTxStatusFailed                  = 2 // eoa transfer failed
+	DepositB2EoaTxStatusWaitMinedFailed         = 3 // eoa transfer wait mined failed
+	DepositB2EoaTxStatusContextDeadlineExceeded = 7 // eoa transfer client context deadline exceeded
 )
 
 type Deposit struct {
