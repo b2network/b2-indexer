@@ -65,7 +65,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 
 		errCh := make(chan error)
 		go func() {
-			if err := bindexerService.OnStart(); err != nil {
+			if err := bindexerService.Start(); err != nil {
 				errCh <- err
 			}
 		}()
@@ -93,7 +93,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		bridgeService := bitcoin.NewBridgeDepositService(bridge, db, bridgeLogger)
 		bridgeErrCh := make(chan error)
 		go func() {
-			if err := bridgeService.OnStart(); err != nil {
+			if err := bridgeService.Start(); err != nil {
 				bridgeErrCh <- err
 			}
 		}()
