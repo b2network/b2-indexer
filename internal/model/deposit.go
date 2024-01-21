@@ -14,8 +14,8 @@ const (
 	DepositB2TxStatusTxHashExist                = 4 // tx hash exist, deposit have been called
 	DepositB2TxStatusWaitMinedStatusFailed      = 5 // deposit wait mined status failed, status != 1
 	DepositB2TxStatusInsufficientBalance        = 6 // deposit insufficient balance
-	DepositB2TxStatusContextDeadlineExceeded    = 7 // deposit client context deadline exceeded
-	DepostiB2TxStatusFromAccountGasInsufficient = 8 // deposit evm from account gas insufficient
+	DepositB2TxStatusContextDeadlineExceeded    = 7 // deposit client context deadline exceeded, Chain transaction is stuck
+	DepositB2TxStatusFromAccountGasInsufficient = 8 // deposit evm from account gas insufficient
 
 	DepositB2EoaTxStatusSuccess                 = 0 // eoa transfer success
 	DepositB2EoaTxStatusPending                 = 1 // eoa transfer pending
