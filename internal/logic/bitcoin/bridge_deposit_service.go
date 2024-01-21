@@ -171,7 +171,6 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 							deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusContextDeadlineExceeded
 							bis.log.Error("invoke eoa transfer wait mined context deadline exceeded")
 						}
-
 					} else {
 						deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusSuccess
 						bis.log.Infow("invoke eoa transfer success",

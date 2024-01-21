@@ -186,7 +186,6 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		if strings.Contains(err.Error(), ErrBridgeFromGasInsufficient.Error()) {
 			return nil, ErrBridgeFromGasInsufficient
 		}
-
 	}
 	legacyTx := types.LegacyTx{
 		Nonce:    nonce,
