@@ -60,7 +60,7 @@ func (bis *BridgeDepositService) OnStart() error {
 				[]int{
 					model.DepositB2TxStatusPending,
 					model.DepositB2TxStatusInsufficientBalance,
-					model.DepostiB2TxStatusFromAccountGasInsufficient,
+					model.DepositB2TxStatusFromAccountGasInsufficient,
 				},
 			).
 			Limit(BatchDepositLimit).
@@ -101,7 +101,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 				"btcTxHash", deposit.BtcTxHash,
 				"data", deposit)
 		case errors.Is(err, ErrBridgeFromGasInsufficient):
-			deposit.B2TxStatus = model.DepostiB2TxStatusFromAccountGasInsufficient
+			deposit.B2TxStatus = model.DepositB2TxStatusFromAccountGasInsufficient
 			bis.log.Errorw("invoke deposit send tx from account gas insufficient",
 				"error", err.Error(),
 				"btcTxHash", deposit.BtcTxHash,
