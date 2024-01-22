@@ -182,7 +182,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		gas = b.GasLimit
 	} else {
 		// Ensure that no transaction will fail due to insufficient gaslimit setting
-		gas = gas * 2
+		gas *= 2
 	}
 	legacyTx := types.LegacyTx{
 		Nonce:    nonce,
