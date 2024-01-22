@@ -156,7 +156,6 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		From:     crypto.PubkeyToAddress(*publicKeyECDSA),
 		To:       &toAddress,
 		Value:    big.NewInt(value),
-		Gas:      b.GasLimit,
 		GasPrice: gasPrice,
 	}
 	if data != nil {
@@ -164,7 +163,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	}
 
 	// use eth_estimateGas only check deposit err
-	_, err = client.EstimateGas(ctx, callMsg)
+	gas, err := client.EstimateGas(ctx, callMsg)
 	if err != nil {
 		// Other errors may occur that need to be handled
 		// The estimated gas cannot block the sending of a transaction
@@ -180,12 +179,16 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		if strings.Contains(err.Error(), ErrBridgeFromGasInsufficient.Error()) {
 			return nil, ErrBridgeFromGasInsufficient
 		}
+		gas = b.GasLimit
+	} else {
+		// Ensure that no transaction will fail due to insufficient gaslimit setting
+		gas = gas * 2
 	}
 	legacyTx := types.LegacyTx{
 		Nonce:    nonce,
 		To:       &toAddress,
 		Value:    big.NewInt(value),
-		Gas:      b.GasLimit,
+		Gas:      gas,
 		GasPrice: gasPrice,
 	}
 
