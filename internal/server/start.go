@@ -104,6 +104,39 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}
 	}
+
+	if bitcoinCfg.Eps.EnableEps {
+		epsLoggerOpt := logger.NewOptions()
+		epsLoggerOpt.Format = ctx.Config.LogFormat
+		epsLoggerOpt.Level = ctx.Config.LogLevel
+		epsLoggerOpt.EnableColor = true
+		epsLoggerOpt.Name = "[eps]"
+		epsLogger := logger.New(epsLoggerOpt)
+
+		db, err := GetDBContextFromCmd(cmd)
+		if err != nil {
+			logger.Errorw("failed to get db context", "error", err.Error())
+			return err
+		}
+
+		epsService, err := bitcoin.NewEpsService(bitcoinCfg.Bridge, bitcoinCfg.Eps, epsLogger, db)
+		if err != nil {
+			logger.Errorw("failed to new eps server", "error", err.Error())
+			return err
+		}
+		epsErrCh := make(chan error)
+		go func() {
+			if err := epsService.OnStart(); err != nil {
+				epsErrCh <- err
+			}
+		}()
+
+		select {
+		case err := <-epsErrCh:
+			return err
+		case <-time.After(5 * time.Second): // assume server started successfully
+		}
+	}
 	// wait quit
 	code := WaitForQuitSignals()
 	logger.Infow("server stop!!!", "quit code", code)
