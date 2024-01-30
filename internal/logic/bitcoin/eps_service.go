@@ -43,12 +43,12 @@ type EthRequest struct {
 	Jsonrpc string   `json:"jsonrpc"`
 	Method  string   `json:"method"`
 	Params  []string `json:"params"`
-	Id      int      `json:"id"`
+	ID      int      `json:"id"`
 }
 
 type EthResponse struct {
 	Jsonrpc string                 `json:"jsonrpc"`
-	Id      int                    `json:"id"`
+	ID      int                    `json:"id"`
 	Result  EthTransactionResponse `json:"result"`
 }
 
@@ -217,7 +217,7 @@ func (e *EpsService) GetTransactionByHash(txHash string) (*EthTransactionRespons
 		Jsonrpc: "2.0",
 		Method:  "eth_getTransactionByHash",
 		Params:  []string{txHash},
-		Id:      1,
+		ID:      1,
 	}
 	client := resty.New()
 	resp, err := client.R().
