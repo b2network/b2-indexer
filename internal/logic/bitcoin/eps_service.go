@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
+	"strconv"
+	"time"
+
 	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/model"
 	"github.com/b2network/b2-indexer/pkg/log"
 	"github.com/go-resty/resty/v2"
 	"gorm.io/gorm"
-	"net/url"
-	"strconv"
-	"time"
 )
 
 // EpsService eps service
@@ -120,7 +121,7 @@ func (e *EpsService) OnStart() error {
 							continue
 						}
 						esp := model.Eps{
-							DepositId:          v.ID,
+							DepositID:          v.ID,
 							B2From:             txData.From,
 							B2To:               txData.To,
 							BtcValue:           v.BtcValue,
@@ -190,7 +191,11 @@ func (e *EpsService) Deposit(data DepositData) error {
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Authorization", e.config.Authorization).
 		SetBody(string(body)).
-		Put(fmt.Sprintf("%s/bridge/deposit", e.config.Url))
+		Put(fmt.Sprintf("%s/bridge/deposit", e.config.URL))
+	if err != nil {
+		e.log.Errorw("eps deposit client url err", "error", err)
+		return err
+	}
 	if resp.StatusCode() != 200 {
 		return errors.New(resp.Status())
 	}

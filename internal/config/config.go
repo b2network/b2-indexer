@@ -81,7 +81,7 @@ type EvmConfig struct {
 
 type EpsConfig struct {
 	EnableEps     bool   `mapstructure:"enable-eps" env:"ENABLE_EPS"`
-	Url           string `mapstructure:"url" env:"EPS_URL"`
+	URL           string `mapstructure:"url" env:"EPS_URL"`
 	Authorization string `mapstructure:"authorization" env:"EPS_AUTHORIZATION"`
 }
 

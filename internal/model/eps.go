@@ -9,7 +9,7 @@ const (
 
 type Eps struct {
 	Base
-	DepositId          int64     `json:"deposit_id" gorm:"index;comment:deposit_history id"`
+	DepositID          int64     `json:"deposit_id" gorm:"index;comment:deposit_history id"`
 	B2From             string    `json:"b2_from" gorm:"type:varchar(64);not null;default:'b2 from';index"`
 	B2To               string    `json:"b2_to" gorm:"type:varchar(64);not null;default:'b2 to';index"`
 	BtcValue           int64     `json:"btc_value" gorm:"default:0;comment:btc transfer value"`
