@@ -101,7 +101,7 @@ func (e *EpsService) OnStart() error {
 			}
 			for _, v := range depositList {
 				var eps model.Eps
-				err := e.db.Model(&model.Eps{}).Where("%s = ?", model.Eps{}.Column().DepositID, v.ID).First(&eps).Error
+				err := e.db.Model(&model.Eps{}).Where(fmt.Sprintf("%s = ?", model.Eps{}.Column().DepositID), v.ID).First(&eps).Error
 				if err != nil {
 					if errors.Is(err, gorm.ErrRecordNotFound) {
 						// insert into eps table
