@@ -24,19 +24,19 @@ type EpsService struct {
 }
 
 type DepositData struct {
-	Caller      string
-	ToAddress   string
-	Amount      string
-	Timestamp   string
-	BlockNumber int64
-	LogIndex    int
-	TxHash      string
+	Caller      string `json:"caller"`
+	ToAddress   string `json:"to_address"`
+	Amount      string `json:"amount"`
+	Timestamp   int64  `json:"timestamp"`
+	BlockNumber int64  `json:"block_number"`
+	LogIndex    int    `json:"log_index"`
+	TxHash      string `json:"tx_hash"`
 }
 
 type EpsResponse struct {
-	Code int    `json:"code"`
-	Msg  string `json:"msg"`
-	Data string `json:"data"`
+	Code int         `json:"code"`
+	Msg  string      `json:"msg"`
+	Data interface{} `json:"data"`
 }
 
 type EthRequest struct {
@@ -159,7 +159,7 @@ func (e *EpsService) OnStart() error {
 				Caller:      v.B2From,
 				ToAddress:   v.B2To,
 				Amount:      strconv.FormatInt(v.BtcValue, 10),
-				Timestamp:   v.B2TxTime.Format(""),
+				Timestamp:   v.B2TxTime.Unix(),
 				BlockNumber: v.B2BlockNumber,
 				LogIndex:    0,
 				TxHash:      v.B2TxHash,
@@ -197,6 +197,7 @@ func (e *EpsService) Deposit(data DepositData) error {
 		return err
 	}
 	if resp.StatusCode() != 200 {
+		e.log.Errorw("eps deposit client res err", "res", resp)
 		return errors.New(resp.Status())
 	}
 	var respData EpsResponse
