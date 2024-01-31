@@ -91,7 +91,7 @@ func (e *EpsService) OnStart() error {
 		for {
 			time.Sleep(time.Minute)
 			var depositList []model.Deposit
-			err := e.db.Model(&model.Deposit{}).Where("%s = ?", model.Deposit{}.Column().B2EoaTxStatus, model.DepositB2EoaTxStatusSuccess).Find(&depositList).Error
+			err := e.db.Model(&model.Deposit{}).Where(fmt.Sprintf("%s = ?", model.Deposit{}.Column().B2EoaTxStatus), model.DepositB2EoaTxStatusSuccess).Find(&depositList).Error
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					continue
