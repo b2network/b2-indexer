@@ -146,7 +146,7 @@ func (e *EpsService) OnStart() error {
 	for {
 		time.Sleep(time.Minute)
 		var epsList []model.Eps
-		result := e.db.Model(&model.Eps{}).Where("status = ?", model.EspStatus).Find(&epsList)
+		result := e.db.Model(&model.Eps{}).Where(fmt.Sprintf("%s = ?", model.Eps{}.Column().Status), model.EspStatus).Find(&epsList)
 		if result.Error != nil {
 			e.log.Errorw("eps get list err", "error", result.Error)
 			continue
@@ -170,7 +170,7 @@ func (e *EpsService) OnStart() error {
 				continue
 			}
 			e.log.Infow("post bridge deposit success", "depositData", depositData)
-			err = e.db.Model(&model.Eps{}).Where("id = ?", v.ID).Update("status", model.EspStatusSuccess).Error
+			err = e.db.Model(&model.Eps{}).Where(fmt.Sprintf("%s = ?", model.Eps{}.Column().ID), v.ID).Update(model.Eps{}.Column().Status, model.EspStatusSuccess).Error
 			if err != nil {
 				e.log.Errorw("eps update eps table err", "error", err, "id", v.ID)
 				continue

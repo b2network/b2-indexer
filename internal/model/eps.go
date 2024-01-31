@@ -21,6 +21,7 @@ type Eps struct {
 }
 
 type EpsColumns struct {
+	ID                 string
 	DepositID          string
 	B2From             string
 	B2To               string
@@ -38,6 +39,7 @@ func (Eps) TableName() string {
 
 func (Eps) Column() EpsColumns {
 	return EpsColumns{
+		ID:                 "id",
 		DepositID:          "deposit_id",
 		B2From:             "b2_from",
 		B2To:               "b2_to",
