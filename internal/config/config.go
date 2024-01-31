@@ -50,6 +50,7 @@ type BitconConfig struct {
 	Fee int64 `mapstructure:"fee" env:"BITCOIN_FEE"`
 	// Evm defines the evm config
 	Evm EvmConfig `mapstructure:"evm"`
+	Eps EpsConfig `mapstructure:"eps"`
 }
 
 type BridgeConfig struct {
@@ -76,6 +77,12 @@ type EvmConfig struct {
 	Deposit string `mapstructure:"deposit" env:"BITCOIN_BRIDGE_DEPOSIT"`
 	// Withdraw defines the withdraw event hash
 	Withdraw string `mapstructure:"withdraw" env:"BITCOIN_BRIDGE_WITHDRAW"`
+}
+
+type EpsConfig struct {
+	EnableEps     bool   `mapstructure:"enable-eps" env:"ENABLE_EPS"`
+	URL           string `mapstructure:"url" env:"EPS_URL"`
+	Authorization string `mapstructure:"authorization" env:"EPS_AUTHORIZATION"`
 }
 
 const (

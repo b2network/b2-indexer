@@ -28,6 +28,9 @@ func TestBitcoinConfig(t *testing.T) {
 	os.Unsetenv("BITCOIN_BRIDGE_GAS_LIMIT")
 	os.Unsetenv("BITCOIN_BRIDGE_AA_SCA_REGISTRY")
 	os.Unsetenv("BITCOIN_BRIDGE_AA_KERNEL_FACTORY")
+	os.Unsetenv("ENABLE_EPS")
+	os.Unsetenv("EPS_URL")
+	os.Unsetenv("EPS_AUTHORIZATION")
 	config, err := config.LoadBitcoinConfig("./testdata")
 	require.NoError(t, err)
 	require.Equal(t, "signet", config.NetworkName)
@@ -46,6 +49,9 @@ func TestBitcoinConfig(t *testing.T) {
 	require.Equal(t, uint64(3000), config.Bridge.GasLimit)
 	require.Equal(t, "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DFF3", config.Bridge.AASCARegistry)
 	require.Equal(t, "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DFF4", config.Bridge.AAKernelFactory)
+	require.Equal(t, true, config.Eps.EnableEps)
+	require.Equal(t, "127.0.0.1", config.Eps.URL)
+	require.Equal(t, "", config.Eps.Authorization)
 }
 
 func TestBitcoinConfigEnv(t *testing.T) {
@@ -68,6 +74,9 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	os.Setenv("BITCOIN_EVM_ENABLE_LISTENER", "false")
 	os.Setenv("BITCOIN_EVM_DEPOSIT", "0x01bee1bfa4116bd0440a1108ef6cb6a2f6eb9b611d8f53260aec20d39e84ee88")
 	os.Setenv("BITCOIN_EVM_WITHDRAW", "0xda335c6ae73006d1145bdcf9a98bc76d789b653b13fe6200e6fc4c5dd54add85")
+	os.Setenv("ENABLE_EPS", "true")
+	os.Setenv("EPS_URL", "127.0.0.1")
+	os.Setenv("EPS_AUTHORIZATION", "")
 
 	config, err := config.LoadBitcoinConfig("./")
 	require.NoError(t, err)
@@ -87,6 +96,9 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	require.Equal(t, uint64(23333), config.Bridge.GasLimit)
 	require.Equal(t, "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DF23", config.Bridge.AASCARegistry)
 	require.Equal(t, "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DF24", config.Bridge.AAKernelFactory)
+	require.Equal(t, true, config.Eps.EnableEps)
+	require.Equal(t, "127.0.0.1", config.Eps.URL)
+	require.Equal(t, "", config.Eps.Authorization)
 }
 
 func TestChainParams(t *testing.T) {
