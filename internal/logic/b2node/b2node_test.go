@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var privateKeHex = "3FB6ED1B2B836A7FCB27DE3E31668993488B2DBD17D0C0DF78B359F5956F1E2B"
+var privateKeHex = ""
 
 func TestLocalGetAccountInfo(t *testing.T) {
 	chainID := "ethermint_9000-1"
