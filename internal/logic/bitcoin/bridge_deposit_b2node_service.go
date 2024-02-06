@@ -77,7 +77,7 @@ func (bis *BridgeDepositB2NodeService) OnStart() error {
 
 func (bis *BridgeDepositB2NodeService) HandleDeposit(deposit model.Deposit) error {
 	// create deposit record
-	err := bis.b2node.CreateDeposit(deposit.BtcTxHash, deposit.BtcFrom, deposit.BtcTo, uint64(deposit.BtcValue))
+	err := bis.b2node.CreateDeposit(deposit.BtcTxHash, deposit.BtcFrom, deposit.BtcTo, deposit.BtcValue)
 	if err != nil {
 		bis.log.Errorw("b2node create deposit err", "error", err.Error(), "deposit", deposit)
 		switch err {

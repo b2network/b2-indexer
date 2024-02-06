@@ -13,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var privateKeHex = ""
+var privateKeHex = "3FB6ED1B2B836A7FCB27DE3E31668993488B2DBD17D0C0DF78B359F5956F1E2B"
 
 func TestLocalGetAccountInfo(t *testing.T) {
 	chainID := "ethermint_9000-1"
@@ -39,7 +39,7 @@ func TestLocalCreateDeposit(t *testing.T) {
 		TxHash string
 		From   string
 		To     string
-		Value  uint64
+		Value  int64
 		err    error
 	}{
 		{
@@ -73,7 +73,7 @@ func TestLocalQueryDeposit(t *testing.T) {
 	txHash := generateTransactionHash(t)
 	from := "tb1qukxc3sy3s3k5n5z9cxt3xyywgcjmp2tzudlz2n"
 	to := "3HctoF43JZCjAQrad1MqGtn5EsF57f5CCN"
-	var value uint64 = 11
+	var value int64 = 11
 	err := client.CreateDeposit(txHash, from, to, value)
 	require.NoError(t, err)
 	deposit, err := client.QueryDeposit(txHash)
@@ -87,9 +87,11 @@ func TestLocalQueryDeposit(t *testing.T) {
 func TestLocalUpdateDeposit(t *testing.T) {
 	client := mockClient(t)
 	txHash := generateTransactionHash(t)
+	rollupTxHash := generateTransactionHash(t)
 	from := "tb1qukxc3sy3s3k5n5z9cxt3xyywgcjmp2tzudlz2n"
+	fromAA := "0xffff"
 	to := "3HctoF43JZCjAQrad1MqGtn5EsF57f5CCN"
-	var value uint64 = 11
+	var value int64 = 11
 	err := client.CreateDeposit(txHash, from, to, value)
 	require.NoError(t, err)
 	deposit, err := client.QueryDeposit(txHash)
@@ -101,7 +103,7 @@ func TestLocalUpdateDeposit(t *testing.T) {
 	require.Equal(t, bridgeTypes.DepositStatus_DEPOSIT_STATUS_PENDING, deposit.Status)
 
 	// update
-	err = client.UpdateDeposit(txHash, bridgeTypes.DepositStatus_DEPOSIT_STATUS_COMPLETED)
+	err = client.UpdateDeposit(txHash, bridgeTypes.DepositStatus_DEPOSIT_STATUS_COMPLETED, rollupTxHash, fromAA)
 	require.NoError(t, err)
 	deposit, err = client.QueryDeposit(txHash)
 	require.NoError(t, err)

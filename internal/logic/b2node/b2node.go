@@ -164,7 +164,7 @@ func (n *NodeClient) buildSimTx(gasPrice uint64, msgs ...sdk.Msg) ([]byte, error
 	return txBytes, err
 }
 
-func (n *NodeClient) CreateDeposit(hash string, from string, to string, value uint64) error {
+func (n *NodeClient) CreateDeposit(hash string, from string, to string, value int64) error {
 	msg := bridgeTypes.NewMsgCreateDeposit(n.Address, hash, from, to, bridgeTypes.CoinType_COIN_TYPE_BTC, value, "")
 	ctx := context.Background()
 	msgResponse, err := n.broadcastTx(ctx, msg)
@@ -197,8 +197,8 @@ func (n *NodeClient) CreateDeposit(hash string, from string, to string, value ui
 	return nil
 }
 
-func (n *NodeClient) UpdateDeposit(hash string, status bridgeTypes.DepositStatus) error {
-	msg := bridgeTypes.NewMsgUpdateDeposit(n.Address, hash, status)
+func (n *NodeClient) UpdateDeposit(hash string, status bridgeTypes.DepositStatus, rollupTxHash string, from_aa string) error {
+	msg := bridgeTypes.NewMsgUpdateDeposit(n.Address, hash, status, rollupTxHash, from_aa)
 	ctx := context.Background()
 	msgResponse, err := n.broadcastTx(ctx, msg)
 	if err != nil {

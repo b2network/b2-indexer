@@ -225,8 +225,8 @@ github.com/aws/aws-sdk-go v1.44.122 h1:p6mw01WBaNpbdP2xrisz5tIkcNwzj/HysobNoaAHj
 github.com/aws/aws-sdk-go v1.44.122/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
 github.com/b2network/b2-go-aa-utils v1.0.2 h1:y4wJAAiFvfbsn+fS6dRV1YBHpDB4KxX4dYf4VjYP2Vc=
 github.com/b2network/b2-go-aa-utils v1.0.2/go.mod h1:OL1kBzuRXu9yBocRszQc+xkNyIUM8b1UIilm+R3nVwY=
-github.com/b2network/b2-node v0.0.0-20240204025421-c35ea1827744 h1:9VThm6UtsxHIWBiNfxbfyki1uLkMUBtQxB4lFxAPwbA=
-github.com/b2network/b2-node v0.0.0-20240204025421-c35ea1827744/go.mod h1:0DzyBVHFVETSCetg+Tug6eEE2WfUsSrLmXr4a6lbSsc=
+github.com/b2network/b2-node v0.0.0-20240206041603-7e77da937615 h1:P5YDP1AnCForcOwiA4Ec0kOEmGJjD+Jh0vkAq8PSAt0=
+github.com/b2network/b2-node v0.0.0-20240206041603-7e77da937615/go.mod h1:0DzyBVHFVETSCetg+Tug6eEE2WfUsSrLmXr4a6lbSsc=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
 github.com/beorn7/perks v1.0.0/go.mod h1:KWe93zE9D1o94FZ5RNwFwVgaQK1VOXiVxmqh+CedLV8=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
