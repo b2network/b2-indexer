@@ -14,4 +14,6 @@ type BITCOINBridge interface {
 	Transfer(string, int64) (*types.Transaction, error)
 	// WaitMined wait mined
 	WaitMined(context.Context, *types.Transaction, []byte) (*types.Receipt, error)
+	// TransactionByHash
+	TransactionByHash(hash string) (*types.Transaction, error)
 }

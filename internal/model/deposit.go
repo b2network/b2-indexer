@@ -7,6 +7,7 @@ import (
 const (
 	BtcTxTypeTransfer = 0 // transfer
 
+	// b2 rollup status
 	DepositB2TxStatusSuccess                    = 0 // success
 	DepositB2TxStatusPending                    = 1 // pending
 	DepositB2TxStatusFailed                     = 2 // deposit invoke failed
@@ -22,6 +23,13 @@ const (
 	DepositB2EoaTxStatusFailed                  = 2 // eoa transfer failed
 	DepositB2EoaTxStatusWaitMinedFailed         = 3 // eoa transfer wait mined failed
 	DepositB2EoaTxStatusContextDeadlineExceeded = 7 // eoa transfer client context deadline exceeded
+
+	// b2 node status
+	DepositB2NodeTxStatusSuccess       = 0 // success
+	DepositB2NodeTxStatusPending       = 1 // pending
+	DepositB2NodeTxStatusFailed        = 2 // deposit invoke failed
+	DepositB2NodeTxStatusRollupPending = 3 // deposit success wait rollup invoke
+	DepositB2NodeTxStatusTxHashExist   = 4 // tx hash exist, b2-node deposit have been called
 )
 
 type Deposit struct {
@@ -41,6 +49,7 @@ type Deposit struct {
 	B2EoaTxHash      string    `json:"b2_eoa_tx_hash" gorm:"type:varchar(66);not null;default:'';comment:b2 network eoa tx hash"`
 	B2EoaTxStatus    int       `json:"b2_eoa_tx_status" gorm:"type:SMALLINT;default:1"`
 	BtcBlockTime     time.Time `json:"btc_block_time"`
+	B2NodeTxStatus   int       `json:"b2_node_tx_status" gorm:"type:SMALLINT;default:1"`
 }
 
 type DepositColumns struct {
@@ -59,6 +68,7 @@ type DepositColumns struct {
 	B2EoaTxHash      string
 	B2EoaTxStatus    string
 	BtcBlockTime     string
+	B2NodeTxStatus   string
 }
 
 func (Deposit) TableName() string {
@@ -82,5 +92,6 @@ func (Deposit) Column() DepositColumns {
 		B2EoaTxStatus:    "b2_eoa_tx_status",
 		BtcBlockTime:     "btc_block_time",
 		B2TxRetry:        "b2_tx_retry",
+		B2NodeTxStatus:   "b2_node_tx_status",
 	}
 }

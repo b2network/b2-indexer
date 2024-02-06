@@ -32,6 +32,8 @@
 | BITCOIN_BRIDGE_GAS_LIMIT | `number` | bridge contract gas limit  | Required |  | `3000000` |
 | BITCOIN_BRIDGE_AA_SCA_REGISTRY | `string` | aa sca registry | Required |  |  |
 | BITCOIN_BRIDGE_AA_KERNEL_FACTORY | `string` | aa sca registry | Required |  |  |
+| BITCOIN_BRIDGE_B2_NODE_RPC_URL | `string` | b2 node rpc url | Required |  |  |
+| BITCOIN_BRIDGE_B2_NODE_PRIV_KEY | `string` | b2 node priv key | Required |  |  |
 | ENABLE_EPS | `bool` | enable eps service | Required |  | false true |
 | EPS_URL | `string` | eps url | Required |  |  |
 | EPS_AUTHORIZATION | `string` | eps authorization | Required |  |  |

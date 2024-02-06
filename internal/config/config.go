@@ -54,7 +54,7 @@ type BitconConfig struct {
 }
 
 type BridgeConfig struct {
-	// EthRPCURL defines the ethereum rpc url
+	// EthRPCURL defines the ethereum rpc url, b2 rollup rpc
 	EthRPCURL string `mapstructure:"eth-rpc-url" env:"BITCOIN_BRIDGE_ETH_RPC_URL"`
 	// EthPrivKey defines the invoke ethereum private key
 	EthPrivKey string `mapstructure:"eth-priv-key" env:"BITCOIN_BRIDGE_ETH_PRIV_KEY"`
@@ -68,6 +68,18 @@ type BridgeConfig struct {
 	AASCARegistry string `mapstructure:"aa-sca-registry" env:"BITCOIN_BRIDGE_AA_SCA_REGISTRY"`
 	// AAKernelFactory defines the  contract AAKernelFactory address
 	AAKernelFactory string `mapstructure:"aa-kernel-factory" env:"BITCOIN_BRIDGE_AA_KERNEL_FACTORY"`
+	// B2NodeRPCURL defines the b2 node rpc url
+	B2NodeRPCURL string `mapstructure:"b2-node-rpc-url" env:"BITCOIN_BRIDGE_B2_NODE_RPC_URL"`
+	// B2NodePrivKey defines the b2 node private key
+	B2NodePrivKey string `mapstructure:"b2-node-priv-key" env:"BITCOIN_BRIDGE_B2_NODE_PRIV_KEY"`
+	// B2NodeAddress defines the b2 node address
+	B2NodeAddress string `mapstructure:"b2-node-address" env:"BITCOIN_BRIDGE_B2_NODE_ADDRESS"`
+	// B2NodeChainID defines the b2 node chain id
+	B2NodeChainID string `mapstructure:"b2-node-chain-id" env:"BITCOIN_BRIDGE_B2_NODE_CHAIN_ID"`
+	// B2NodeGRPCHost defines the b2 node grpc host
+	B2NodeGRPCHost string `mapstructure:"b2-node-grpc-host" env:"BITCOIN_BRIDGE_B2_NODE_GRPC_HOST"`
+	// B2NodeGRPCPort defines the b2 node grpc port
+	B2NodeGRPCPort uint32 `mapstructure:"b2-node-grpc-port" env:"BITCOIN_BRIDGE_B2_NODE_GRPC_PORT"`
 }
 
 type EvmConfig struct {

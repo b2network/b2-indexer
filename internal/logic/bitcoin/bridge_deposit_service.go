@@ -9,7 +9,7 @@ import (
 	"github.com/b2network/b2-indexer/internal/model"
 	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
-	"github.com/cometbft/cometbft/libs/service"
+	"github.com/tendermint/tendermint/libs/service"
 	"gorm.io/gorm"
 )
 
@@ -53,6 +53,7 @@ func (bis *BridgeDepositService) OnStart() error {
 		// 1. tx status is pending
 		// 2. contract insufficient balance
 		// 3. invoke contract from account insufficient balance
+		// 4. b2-node create deposit success
 		var deposits []model.Deposit
 		err := bis.db.
 			Where(
@@ -62,6 +63,10 @@ func (bis *BridgeDepositService) OnStart() error {
 					model.DepositB2TxStatusInsufficientBalance,
 					model.DepositB2TxStatusFromAccountGasInsufficient,
 				},
+			).
+			Where(
+				fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().B2NodeTxStatus),
+				model.DepositB2NodeTxStatusRollupPending,
 			).
 			Limit(BatchDepositLimit).
 			Find(&deposits).Error
@@ -78,6 +83,31 @@ func (bis *BridgeDepositService) OnStart() error {
 
 			time.Sleep(HandleDepositTimeout)
 		}
+
+		// handle deadline
+		// The chain is stuck for unknown reasons, and the transaction status is stuck when the reply is processed
+		// var deadlineDeposits []model.Deposit
+		// err := bis.db.
+		// 	Where(
+		// 		fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
+		// 		[]int{
+		// 			model.DepositB2TxStatusContextDeadlineExceeded,
+		// 		},
+		// 	).
+		// 	Limit(BatchDepositLimit).
+		// 	Find(&deadlineDeposits).Error
+		// if err != nil {
+		// 	bis.log.Errorw("failed find tx from db", "error", err)
+		// }
+		// bis.log.Infow("start handle deadline deposit", "deadline deposit batch num", len(deadlineDeposits))
+		// for _, deposit := range deposits {
+		// 	// err := bis.HandleDeadlineDeposit(deposit)
+		// 	// if err != nil {
+		// 	// 	bis.log.Errorw("handle deadline deposit failed", "error", err, "deposit", deposit)
+		// 	// }
+
+		// 	time.Sleep(HandleDepositTimeout)
+		// }
 	}
 }
 
@@ -204,6 +234,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 		model.Deposit{}.Column().B2TxRetry:        deposit.B2TxRetry,
 		model.Deposit{}.Column().B2EoaTxHash:      deposit.B2EoaTxHash,
 		model.Deposit{}.Column().B2EoaTxStatus:    deposit.B2EoaTxStatus,
+		model.Deposit{}.Column().B2NodeTxStatus:   deposit.B2NodeTxStatus,
 	}
 	err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
 	if err != nil {
@@ -212,3 +243,84 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 	bis.log.Infow("handle deposit success", "btcTxHash", deposit.BtcTxHash, "deposit", deposit)
 	return nil
 }
+
+// func (bis *BridgeDepositService) HandleDeadlineDeposit(deposit model.Deposit) error {
+
+// 	// find tx
+
+// 	// wait tx mined, may be wait long time so set timeout ctx
+// 	ctx1, cancel1 := context.WithTimeout(context.Background(), WaitMinedTimeout)
+// 	defer cancel1()
+// 	b2txReceipt, err := bis.bridge.WaitMined(ctx1, b2Tx, nil)
+// 	if err != nil {
+// 		// try eoa transfer, only b2tx recepit status != 1
+// 		// NOTE: eoa tx is temp handle, It will be removed in the future
+// 		switch {
+// 		case errors.Is(err, ErrBridgeWaitMinedStatus):
+// 			deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedStatusFailed
+// 			bis.log.Errorw("invoke deposit wait mined err try again by eoa transfer",
+// 				"error", err.Error(),
+// 				"btcTxHash", deposit.BtcTxHash,
+// 				"b2txReceipt", b2txReceipt,
+// 				"data", deposit)
+// 			b2EoaTx, err := bis.bridge.Transfer(deposit.BtcFrom, deposit.BtcValue)
+// 			if err != nil {
+// 				deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusFailed
+// 				bis.log.Errorw("invoke eoa transfer tx unknown err",
+// 					"error", err.Error(),
+// 					"btcTxHash", deposit.BtcTxHash,
+// 					"data", deposit)
+// 			} else {
+// 				deposit.B2EoaTxHash = b2EoaTx.Hash().String()
+// 				// eoa wait mined
+// 				ctx2, cancel2 := context.WithTimeout(context.Background(), WaitMinedTimeout)
+// 				defer cancel2()
+// 				_, err := bis.bridge.WaitMined(ctx2, b2EoaTx, nil)
+// 				if err != nil {
+// 					deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusWaitMinedFailed
+// 					bis.log.Errorw("invoke eoa transfer wait mined err",
+// 						"error", err.Error(),
+// 						"btcTxHash", deposit.BtcTxHash,
+// 						"data", deposit)
+
+// 					if errors.Is(err, context.DeadlineExceeded) {
+// 						deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusContextDeadlineExceeded
+// 						bis.log.Error("invoke eoa transfer wait mined context deadline exceeded")
+// 					}
+// 				} else {
+// 					deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusSuccess
+// 					bis.log.Infow("invoke eoa transfer success",
+// 						"btcTxHash", deposit.BtcTxHash,
+// 						"data", deposit)
+// 				}
+// 			}
+// 		case errors.Is(err, context.DeadlineExceeded):
+// 			// handle ctx deadline timeout
+// 			// Indicates that the chain is unavailable at this time
+// 			// This particular error needs to be recorded and handled manually
+// 			deposit.B2TxStatus = model.DepositB2TxStatusContextDeadlineExceeded
+// 			bis.log.Errorw("invoke deposit wait mined context deadline exceeded",
+// 				"error", err.Error(),
+// 				"btcTxHash", deposit.BtcTxHash,
+// 				"data", deposit)
+// 		default:
+// 			deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedFailed
+// 			bis.log.Errorw("invoke deposit wait mined unknown err",
+// 				"error", err.Error(),
+// 				"btcTxHash", deposit.BtcTxHash,
+// 				"data", deposit)
+// 		}
+// 	}
+
+// 	updateFields := map[string]interface{}{
+// 		model.Deposit{}.Column().B2TxStatus:    deposit.B2TxStatus,
+// 		model.Deposit{}.Column().B2EoaTxHash:   deposit.B2EoaTxHash,
+// 		model.Deposit{}.Column().B2EoaTxStatus: deposit.B2EoaTxStatus,
+// 	}
+// 	err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
+// 	if err != nil {
+// 		return err
+// 	}
+// 	bis.log.Infow("handle deadline deposit success", "btcTxHash", deposit.BtcTxHash, "deposit", deposit)
+// 	return nil
+// }
