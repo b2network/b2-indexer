@@ -9,6 +9,7 @@ import (
 	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
 	"github.com/b2network/b2-indexer/pkg/utils"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/tendermint/tendermint/libs/service"
 	"gorm.io/gorm"
 )
@@ -138,15 +139,23 @@ func (bis *IndexerService) OnStart() error {
 				if err != nil {
 					bis.log.Errorw("failed to handle results", "error", err,
 						"currentBlock", currentBlock, "currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
+					rollback := true
 					// not duplicated key, rollback index
-					// if !errors.Is(err, gorm.ErrDuplicatedKey) {
-					// 	if currentTxIndex == 0 {
-					// 		currentBlock = currentBlock - 1
-					// 	} else {
-					// 		currentTxIndex = currentTxIndex - 1
-					// 	}
-					// }
-					// break
+					if pgErr, ok := err.(*pgconn.PgError); ok {
+						// 23505 duplicate key value violates unique constraint , continue
+						if pgErr.Code == "23505" {
+							rollback = false
+						}
+					}
+
+					if rollback {
+						if currentTxIndex == 0 {
+							currentBlock = currentBlock - 1
+						} else {
+							currentTxIndex = currentTxIndex - 1
+						}
+						break
+					}
 				}
 			}
 			currentBlock = i
@@ -158,6 +167,7 @@ func (bis *IndexerService) OnStart() error {
 					"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
 				// rollback
 				currentBlock = i - 1
+				break
 			} else {
 				bis.log.Infow("bitcoin indexer parsed", "currentBlock", i,
 					"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
