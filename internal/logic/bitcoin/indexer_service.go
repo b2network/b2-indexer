@@ -150,9 +150,10 @@ func (bis *IndexerService) OnStart() error {
 
 					if rollback {
 						if currentTxIndex == 0 {
-							currentBlock = currentBlock - 1
+							currentBlock = i - 1
 						} else {
-							currentTxIndex = currentTxIndex - 1
+							currentBlock = i
+							currentTxIndex--
 						}
 						break
 					}
@@ -168,11 +169,9 @@ func (bis *IndexerService) OnStart() error {
 				// rollback
 				currentBlock = i - 1
 				break
-			} else {
-				bis.log.Infow("bitcoin indexer parsed", "currentBlock", i,
-					"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
 			}
-
+			bis.log.Infow("bitcoin indexer parsed", "currentBlock", i,
+				"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
 			time.Sleep(IndexBlockTimeout)
 		}
 	}

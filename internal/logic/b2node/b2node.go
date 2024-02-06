@@ -197,8 +197,8 @@ func (n *NodeClient) CreateDeposit(hash string, from string, to string, value in
 	return nil
 }
 
-func (n *NodeClient) UpdateDeposit(hash string, status bridgeTypes.DepositStatus, rollupTxHash string, from_aa string) error {
-	msg := bridgeTypes.NewMsgUpdateDeposit(n.Address, hash, status, rollupTxHash, from_aa)
+func (n *NodeClient) UpdateDeposit(hash string, status bridgeTypes.DepositStatus, rollupTxHash string, fromAa string) error {
+	msg := bridgeTypes.NewMsgUpdateDeposit(n.Address, hash, status, rollupTxHash, fromAa)
 	ctx := context.Background()
 	msgResponse, err := n.broadcastTx(ctx, msg)
 	if err != nil {
