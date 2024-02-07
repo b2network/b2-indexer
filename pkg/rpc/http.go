@@ -42,7 +42,7 @@ func HTTPPostJSON(proxyURL, httpURL, bodyJSON string) ([]byte, error) {
 }
 
 func HTTPGet(url string) ([]byte, error) {
-	res, err := http.Get(url)
+	res, err := http.Get(url) //nolint
 	if err != nil {
 		return nil, err
 	}

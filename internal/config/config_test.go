@@ -55,7 +55,7 @@ func TestBitcoinConfig(t *testing.T) {
 	require.Equal(t, "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DFF4", config.Bridge.AAKernelFactory)
 	require.Equal(t, "localhost:1317", config.Bridge.B2NodeAPI)
 	require.Equal(t, "", config.Bridge.B2NodePrivKey)
-	require.Equal(t, 10000, config.Bridge.B2NodeGasPrices)
+	require.Equal(t, uint64(10000), config.Bridge.B2NodeGasPrices)
 	require.Equal(t, "ethm", config.Bridge.B2NodeAddressPrefix)
 	require.Equal(t, "ethermint_9000-1", config.Bridge.B2NodeChainID)
 	require.Equal(t, true, config.Eps.EnableEps)

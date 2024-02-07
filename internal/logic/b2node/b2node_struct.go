@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-type B2NodeTxs struct {
+type B2NodeTxs struct { //nolint
 	Txs         []Txs         `json:"txs"`
 	TxResponses []TxResponses `json:"tx_responses"`
 	Pagination  interface{}   `json:"pagination"`
@@ -97,7 +97,7 @@ func ParseJSONB2NodeTxs(data []byte) (B2NodeTxs, error) {
 	return c, nil
 }
 
-type B2NodeBlock struct {
+type B2NodeBlock struct { //nolint
 	BlockID  BlockID  `json:"block_id"`
 	Block    Block    `json:"block"`
 	SdkBlock SdkBlock `json:"sdk_block"`

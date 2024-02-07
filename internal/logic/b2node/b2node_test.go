@@ -131,7 +131,7 @@ func generateTransactionHash(t *testing.T) string {
 	return hashString
 }
 
-func TestB2NodeSenderAddress(t *testing.T) {
+func TestLocalB2NodeSenderAddress(t *testing.T) {
 	client := mockClient(t)
 	_, err := client.B2NodeSenderAddress()
 	require.NoError(t, err)

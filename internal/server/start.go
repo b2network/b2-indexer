@@ -104,13 +104,13 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			return err
 		}
 
-		b2nodeDb, err := GetDBContextFromCmd(cmd)
+		b2nodeDB, err := GetDBContextFromCmd(cmd)
 		if err != nil {
 			logger.Errorw("failed to get db context", "error", err.Error())
 			return err
 		}
 
-		b2IndexerService := b2node.NewB2NodeIndexerService(b2nodeIndexBridge, b2nodeDb, b2nodeIndexerLogger)
+		b2IndexerService := b2node.NewB2NodeIndexerService(b2nodeIndexBridge, b2nodeDB, b2nodeIndexerLogger)
 
 		b2IndexerErrCh := make(chan error)
 		go func() {
