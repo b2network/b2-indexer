@@ -39,12 +39,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		}()
 		bitcoinParam := config.ChainParams(bitcoinCfg.NetworkName)
 
-		bidxLoggerOpt := logger.NewOptions()
-		bidxLoggerOpt.Format = ctx.Config.LogFormat
-		bidxLoggerOpt.Level = ctx.Config.LogLevel
-		bidxLoggerOpt.EnableColor = true
-		bidxLoggerOpt.Name = "[bitcoin-indexer]"
-		bidxLogger := logger.New(bidxLoggerOpt)
+		bidxLogger := newLogger(ctx, "[bitcoin-indexer]")
 		bidxer, err := bitcoin.NewBitcoinIndexer(bidxLogger, bclient, bitcoinParam, bitcoinCfg.IndexerListenAddress)
 		if err != nil {
 			logger.Errorw("failed to new bitcoin indexer indexer", "error", err.Error())
@@ -79,26 +74,8 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		}
 
 		// start b2node indexer service
-		b2nodeIndexerLoggerOpt := logger.NewOptions()
-		b2nodeIndexerLoggerOpt.Format = ctx.Config.LogFormat
-		b2nodeIndexerLoggerOpt.Level = ctx.Config.LogLevel
-		b2nodeIndexerLoggerOpt.EnableColor = true
-		b2nodeIndexerLoggerOpt.Name = "[b2node-indexer]"
-		b2nodeIndexerLogger := logger.New(b2nodeIndexerLoggerOpt)
-		b2nodeIndexergrpcConn, err := client.GetClientConnection(bitcoinCfg.Bridge.B2NodeGRPCHost, client.WithClientPortOption(bitcoinCfg.Bridge.B2NodeGRPCPort))
-		if err != nil {
-			return err
-		}
-		b2nodeIndexBridge, err := b2node.NewNodeClient(
-			bitcoinCfg.Bridge.B2NodePrivKey,
-			bitcoinCfg.Bridge.B2NodeChainID,
-			bitcoinCfg.Bridge.B2NodeAddressPrefix,
-			b2nodeIndexergrpcConn,
-			bitcoinCfg.Bridge.B2NodeAPI,
-			bitcoinCfg.Bridge.B2NodeDenom,
-			bitcoinCfg.Bridge.B2NodeGasPrices,
-			b2nodeIndexerLogger,
-		)
+		b2nodeIndexerLogger := newLogger(ctx, "[b2node-indexer]")
+		b2nodeIndexBridge, err := b2NodeClient(ctx.BitcoinConfig, b2nodeIndexerLogger)
 		if err != nil {
 			logger.Errorw("failed to create b2node", "error", err.Error())
 			return err
@@ -126,60 +103,39 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		}
 
 		// start l1->b2node
-		bridgeB2NodeLoggerOpt := logger.NewOptions()
-		bridgeB2NodeLoggerOpt.Format = ctx.Config.LogFormat
-		bridgeB2NodeLoggerOpt.Level = ctx.Config.LogLevel
-		bridgeB2NodeLoggerOpt.EnableColor = true
-		bridgeB2NodeLoggerOpt.Name = "[bridge-deposit-b2node]"
-		bridgeB2NodeLogger := logger.New(bridgeB2NodeLoggerOpt)
-		b2grpcConn, err := client.GetClientConnection(bitcoinCfg.Bridge.B2NodeGRPCHost, client.WithClientPortOption(bitcoinCfg.Bridge.B2NodeGRPCPort))
+		bridgeB2NodeLogger := newLogger(ctx, "[bridge-deposit-b2node]")
+		bridgeDepositB2node, err := b2NodeClient(bitcoinCfg, bridgeB2NodeLogger)
 		if err != nil {
-			return err
-		}
-		bridgeB2node, err := b2node.NewNodeClient(
-			bitcoinCfg.Bridge.B2NodePrivKey,
-			bitcoinCfg.Bridge.B2NodeChainID,
-			bitcoinCfg.Bridge.B2NodeAddressPrefix,
-			b2grpcConn,
-			bitcoinCfg.Bridge.B2NodeAPI,
-			bitcoinCfg.Bridge.B2NodeDenom,
-			bitcoinCfg.Bridge.B2NodeGasPrices,
-			bridgeB2NodeLogger,
-		)
-		if err != nil {
-			logger.Errorw("failed to create b2node", "error", err.Error())
 			return err
 		}
 
-		bridgeB2NodeService := bitcoin.NewBridgeDepositB2NodeService(bridgeB2node, db, bridgeB2NodeLogger)
-		bridgeB2NodeErrCh := make(chan error)
+		bridgeDepositB2NodeService := bitcoin.NewBridgeDepositB2NodeService(bridgeDepositB2node, db, bridgeB2NodeLogger)
+		bridgeDepositB2NodeErrCh := make(chan error)
 		go func() {
-			if err := bridgeB2NodeService.OnStart(); err != nil {
-				bridgeB2NodeErrCh <- err
+			if err := bridgeDepositB2NodeService.Start(); err != nil {
+				bridgeDepositB2NodeErrCh <- err
 			}
 		}()
 
 		select {
-		case err := <-bridgeB2NodeErrCh:
+		case err := <-bridgeDepositB2NodeErrCh:
 			return err
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}
 
 		// start l1->l2 bridge service
-		bridgeLoggerOpt := logger.NewOptions()
-		bridgeLoggerOpt.Format = ctx.Config.LogFormat
-		bridgeLoggerOpt.Level = ctx.Config.LogLevel
-		bridgeLoggerOpt.EnableColor = true
-		bridgeLoggerOpt.Name = "[bridge-deposit]"
-		bridgeLogger := logger.New(bridgeLoggerOpt)
-
+		bridgeLogger := newLogger(ctx, "[bridge-deposit]")
 		bridge, err := bitcoin.NewBridge(bitcoinCfg.Bridge, path.Join(home, "config"), bridgeLogger)
 		if err != nil {
 			logger.Errorw("failed to create bitcoin bridge", "error", err.Error())
 			return err
 		}
+		bridgeB2node, err := b2NodeClient(bitcoinCfg, bridgeLogger)
+		if err != nil {
+			return err
+		}
 
-		bridgeService := bitcoin.NewBridgeDepositService(bridge, db, bridgeLogger)
+		bridgeService := bitcoin.NewBridgeDepositService(bridge, bridgeB2node, db, bridgeLogger)
 		bridgeErrCh := make(chan error)
 		go func() {
 			if err := bridgeService.Start(); err != nil {
@@ -245,4 +201,36 @@ func WaitForQuitSignals() int {
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGHUP)
 	sig := <-sigs
 	return int(sig.(syscall.Signal)) + 128
+}
+
+func b2NodeClient(cfg *config.BitconConfig, b2NodeLog logger.Logger) (*b2node.NodeClient, error) {
+	b2grpcConn, err := client.GetClientConnection(cfg.Bridge.B2NodeGRPCHost, client.WithClientPortOption(cfg.Bridge.B2NodeGRPCPort))
+	if err != nil {
+		return nil, err
+	}
+	bridgeB2node, err := b2node.NewNodeClient(
+		cfg.Bridge.B2NodePrivKey,
+		cfg.Bridge.B2NodeChainID,
+		cfg.Bridge.B2NodeAddressPrefix,
+		b2grpcConn,
+		cfg.Bridge.B2NodeAPI,
+		cfg.Bridge.B2NodeDenom,
+		cfg.Bridge.B2NodeGasPrices,
+		b2NodeLog,
+	)
+	if err != nil {
+		logger.Errorw("failed to create b2node", "error", err.Error())
+		return nil, err
+	}
+	return bridgeB2node, nil
+}
+
+func newLogger(ctx *Context, name string) logger.Logger {
+	bridgeB2NodeLoggerOpt := logger.NewOptions()
+	bridgeB2NodeLoggerOpt.Format = ctx.Config.LogFormat
+	bridgeB2NodeLoggerOpt.Level = ctx.Config.LogLevel
+	bridgeB2NodeLoggerOpt.EnableColor = true
+	bridgeB2NodeLoggerOpt.Name = name
+	bridgeB2NodeLogger := logger.New(bridgeB2NodeLoggerOpt)
+	return bridgeB2NodeLogger
 }

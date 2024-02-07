@@ -173,7 +173,9 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		if strings.Contains(err.Error(), ErrBridgeFromGasInsufficient.Error()) {
 			return nil, ErrBridgeFromGasInsufficient
 		}
-		gas = b.GasLimit
+
+		// estimate gas err, return, try again
+		return nil, err
 	} else {
 		// Ensure that no transaction will fail due to insufficient gaslimit setting
 		gas *= 2

@@ -12,6 +12,8 @@ type B2NODEBridge interface {
 	CreateDeposit(hash string, from string, to string, value int64) error
 	// QueryDeposit query deposit record
 	QueryDeposit(hash string) (*bridgeTypes.Deposit, error)
+	// UpdateDeposit b2node update deposit record
+	UpdateDeposit(hash string, status bridgeTypes.DepositStatus, rollupTxHash string, fromAa string) error
 	// LatestBlock get b2node latest block number
 	LatestBlock() (int64, error)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/b2network/b2-indexer/internal/model"
 	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
+	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
 	"github.com/tendermint/tendermint/libs/service"
 	"gorm.io/gorm"
 )
@@ -16,10 +17,11 @@ import (
 const (
 	BridgeDepositServiceName = "BitcoinBridgeDepositService"
 	BatchDepositWaitTimeout  = 10 * time.Second
+	DepositErrTimeout        = 1 * time.Minute
 	BatchDepositLimit        = 100
 	WaitMinedTimeout         = 2 * time.Hour
 	HandleDepositTimeout     = 100 * time.Millisecond
-	DepositRetry             = 3
+	DepositRetry             = 10
 )
 
 // BridgeDepositService l1->l2
@@ -27,6 +29,7 @@ type BridgeDepositService struct {
 	service.BaseService
 
 	bridge types.BITCOINBridge
+	b2node types.B2NODEBridge
 
 	db  *gorm.DB
 	log log.Logger
@@ -35,10 +38,11 @@ type BridgeDepositService struct {
 // NewBridgeDepositService returns a new service instance.
 func NewBridgeDepositService(
 	bridge types.BITCOINBridge,
+	b2node types.B2NODEBridge,
 	db *gorm.DB,
 	logger log.Logger,
 ) *BridgeDepositService {
-	is := &BridgeDepositService{bridge: bridge, db: db, log: logger}
+	is := &BridgeDepositService{bridge: bridge, b2node: b2node, db: db, log: logger}
 	is.BaseService = *service.NewBaseService(nil, BridgeDepositServiceName, is)
 	return is
 }
@@ -76,7 +80,7 @@ func (bis *BridgeDepositService) OnStart() error {
 
 		bis.log.Infow("start handle deposit", "deposit batch num", len(deposits))
 		for _, deposit := range deposits {
-			err := bis.HandleDeposit(deposit)
+			err = bis.HandleDeposit(deposit)
 			if err != nil {
 				bis.log.Errorw("handle deposit failed", "error", err, "deposit", deposit)
 			}
@@ -112,6 +116,30 @@ func (bis *BridgeDepositService) OnStart() error {
 }
 
 func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
+	defer func() {
+		if err := recover(); err != nil {
+			bis.log.Errorw("panic err", err)
+		}
+	}()
+	// check b2node deposit
+	b2NodeDeposit, err := bis.b2node.QueryDeposit(deposit.BtcTxHash)
+	if err != nil {
+		bis.log.Errorw("failed query b2node deposit",
+			"error", err,
+			"deposit", deposit,
+			"b2node deposit", b2NodeDeposit,
+		)
+		//TODO: err handle
+		return err
+	}
+	if b2NodeDeposit.Status != bridgeTypes.DepositStatus_DEPOSIT_STATUS_PENDING {
+		bis.log.Errorw("b2node deposit status",
+			"status", b2NodeDeposit.Status,
+			"deposit", deposit,
+			"b2node deposit", b2NodeDeposit,
+		)
+		return fmt.Errorf("b2node deposit status not pending")
+	}
 	// set init status
 	deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusPending
 	// send deposit tx
@@ -153,7 +181,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 					"data", deposit)
 			}
 			// The call may not succeed due to network reasons. sleep wait for a while
-			time.Sleep(BatchDepositWaitTimeout)
+			time.Sleep(DepositErrTimeout)
 		}
 	} else {
 		deposit.B2TxStatus = model.DepositB2TxStatusSuccess
@@ -223,6 +251,23 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 					"error", err.Error(),
 					"btcTxHash", deposit.BtcTxHash,
 					"data", deposit)
+			}
+		} else {
+			// rollup succss, update b2node deposit
+			err = bis.b2node.UpdateDeposit(deposit.BtcTxHash,
+				bridgeTypes.DepositStatus_DEPOSIT_STATUS_COMPLETED,
+				deposit.B2TxHash,
+				deposit.BtcFromAAAddress,
+			)
+			if err != nil {
+				bis.log.Errorw("b2node update deposit err",
+					"error", err.Error(),
+					"btcTxHash", deposit.BtcTxHash,
+				)
+				//TODO: err handle
+				deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusFailed
+			} else {
+				deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusSuccess
 			}
 		}
 	}

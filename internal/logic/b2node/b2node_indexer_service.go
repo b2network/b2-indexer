@@ -14,7 +14,7 @@ import (
 
 const (
 	B2NodeIndexerServiceName  = "B2NodeIndexerService"
-	B2NodeNewBlockWaitTimeout = 1 * time.Second
+	B2NodeNewBlockWaitTimeout = 10 * time.Second
 	B2NodeIndexBlockTimeout   = 1 * time.Second
 	B2NodeIndexTxTimeout      = 100 * time.Millisecond
 )

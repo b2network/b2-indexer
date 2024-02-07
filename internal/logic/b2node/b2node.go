@@ -259,6 +259,10 @@ func (n *NodeClient) QueryDeposit(hash string) (*bridgeTypes.Deposit, error) {
 		TxHash: hash,
 	})
 	if err != nil {
+		switch err { //nolint
+		case bridgeTypes.ErrIndexNotExist:
+			return nil, bridgeTypes.ErrIndexNotExist
+		}
 		return nil, fmt.Errorf("[QueryDeposit] err: %s", err)
 	}
 	return &res.Deposit, nil

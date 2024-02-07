@@ -40,6 +40,7 @@ func NewBridgeDepositB2NodeService(
 	logger log.Logger,
 ) *BridgeDepositB2NodeService {
 	is := &BridgeDepositB2NodeService{b2node: b2node, db: db, log: logger}
+	is.BaseService = *service.NewBaseService(nil, BridgeDepositB2NodeServiceName, is)
 	return is
 }
 
@@ -76,6 +77,11 @@ func (bis *BridgeDepositB2NodeService) OnStart() error {
 }
 
 func (bis *BridgeDepositB2NodeService) HandleDeposit(deposit model.Deposit) error {
+	defer func() {
+		if err := recover(); err != nil {
+			bis.log.Errorw("panic err", err)
+		}
+	}()
 	// create deposit record
 	err := bis.b2node.CreateDeposit(deposit.BtcTxHash, deposit.BtcFrom, deposit.BtcTo, deposit.BtcValue)
 	if err != nil {
