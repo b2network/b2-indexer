@@ -20,7 +20,7 @@ const (
 )
 
 // B2NodeIndexerService sync b2node tx event
-type B2NodeIndexerService struct {
+type B2NodeIndexerService struct { //nolint
 	service.BaseService
 	b2node types.B2NODEBridge
 	db     *gorm.DB

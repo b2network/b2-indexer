@@ -313,7 +313,7 @@ func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.
 			}
 			for _, log := range tx.Logs {
 				for _, event := range log.Events {
-					switch event.Type {
+					switch event.Type { //nolint
 					case n.BridgeModuleEventType(EventTypeCreateDeposit):
 						createDepositID := ""
 						for _, attr := range event.Attributes {
