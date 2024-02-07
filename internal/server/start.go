@@ -92,9 +92,11 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		b2nodeIndexBridge, err := b2node.NewNodeClient(
 			bitcoinCfg.Bridge.B2NodePrivKey,
 			bitcoinCfg.Bridge.B2NodeChainID,
-			bitcoinCfg.Bridge.B2NodeAddress,
+			bitcoinCfg.Bridge.B2NodeAddressPrefix,
 			b2nodeIndexergrpcConn,
-			bitcoinCfg.Bridge.B2NodeRPCURL,
+			bitcoinCfg.Bridge.B2NodeAPI,
+			bitcoinCfg.Bridge.B2NodeDenom,
+			bitcoinCfg.Bridge.B2NodeGasPrices,
 			b2nodeIndexerLogger,
 		)
 		if err != nil {
@@ -137,9 +139,11 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		bridgeB2node, err := b2node.NewNodeClient(
 			bitcoinCfg.Bridge.B2NodePrivKey,
 			bitcoinCfg.Bridge.B2NodeChainID,
-			bitcoinCfg.Bridge.B2NodeAddress,
+			bitcoinCfg.Bridge.B2NodeAddressPrefix,
 			b2grpcConn,
-			bitcoinCfg.Bridge.B2NodeRPCURL,
+			bitcoinCfg.Bridge.B2NodeAPI,
+			bitcoinCfg.Bridge.B2NodeDenom,
+			bitcoinCfg.Bridge.B2NodeGasPrices,
 			bridgeB2NodeLogger,
 		)
 		if err != nil {

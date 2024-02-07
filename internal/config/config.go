@@ -81,7 +81,7 @@ type BridgeConfig struct {
 	// B2NodeGRPCPort defines the b2 node grpc port
 	B2NodeGRPCPort uint32 `mapstructure:"b2-node-grpc-port" env:"BITCOIN_BRIDGE_B2_NODE_GRPC_PORT"`
 	// B2NodeGasPrices defines the b2 node gas prices
-	B2NodeGasPrices int `mapstructure:"b2-node-gas-prices" env:"BITCOIN_BRIDGE_B2_NODE_GAS_PRICES" envDefault:"100000"`
+	B2NodeGasPrices uint64 `mapstructure:"b2-node-gas-prices" env:"BITCOIN_BRIDGE_B2_NODE_GAS_PRICES" envDefault:"100000"`
 	// B2NodeDenom defines the b2 node denom
 	B2NodeDenom string `mapstructure:"b2-node-denom" env:"BITCOIN_BRIDGE_B2_NODE_DENOM" envDefault:"aphoton"`
 }

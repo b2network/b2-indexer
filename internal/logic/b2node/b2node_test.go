@@ -21,7 +21,7 @@ func TestLocalGetAccountInfo(t *testing.T) {
 	rpcUrl := "http://localhost:1317"
 	grpcConn, err := client.GetClientConnection("127.0.0.1", client.WithClientPortOption(9090))
 	require.NoError(t, err)
-	nodeClient, err := b2node.NewNodeClient(privateKeHex, chainID, address, grpcConn, rpcUrl, log.NewNopLogger())
+	nodeClient, err := b2node.NewNodeClient(privateKeHex, chainID, address, grpcConn, rpcUrl, "aphoton", 111111, log.NewNopLogger())
 	require.NoError(t, err)
 	addInfo, err := nodeClient.GetAccountInfo(address)
 	require.NoError(t, err)
@@ -117,7 +117,7 @@ func mockClient(t *testing.T) *b2node.NodeClient {
 	rpcUrl := "http://127.0.0.1:1317"
 	grpcConn, err := client.GetClientConnection("127.0.0.1", client.WithClientPortOption(9090))
 	require.NoError(t, err)
-	client, err := b2node.NewNodeClient(privateKeHex, chainID, "ethm", grpcConn, rpcUrl, log.NewNopLogger())
+	client, err := b2node.NewNodeClient(privateKeHex, chainID, "ethm", grpcConn, rpcUrl, "aphoton", 111111, log.NewNopLogger())
 	require.NoError(t, err)
 	return client
 }

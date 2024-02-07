@@ -41,6 +41,8 @@ type NodeClient struct {
 	ChainID       string
 	GrpcConn      *grpc.ClientConn
 	API           string
+	CoinDenom     string
+	GasPrices     uint64
 	log           log.Logger
 }
 
@@ -56,6 +58,8 @@ func NewNodeClient(
 	prefix string,
 	grpcConn *grpc.ClientConn,
 	rpcURL string,
+	coinDenom string,
+	gasPrices uint64,
 	logger log.Logger,
 ) (*NodeClient, error) {
 	privatekeyBytes, err := hex.DecodeString(privateKeyHex)
@@ -70,6 +74,8 @@ func NewNodeClient(
 		ChainID:       chainID,
 		GrpcConn:      grpcConn,
 		API:           rpcURL,
+		CoinDenom:     coinDenom,
+		GasPrices:     gasPrices,
 		log:           logger,
 	}, nil
 }
@@ -93,7 +99,7 @@ func (n *NodeClient) GetAccountInfo(address string) (*eTypes.EthAccount, error) 
 }
 
 func (n *NodeClient) GetGasPrice() (uint64, error) {
-	return 10000, nil
+	return n.GasPrices, nil
 }
 
 func (n *NodeClient) broadcastTx(ctx context.Context, msgs ...sdk.Msg) (*tx.BroadcastTxResponse, error) {
