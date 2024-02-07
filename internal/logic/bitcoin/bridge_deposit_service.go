@@ -129,7 +129,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 			"deposit", deposit,
 			"b2node deposit", b2NodeDeposit,
 		)
-		//TODO: err handle
+		// TODO: err handle
 		return err
 	}
 	if b2NodeDeposit.Status != bridgeTypes.DepositStatus_DEPOSIT_STATUS_PENDING {
@@ -264,7 +264,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 					"error", err.Error(),
 					"btcTxHash", deposit.BtcTxHash,
 				)
-				//TODO: err handle
+				// TODO: err handle
 				deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusFailed
 			} else {
 				deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusSuccess
