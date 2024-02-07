@@ -78,6 +78,51 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}
 
+		// start b2node indexer service
+		b2nodeIndexerLoggerOpt := logger.NewOptions()
+		b2nodeIndexerLoggerOpt.Format = ctx.Config.LogFormat
+		b2nodeIndexerLoggerOpt.Level = ctx.Config.LogLevel
+		b2nodeIndexerLoggerOpt.EnableColor = true
+		b2nodeIndexerLoggerOpt.Name = "[b2node-indexer]"
+		b2nodeIndexerLogger := logger.New(b2nodeIndexerLoggerOpt)
+		b2nodeIndexergrpcConn, err := client.GetClientConnection(bitcoinCfg.Bridge.B2NodeGRPCHost, client.WithClientPortOption(bitcoinCfg.Bridge.B2NodeGRPCPort))
+		if err != nil {
+			return err
+		}
+		b2nodeIndexBridge, err := b2node.NewNodeClient(
+			bitcoinCfg.Bridge.B2NodePrivKey,
+			bitcoinCfg.Bridge.B2NodeChainID,
+			bitcoinCfg.Bridge.B2NodeAddress,
+			b2nodeIndexergrpcConn,
+			bitcoinCfg.Bridge.B2NodeRPCURL,
+			b2nodeIndexerLogger,
+		)
+		if err != nil {
+			logger.Errorw("failed to create b2node", "error", err.Error())
+			return err
+		}
+
+		b2nodeDb, err := GetDBContextFromCmd(cmd)
+		if err != nil {
+			logger.Errorw("failed to get db context", "error", err.Error())
+			return err
+		}
+
+		b2IndexerService := b2node.NewB2NodeIndexerService(b2nodeIndexBridge, b2nodeDb, b2nodeIndexerLogger)
+
+		b2IndexerErrCh := make(chan error)
+		go func() {
+			if err := b2IndexerService.Start(); err != nil {
+				b2IndexerErrCh <- err
+			}
+		}()
+
+		select {
+		case err := <-b2IndexerErrCh:
+			return err
+		case <-time.After(5 * time.Second): // assume server started successfully
+		}
+
 		// start l1->b2node
 		bridgeB2NodeLoggerOpt := logger.NewOptions()
 		bridgeB2NodeLoggerOpt.Format = ctx.Config.LogFormat

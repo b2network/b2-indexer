@@ -26,7 +26,7 @@ type BridgeDepositB2NodeService struct {
 	service.BaseService
 
 	// bridge types.BITCOINBridge
-	b2node types.BITCOINBridgeB2Node
+	b2node types.B2NODEBridge
 
 	db  *gorm.DB
 	log log.Logger
@@ -35,7 +35,7 @@ type BridgeDepositB2NodeService struct {
 // NewBridgeDepositB2NodeService returns a new service instance.
 func NewBridgeDepositB2NodeService(
 	// bridge types.BITCOINBridge,
-	b2node types.BITCOINBridgeB2Node,
+	b2node types.B2NODEBridge,
 	db *gorm.DB,
 	logger log.Logger,
 ) *BridgeDepositB2NodeService {

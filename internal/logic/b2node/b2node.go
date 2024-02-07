@@ -3,11 +3,13 @@ package b2node
 import (
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
+	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/b2network/b2-indexer/pkg/rpc"
 
@@ -16,6 +18,7 @@ import (
 	clientTx "github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/simapp"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/cosmos/cosmos-sdk/types/tx/signing"
 	xauthsigning "github.com/cosmos/cosmos-sdk/x/auth/signing"
@@ -28,15 +31,17 @@ import (
 
 const (
 	DefaultBaseGasPrice = 10_000_000
+
+	EventTypeCreateDeposit = "EventCreateDeposit"
 )
 
 type NodeClient struct {
-	PrivateKey ethsecp256k1.PrivKey
-	Address    string
-	ChainID    string
-	GrpcConn   *grpc.ClientConn
-	RPCUrl     string
-	log        log.Logger
+	PrivateKey    ethsecp256k1.PrivKey
+	AddressPrefix string
+	ChainID       string
+	GrpcConn      *grpc.ClientConn
+	API           string
+	log           log.Logger
 }
 
 type GasPriceRsp struct {
@@ -45,7 +50,14 @@ type GasPriceRsp struct {
 	Result  string `json:"result"`
 }
 
-func NewNodeClient(privateKeyHex string, chainID string, address string, grpcConn *grpc.ClientConn, rpcURL string, logger log.Logger) (*NodeClient, error) {
+func NewNodeClient(
+	privateKeyHex string,
+	chainID string,
+	prefix string,
+	grpcConn *grpc.ClientConn,
+	rpcURL string,
+	logger log.Logger,
+) (*NodeClient, error) {
 	privatekeyBytes, err := hex.DecodeString(privateKeyHex)
 	if nil != err {
 		return nil, err
@@ -54,12 +66,16 @@ func NewNodeClient(privateKeyHex string, chainID string, address string, grpcCon
 		PrivateKey: ethsecp256k1.PrivKey{
 			Key: privatekeyBytes,
 		},
-		Address:  address,
-		ChainID:  chainID,
-		GrpcConn: grpcConn,
-		RPCUrl:   rpcURL,
-		log:      logger,
+		AddressPrefix: prefix,
+		ChainID:       chainID,
+		GrpcConn:      grpcConn,
+		API:           rpcURL,
+		log:           logger,
 	}, nil
+}
+
+func (n *NodeClient) BridgeModuleEventType(eventType string) string {
+	return "ethermint.bridge.v1." + eventType
 }
 
 func (n *NodeClient) GetAccountInfo(address string) (*eTypes.EthAccount, error) {
@@ -76,24 +92,12 @@ func (n *NodeClient) GetAccountInfo(address string) (*eTypes.EthAccount, error) 
 	return ethAccount, nil
 }
 
-func (n *NodeClient) GetEthGasPrice() (uint64, error) {
-	gasPriceByte, err := rpc.HTTPPostJSON("", n.RPCUrl, `{"jsonrpc":"2.0","method":"eth_gasPrice","params":[],"id":73}`)
-	if err != nil {
-		return 0, fmt.Errorf("[GetEthGasPrice] err: %s", err)
-	}
-	var g GasPriceRsp
-	if err := json.Unmarshal(gasPriceByte, &g); err != nil {
-		return 0, fmt.Errorf("[GetEthGasPrice.json.Unmarshal] err: %s", err)
-	}
-	parseUint, err := strconv.ParseUint(g.Result, 0, 64)
-	if err != nil {
-		return 0, fmt.Errorf("[GetEthGasPrice.strconv.ParseUint] err: %s", err)
-	}
-	return parseUint, nil
+func (n *NodeClient) GetGasPrice() (uint64, error) {
+	return 10000, nil
 }
 
 func (n *NodeClient) broadcastTx(ctx context.Context, msgs ...sdk.Msg) (*tx.BroadcastTxResponse, error) {
-	gasPrice, err := n.GetEthGasPrice()
+	gasPrice, err := n.GetGasPrice()
 	if err != nil {
 		return nil, fmt.Errorf("[broadcastTx][GetEthGasPrice] err: %s", err)
 	}
@@ -119,7 +123,11 @@ func (n *NodeClient) buildSimTx(gasPrice uint64, msgs ...sdk.Msg) ([]byte, error
 	if err != nil {
 		return nil, fmt.Errorf("[BuildSimTx][SetMsgs] err: %s", err)
 	}
-	ethAccount, err := n.GetAccountInfo(n.Address)
+	b2nodeAddress, err := n.B2NodeSenderAddress()
+	if err != nil {
+		return nil, err
+	}
+	ethAccount, err := n.GetAccountInfo(b2nodeAddress)
 	if nil != err {
 		return nil, fmt.Errorf("[BuildSimTx][GetAccountInfo]err: %s", err)
 	}
@@ -165,7 +173,12 @@ func (n *NodeClient) buildSimTx(gasPrice uint64, msgs ...sdk.Msg) ([]byte, error
 }
 
 func (n *NodeClient) CreateDeposit(hash string, from string, to string, value int64) error {
-	msg := bridgeTypes.NewMsgCreateDeposit(n.Address, hash, from, to, bridgeTypes.CoinType_COIN_TYPE_BTC, value, "")
+	// private key -> adddress
+	senderAddress, err := n.B2NodeSenderAddress()
+	if err != nil {
+		return err
+	}
+	msg := bridgeTypes.NewMsgCreateDeposit(senderAddress, hash, from, to, bridgeTypes.CoinType_COIN_TYPE_BTC, value, "")
 	ctx := context.Background()
 	msgResponse, err := n.broadcastTx(ctx, msg)
 	if err != nil {
@@ -183,7 +196,6 @@ func (n *NodeClient) CreateDeposit(hash string, from string, to string, value in
 		n.log.Errorw("code", code)
 		return fmt.Errorf("[CreateDeposit][msgResponse.TxResponse.Code] err: %s", rawLog)
 	}
-	fmt.Println(msgResponse.TxResponse.TxHash)
 	hexData := msgResponse.TxResponse.Data
 	byteData, err := hex.DecodeString(hexData)
 	if err != nil {
@@ -198,7 +210,11 @@ func (n *NodeClient) CreateDeposit(hash string, from string, to string, value in
 }
 
 func (n *NodeClient) UpdateDeposit(hash string, status bridgeTypes.DepositStatus, rollupTxHash string, fromAa string) error {
-	msg := bridgeTypes.NewMsgUpdateDeposit(n.Address, hash, status, rollupTxHash, fromAa)
+	senderAddress, err := n.B2NodeSenderAddress()
+	if err != nil {
+		return err
+	}
+	msg := bridgeTypes.NewMsgUpdateDeposit(senderAddress, hash, status, rollupTxHash, fromAa)
 	ctx := context.Background()
 	msgResponse, err := n.broadcastTx(ctx, msg)
 	if err != nil {
@@ -218,7 +234,6 @@ func (n *NodeClient) UpdateDeposit(hash string, status bridgeTypes.DepositStatus
 		n.log.Errorw("code", code)
 		return fmt.Errorf("[UpdateDeposit][msgResponse.TxResponse.Code] err: %s", rawLog)
 	}
-	fmt.Println(msgResponse.TxResponse.TxHash)
 	hexData := msgResponse.TxResponse.Data
 	byteData, err := hex.DecodeString(hexData)
 	if err != nil {
@@ -241,4 +256,97 @@ func (n *NodeClient) QueryDeposit(hash string) (*bridgeTypes.Deposit, error) {
 		return nil, fmt.Errorf("[QueryDeposit] err: %s", err)
 	}
 	return &res.Deposit, nil
+}
+
+func (n *NodeClient) LatestBlock() (int64, error) {
+	latestBlockJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s", n.API, "/cosmos/base/tendermint/v1beta1/blocks/latest"))
+	if err != nil {
+		return 0, err
+	}
+	block, err := ParseJSONB2NodeBlock(latestBlockJSON)
+	if err != nil {
+		return 0, err
+	}
+
+	blockHeight, err := strconv.ParseInt(block.Block.Header.Height, 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return blockHeight, nil
+}
+
+func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.B2NodeTxParseResult, error) {
+	txsJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s%d&%s%s",
+		n.API,
+		"/cosmos/tx/v1beta1/txs?events=tx.height=",
+		height,
+		"message.module=",
+		"bridge",
+	))
+	if err != nil {
+		return nil, err
+	}
+	txs, err := ParseJSONB2NodeTxs(txsJSON)
+	if err != nil {
+		return nil, err
+	}
+	b2NodeTxParseResult := make([]*types.B2NodeTxParseResult, 0)
+	total, err := strconv.Atoi(txs.Total)
+	if err != nil {
+		return nil, err
+	}
+	if total > 0 {
+		for txIndex, tx := range txs.TxResponses {
+			if int64(txIndex) < index {
+				continue
+			}
+			blockHeight, err := strconv.ParseInt(tx.Height, 10, 64)
+			if err != nil {
+				return nil, err
+			}
+			for _, log := range tx.Logs {
+				for _, event := range log.Events {
+					switch event.Type {
+					case n.BridgeModuleEventType(EventTypeCreateDeposit):
+						createDepositID := ""
+						for _, attr := range event.Attributes {
+							if attr.Key == "tx_hash" {
+								createDepositID = strings.Trim(attr.Value, "\"")
+							}
+						}
+						txResult := types.B2NodeTxParseResult{
+							Height:              blockHeight,
+							TxHash:              tx.Txhash,
+							EventType:           EventTypeCreateDeposit,
+							BridgeModuleTxIndex: txIndex,
+							RawLog:              tx.RawLog,
+							TxCode:              tx.Code,
+							TxData:              tx.Data,
+							BridgeEventID:       createDepositID,
+						}
+						b2NodeTxParseResult = append(b2NodeTxParseResult, &txResult)
+					}
+				}
+			}
+		}
+	}
+	return b2NodeTxParseResult, nil
+}
+
+func (n *NodeClient) B2NodeSenderAddress() (string, error) {
+	privateKey, err := n.PrivateKey.ToECDSA()
+	if err != nil {
+		return "", err
+	}
+	ethAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+	bz, err := hex.DecodeString(ethAddress.Hex()[2:])
+	if err != nil {
+		return "", err
+	}
+	b2nodeAddress, err := bech32.ConvertAndEncode("ethm", bz)
+	if err != nil {
+		return "", err
+	}
+	return b2nodeAddress, nil
 }

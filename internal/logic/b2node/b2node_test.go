@@ -18,7 +18,7 @@ var privateKeHex = ""
 func TestLocalGetAccountInfo(t *testing.T) {
 	chainID := "ethermint_9000-1"
 	address := "ethm12tufpdtvgpks2yv96dzkhwhtgr2zunaxwe0mn4"
-	rpcUrl := "http://localhost:8545"
+	rpcUrl := "http://localhost:1317"
 	grpcConn, err := client.GetClientConnection("127.0.0.1", client.WithClientPortOption(9090))
 	require.NoError(t, err)
 	nodeClient, err := b2node.NewNodeClient(privateKeHex, chainID, address, grpcConn, rpcUrl, log.NewNopLogger())
@@ -63,7 +63,7 @@ func TestLocalCreateDeposit(t *testing.T) {
 	for _, tc := range testCases {
 		err := client.CreateDeposit(tc.TxHash, tc.From, tc.To, tc.Value)
 		if err != nil {
-			require.EqualError(t, err, tc.err.Error())
+			require.Equal(t, tc.err, err)
 		}
 	}
 }
@@ -78,7 +78,9 @@ func TestLocalQueryDeposit(t *testing.T) {
 	require.NoError(t, err)
 	deposit, err := client.QueryDeposit(txHash)
 	require.NoError(t, err)
-	require.Equal(t, client.Address, deposit.Creator)
+	address, err := client.B2NodeSenderAddress()
+	require.NoError(t, err)
+	require.Equal(t, address, deposit.Creator)
 	require.Equal(t, from, deposit.From)
 	require.Equal(t, to, deposit.To)
 	require.Equal(t, value, deposit.Value)
@@ -96,7 +98,6 @@ func TestLocalUpdateDeposit(t *testing.T) {
 	require.NoError(t, err)
 	deposit, err := client.QueryDeposit(txHash)
 	require.NoError(t, err)
-	require.Equal(t, client.Address, deposit.Creator)
 	require.Equal(t, from, deposit.From)
 	require.Equal(t, to, deposit.To)
 	require.Equal(t, value, deposit.Value)
@@ -108,15 +109,15 @@ func TestLocalUpdateDeposit(t *testing.T) {
 	deposit, err = client.QueryDeposit(txHash)
 	require.NoError(t, err)
 	require.Equal(t, bridgeTypes.DepositStatus_DEPOSIT_STATUS_COMPLETED, deposit.Status)
+	t.Fail()
 }
 
 func mockClient(t *testing.T) *b2node.NodeClient {
 	chainID := "ethermint_9000-1"
-	address := "ethm1g9ygxmx9m2h5tp65v8frg9nvwzf4gr9h0nwev4"
-	rpcUrl := "http://localhost:8545"
+	rpcUrl := "http://127.0.0.1:1317"
 	grpcConn, err := client.GetClientConnection("127.0.0.1", client.WithClientPortOption(9090))
 	require.NoError(t, err)
-	client, err := b2node.NewNodeClient(privateKeHex, chainID, address, grpcConn, rpcUrl, log.NewNopLogger())
+	client, err := b2node.NewNodeClient(privateKeHex, chainID, "ethm", grpcConn, rpcUrl, log.NewNopLogger())
 	require.NoError(t, err)
 	return client
 }
@@ -128,4 +129,22 @@ func generateTransactionHash(t *testing.T) string {
 	hash := sha256.Sum256(randomBytes)
 	hashString := hex.EncodeToString(hash[:])
 	return hashString
+}
+
+func TestB2NodeSenderAddress(t *testing.T) {
+	client := mockClient(t)
+	_, err := client.B2NodeSenderAddress()
+	require.NoError(t, err)
+}
+
+func TestLocalParseBlock(t *testing.T) {
+	client := mockClient(t)
+	_, err := client.ParseBlockBridgeEvent(8372, 0)
+	require.NoError(t, err)
+}
+
+func TestLocalLatestBlock(t *testing.T) {
+	client := mockClient(t)
+	_, err := client.LatestBlock()
+	require.NoError(t, err)
 }

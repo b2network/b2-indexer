@@ -135,7 +135,7 @@ func (bis *IndexerService) OnStart() error {
 				break
 			}
 			if len(txResults) > 0 {
-				currentBlock, currentTxIndex, err = bis.HandleResults(txResults, btcIndex, blockHeader.Timestamp, currentBlock)
+				currentBlock, currentTxIndex, err = bis.HandleResults(txResults, btcIndex, blockHeader.Timestamp, i)
 				if err != nil {
 					bis.log.Errorw("failed to handle results", "error", err,
 						"currentBlock", currentBlock, "currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
@@ -248,6 +248,7 @@ func (bis *IndexerService) HandleResults(
 				"data", v)
 			return currentBlock, v.Index, err
 		}
+		bis.log.Infow("save bitcoin index tx success", "currentBlock", currentBlock, "currentTxIndex", v.Index, "data", v)
 		time.Sleep(IndexTxTimeout)
 	}
 	return currentBlock, 0, nil

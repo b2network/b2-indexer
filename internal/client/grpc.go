@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/b2network/b2-indexer/pkg/log"
-
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

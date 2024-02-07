@@ -138,13 +138,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	if err != nil {
 		return nil, err
 	}
-
-	publicKey := fromPriv.Public()
-	publicKeyECDSA, ok := publicKey.(*ecdsa.PublicKey)
-	if !ok {
-		return nil, fmt.Errorf("error casting public key to ECDSA")
-	}
-	nonce, err := client.PendingNonceAt(ctx, crypto.PubkeyToAddress(*publicKeyECDSA))
+	nonce, err := client.PendingNonceAt(ctx, crypto.PubkeyToAddress(fromPriv.PublicKey))
 	if err != nil {
 		return nil, err
 	}
@@ -153,7 +147,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		return nil, err
 	}
 	callMsg := ethereum.CallMsg{
-		From:     crypto.PubkeyToAddress(*publicKeyECDSA),
+		From:     crypto.PubkeyToAddress(fromPriv.PublicKey),
 		To:       &toAddress,
 		Value:    big.NewInt(value),
 		GasPrice: gasPrice,
