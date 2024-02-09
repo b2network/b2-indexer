@@ -95,7 +95,8 @@ func (b *Indexer) getBlockByHeight(height int64) (*wire.MsgBlock, error) {
 }
 
 // parseTx parse transaction data
-func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (parsedResult []*types.BitcoinTxParseResult, err error) {
+func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) ([]*types.BitcoinTxParseResult, error) {
+	var parsedResult []*types.BitcoinTxParseResult
 	for _, v := range txResult.TxOut {
 		pkAddress, err := b.parseAddress(v.PkScript)
 		if err != nil {
@@ -121,7 +122,7 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (parsedResult []*type
 			})
 		}
 	}
-	return nil, nil
+	return parsedResult, nil
 }
 
 // parseFromAddress from vin parse from address
@@ -184,8 +185,9 @@ func (b *Indexer) BlockChainInfo() (*btcjson.GetBlockChainInfoResult, error) {
 	return b.client.GetBlockChainInfo()
 }
 
-// parseTx parse transaction data
-func (b *Indexer) parseWithdrawTx(txResult *wire.MsgTx, index int) (parsedResult []*types.BitcoinTxParseResult, err error) {
+// parseWithdrawTx parse transaction data
+func (b *Indexer) parseWithdrawTx(txResult *wire.MsgTx, index int) ([]*types.BitcoinTxParseResult, error) {
+	var parsedResult []*types.BitcoinTxParseResult
 	for _, v := range txResult.TxIn {
 		prevTx, err := b.client.GetRawTransaction(&v.PreviousOutPoint.Hash)
 		if err != nil {
@@ -217,5 +219,5 @@ func (b *Indexer) parseWithdrawTx(txResult *wire.MsgTx, index int) (parsedResult
 			})
 		}
 	}
-	return nil, nil
+	return parsedResult, nil
 }
