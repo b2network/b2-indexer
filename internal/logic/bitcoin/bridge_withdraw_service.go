@@ -7,6 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"math/big"
+	"net/http"
+	"strings"
+	"time"
+
 	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/model"
 	"github.com/b2network/b2-indexer/internal/types"
@@ -21,11 +27,6 @@ import (
 	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
 	"github.com/go-resty/resty/v2"
 	"gorm.io/gorm"
-	"io"
-	"math/big"
-	"net/http"
-	"strings"
-	"time"
 
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/btcutil/psbt"
@@ -145,7 +146,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				bis.Logger.Info("BridgeWithdrawService broadcast tx success", "id", ids, "b2TxHashes", b2TxHashes)
 				return nil
 			})
-
 		}
 	}()
 
@@ -242,7 +242,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				}
 			}
 		}
-
 	}()
 
 	for {
@@ -336,7 +335,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				lastBlock = i
 			}
 		}
-
 	}
 }
 
@@ -429,8 +427,7 @@ func (bis *BridgeWithdrawService) GetUisatURL() string {
 	switch networkName {
 	case chaincfg.MainNetParams.Name:
 		return "https://open-api.unisat.io"
-	//case chaincfg.TestNet3Params.Name:
-	case "testnet":
+	case chaincfg.TestNet3Params.Name, "testnet":
 		return "https://open-api-testnet.unisat.io"
 	}
 	return ""
@@ -441,8 +438,7 @@ func (bis *BridgeWithdrawService) GetMempoolURL() string {
 	switch networkName {
 	case chaincfg.MainNetParams.Name:
 		return "https://mempool.space/api"
-	//case chaincfg.TestNet3Params.Name:
-	case "testnet":
+	case chaincfg.TestNet3Params.Name, "testnet":
 		return "https://mempool.space/testnet/api"
 	case chaincfg.SigNetParams.Name:
 		return "https://mempool.space/signet/api"
@@ -506,7 +502,7 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 	}
 
 	var pInput psbt.PInput
-	var pInputArry []psbt.PInput
+	pInputArry := make([]psbt.PInput, 0)
 	totalInputAmount := btcutil.Amount(0)
 	for _, unspentTx := range unspentTxs {
 		outpoint := wire.NewOutPoint(&unspentTx.Outpoint.Hash, unspentTx.Outpoint.Index)
@@ -528,7 +524,7 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 		}
 	}
 
-	changeAmount := int64(totalInputAmount) - bis.config.Fee - int64(totalTransferAmount)
+	changeAmount := int64(totalInputAmount) - bis.config.Fee - totalTransferAmount
 	if changeAmount < 0 {
 		return "", "", errors.New("insufficient balance")
 	}
