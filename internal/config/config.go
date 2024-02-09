@@ -72,8 +72,6 @@ type BridgeConfig struct {
 	B2NodeAPI string `mapstructure:"b2-node-api" env:"BITCOIN_BRIDGE_B2_NODE_API"`
 	// B2NodePrivKey defines the b2 node private key
 	B2NodePrivKey string `mapstructure:"b2-node-priv-key" env:"BITCOIN_BRIDGE_B2_NODE_PRIV_KEY"`
-	// B2NodeChainID defines the b2 node chain id
-	B2NodeChainID string `mapstructure:"b2-node-chain-id" env:"BITCOIN_BRIDGE_B2_NODE_CHAIN_ID"`
 	// B2NodeGRPCHost defines the b2 node grpc host
 	B2NodeGRPCHost string `mapstructure:"b2-node-grpc-host" env:"BITCOIN_BRIDGE_B2_NODE_GRPC_HOST"`
 	// B2NodeGRPCPort defines the b2 node grpc port

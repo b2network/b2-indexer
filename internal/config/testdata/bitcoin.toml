@@ -19,7 +19,6 @@ aa-sca-registry = "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DFF3"
 aa-kernel-factory = "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DFF4"
 b2-node-api = "localhost:1317"
 b2-node-priv-key = ""
-b2-node-chain-id = "ethermint_9000-1"
 b2-node-grpc-host = "127.0.0.1"
 b2-node-grpc-port = 9090
 b2-node-denom = "aphoton"

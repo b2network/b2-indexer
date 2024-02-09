@@ -49,7 +49,6 @@ type NodeClient struct {
 
 func NewNodeClient(
 	privateKeyHex string,
-	chainID string,
 	grpcConn *grpc.ClientConn,
 	api string,
 	coinDenom string,
@@ -74,10 +73,15 @@ func NewNodeClient(
 		return nil, err
 	}
 
+	block, err := latestBlock(api)
+	if err != nil {
+		return nil, err
+	}
+
 	return &NodeClient{
 		PrivateKey:    pk,
 		AddressPrefix: prefix,
-		ChainID:       chainID,
+		ChainID:       block.Block.Header.ChainID,
 		GrpcConn:      grpcConn,
 		API:           api,
 		CoinDenom:     coinDenom,
@@ -250,22 +254,28 @@ func (n *NodeClient) QueryDeposit(hash string) (*bridgeTypes.Deposit, error) {
 }
 
 func (n *NodeClient) LatestBlock() (int64, error) {
-	latestBlockJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s", n.API, "cosmos/base/tendermint/v1beta1/blocks/latest"))
+	block, err := latestBlock(n.API)
 	if err != nil {
 		return 0, err
 	}
-	var block B2NodeBlock
-	err = ParseJSONB2Node(latestBlockJSON, &block)
-	if err != nil {
-		return 0, err
-	}
-
 	blockHeight, err := strconv.ParseInt(block.Block.Header.Height, 10, 64)
 	if err != nil {
 		return 0, err
 	}
-
 	return blockHeight, nil
+}
+
+func latestBlock(api string) (*B2NodeBlock, error) {
+	latestBlockJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s", api, "cosmos/base/tendermint/v1beta1/blocks/latest"))
+	if err != nil {
+		return nil, err
+	}
+	var block B2NodeBlock
+	err = ParseJSONB2Node(latestBlockJSON, &block)
+	if err != nil {
+		return nil, err
+	}
+	return &block, nil
 }
 
 func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.B2NodeTxParseResult, error) {

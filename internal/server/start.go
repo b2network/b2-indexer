@@ -210,7 +210,6 @@ func b2NodeClient(cfg *config.BitconConfig, b2NodeLog logger.Logger) (*b2node.No
 	}
 	bridgeB2node, err := b2node.NewNodeClient(
 		cfg.Bridge.B2NodePrivKey,
-		cfg.Bridge.B2NodeChainID,
 		b2grpcConn,
 		cfg.Bridge.B2NodeAPI,
 		cfg.Bridge.B2NodeDenom,

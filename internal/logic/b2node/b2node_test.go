@@ -16,19 +16,17 @@ import (
 var privateKeHex = ""
 
 func TestLocalGetAccountInfo(t *testing.T) {
-	chainID := "ethermint_9000-1"
 	address := "ethm12tufpdtvgpks2yv96dzkhwhtgr2zunaxwe0mn4"
 	rpcUrl := "http://localhost:1317"
 	grpcConn, err := client.GetClientConnection("127.0.0.1", client.WithClientPortOption(9090))
 	require.NoError(t, err)
-	nodeClient, err := b2node.NewNodeClient(privateKeHex, chainID, grpcConn, rpcUrl, "aphoton", log.NewNopLogger())
+	nodeClient, err := b2node.NewNodeClient(privateKeHex, grpcConn, rpcUrl, "aphoton", log.NewNopLogger())
 	require.NoError(t, err)
 	addInfo, err := nodeClient.GetAccountInfo(address)
 	require.NoError(t, err)
 	t.Log(addInfo.CodeHash)
 	t.Log(addInfo.BaseAccount.Sequence)
 	t.Log(addInfo.BaseAccount.Address)
-	t.Fail()
 }
 
 func TestLocalCreateDeposit(t *testing.T) {
@@ -110,11 +108,10 @@ func TestLocalUpdateDeposit(t *testing.T) {
 }
 
 func mockClient(t *testing.T) *b2node.NodeClient {
-	chainID := "ethermint_9000-1"
-	rpcUrl := "http://43.156.166.40:1317"
-	grpcConn, err := client.GetClientConnection("43.156.166.40", client.WithClientPortOption(9090))
+	rpcUrl := "http://127.0.0.1:1317"
+	grpcConn, err := client.GetClientConnection("127.0.0.1", client.WithClientPortOption(9090))
 	require.NoError(t, err)
-	client, err := b2node.NewNodeClient(privateKeHex, chainID, grpcConn, rpcUrl, "aphoton", log.NewNopLogger())
+	client, err := b2node.NewNodeClient(privateKeHex, grpcConn, rpcUrl, "aphoton", log.NewNopLogger())
 	require.NoError(t, err)
 	return client
 }
