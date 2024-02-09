@@ -49,7 +49,7 @@ func startCmd() *cobra.Command {
 			}
 			return server.InterceptConfigsPreRunHandler(cmd, home)
 		},
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(cmd *cobra.Command, _ []string) {
 			err := server.Start(GetServerContextFromCmd(cmd), cmd)
 			if err != nil {
 				log.Error("start index tx service failed")
