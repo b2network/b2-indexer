@@ -89,14 +89,6 @@ type TxResponses struct {
 	Events    []Events  `json:"events"`
 }
 
-func ParseJSONB2NodeTxs(data []byte) (B2NodeTxs, error) {
-	var c B2NodeTxs
-	if err := json.Unmarshal(data, &c); err != nil {
-		return c, err
-	}
-	return c, nil
-}
-
 type B2NodeBlock struct { //nolint
 	BlockID  BlockID  `json:"block_id"`
 	Block    Block    `json:"block"`
@@ -165,14 +157,6 @@ type SdkBlock struct {
 	LastCommit LastCommit `json:"last_commit"`
 }
 
-func ParseJSONB2NodeBlock(data []byte) (B2NodeBlock, error) {
-	var c B2NodeBlock
-	if err := json.Unmarshal(data, &c); err != nil {
-		return c, err
-	}
-	return c, nil
-}
-
 type CreateDepositMessages struct {
 	Type     string `json:"@type"`
 	Creator  string `json:"creator"`
@@ -182,4 +166,15 @@ type CreateDepositMessages struct {
 	CoinType string `json:"coin_type"`
 	Value    string `json:"value"`
 	Data     string `json:"data"`
+}
+
+type Bech32Prefix struct {
+	Bech32Prefix string `json:"bech32_prefix"`
+}
+
+func ParseJSONB2Node(data []byte, dest any) error {
+	if err := json.Unmarshal(data, &dest); err != nil {
+		return err
+	}
+	return nil
 }
