@@ -350,7 +350,6 @@ func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.
 						b2NodeTxParseResult = append(b2NodeTxParseResult, &txResult)
 
 					}
-
 				}
 			}
 		}
@@ -413,8 +412,6 @@ func (n *NodeClient) CreateWithdraw(txID string, txHashList []string, encodedDat
 			return bridgeTypes.ErrIndexExist
 		case bridgeTypes.ErrNotCallerGroupMembers.ABCICode():
 			return bridgeTypes.ErrNotCallerGroupMembers
-		case bridgeTypes.ErrNotCallerGroupMembers.ABCICode():
-			return bridgeTypes.ErrNotCallerGroupMembers
 		}
 		n.log.Errorw("code", code)
 		return fmt.Errorf("[CreateWithdraw][msgResponse.TxResponse.Code] err: %s", rawLog)
@@ -438,8 +435,7 @@ func (n *NodeClient) QueryWithdraw(txID string) (*bridgeTypes.Withdraw, error) {
 		TxId: txID,
 	})
 	if err != nil {
-		switch err {
-		case bridgeTypes.ErrIndexNotExist:
+		if err == bridgeTypes.ErrIndexNotExist {
 			return nil, bridgeTypes.ErrIndexNotExist
 		}
 		return nil, fmt.Errorf("[QueryWithdraw] err: %s", err)

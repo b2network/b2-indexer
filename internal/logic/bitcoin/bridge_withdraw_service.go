@@ -382,7 +382,7 @@ func (bis *BridgeWithdrawService) GetUnspentList(address string, cursor int64) (
 	client := resty.New()
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
-		SetHeader("Authorization", fmt.Sprintf("Bearer %s", bis.config.Bridge.UnisatApiKey)).
+		SetHeader("Authorization", fmt.Sprintf("Bearer %s", bis.config.Bridge.UnisatAPIKey)).
 		Get(fmt.Sprintf("%s/v1/indexer/address/%s/utxo-data?cursor=%d", url, address, cursor))
 	if err != nil {
 		bis.log.Errorw("BridgeWithdrawService client url err", "error", err)

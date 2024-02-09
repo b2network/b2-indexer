@@ -64,7 +64,7 @@ func TestBitcoinConfig(t *testing.T) {
 	require.Equal(t, "", config.Eps.Authorization)
 	require.Equal(t, "", config.Bridge.Deposit)
 	require.Equal(t, "", config.Bridge.Withdraw)
-	require.Equal(t, "", config.Bridge.UnisatApiKey)
+	require.Equal(t, "", config.Bridge.UnisatAPIKey)
 	require.Equal(t, int64(0), config.Bridge.TimeInterval)
 }
 
@@ -123,7 +123,7 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	require.Equal(t, "", config.Eps.Authorization)
 	require.Equal(t, "", config.Bridge.Deposit)
 	require.Equal(t, "", config.Bridge.Withdraw)
-	require.Equal(t, "", config.Bridge.UnisatApiKey)
+	require.Equal(t, "", config.Bridge.UnisatAPIKey)
 	require.Equal(t, int64(0), config.Bridge.TimeInterval)
 }
 

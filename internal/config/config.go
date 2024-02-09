@@ -83,7 +83,7 @@ type BridgeConfig struct {
 	// Withdraw defines the withdraw event hash
 	Withdraw string `mapstructure:"withdraw" env:"BITCOIN_BRIDGE_WITHDRAW"`
 	// UnisatApiKey defines unisat api_key
-	UnisatApiKey string `mapstructure:"unisat-api-key" env:"BITCOIN_BRIDGE_UNISAT_API_KEY"`
+	UnisatAPIKey string `mapstructure:"unisat-api-key" env:"BITCOIN_BRIDGE_UNISAT_API_KEY"`
 	// PublicKeys defines signer publickey
 	PublicKeys []string `mapstructure:"publickeys" env:"BITCOIN_BRIDGE_PUBLICKEYS"`
 	// TimeInterval defines withdraw time interval
