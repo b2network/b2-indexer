@@ -140,7 +140,7 @@ func TestLocalLatestBlock(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestBaseFee(t *testing.T) {
+func TestLocalBaseFee(t *testing.T) {
 	client := mockClient(t)
 	_, err := client.BaseFee()
 	require.NoError(t, err)
