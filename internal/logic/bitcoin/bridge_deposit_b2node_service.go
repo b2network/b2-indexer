@@ -18,14 +18,14 @@ const (
 	BatchDepositB2NodeLimit        = 100
 	B2NodeWaitMinedTimeout         = 2 * time.Hour
 	HandleDepositB2NodeTimeout     = 500 * time.Millisecond
-	DepositB2NodeRetry             = 3
+	DepositB2NodeRetry             = 10
+	DepositB2NodeErrTimeout        = 10 * time.Minute
 )
 
 // BridgeDepositB2NodeService l1->b2-node
 type BridgeDepositB2NodeService struct {
 	service.BaseService
 
-	// bridge types.BITCOINBridge
 	b2node types.B2NODEBridge
 
 	db  *gorm.DB
@@ -34,7 +34,6 @@ type BridgeDepositB2NodeService struct {
 
 // NewBridgeDepositB2NodeService returns a new service instance.
 func NewBridgeDepositB2NodeService(
-	// bridge types.BITCOINBridge,
 	b2node types.B2NODEBridge,
 	db *gorm.DB,
 	logger log.Logger,
@@ -89,9 +88,21 @@ func (bis *BridgeDepositB2NodeService) HandleDeposit(deposit model.Deposit) erro
 		switch err {
 		case bridgeTypes.ErrIndexExist:
 			deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusTxHashExist
-			return nil
 		default:
-			deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusFailed
+			deposit.B2NodeTxRetry++
+			if deposit.B2NodeTxRetry >= DepositB2NodeRetry {
+				deposit.B2NodeTxStatus = model.DepositB2TxStatusFailed
+				bis.log.Errorw("invoke b2node deposit send tx retry exceed max",
+					"error", err.Error(),
+					"retryMax", DepositB2NodeRetry,
+					"data", deposit)
+			} else {
+				deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusPending
+				bis.log.Errorw("invoke b2node deposit send tx retry",
+					"error", err.Error(),
+					"data", deposit)
+			}
+			time.Sleep(DepositB2NodeErrTimeout)
 		}
 	} else {
 		deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusRollupPending

@@ -262,9 +262,9 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 			if err != nil {
 				bis.log.Errorw("b2node update deposit err",
 					"error", err.Error(),
-					"btcTxHash", deposit.BtcTxHash,
+					"data", deposit,
 				)
-				// TODO: err handle
+				// TODO: err handle, use
 				deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusFailed
 			} else {
 				deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusSuccess

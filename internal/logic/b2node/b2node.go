@@ -26,6 +26,7 @@ import (
 	"github.com/evmos/ethermint/crypto/ethsecp256k1"
 	eTypes "github.com/evmos/ethermint/types"
 	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
+	feeTypes "github.com/evmos/ethermint/x/feemarket/types"
 	"google.golang.org/grpc"
 )
 
@@ -39,45 +40,54 @@ const (
 type NodeClient struct {
 	PrivateKey    ethsecp256k1.PrivKey
 	AddressPrefix string
+	B2NodeAddress string
 	ChainID       string
 	GrpcConn      *grpc.ClientConn
 	API           string
 	CoinDenom     string
-	GasPrices     uint64
 	log           log.Logger
-}
-
-type GasPriceRsp struct {
-	ID      int64  `json:"id"`
-	Jsonrpc string `json:"jsonrpc"`
-	Result  string `json:"result"`
 }
 
 func NewNodeClient(
 	privateKeyHex string,
-	chainID string,
-	prefix string,
 	grpcConn *grpc.ClientConn,
-	rpcURL string,
+	api string,
 	coinDenom string,
-	gasPrices uint64,
 	logger log.Logger,
 ) (*NodeClient, error) {
 	privatekeyBytes, err := hex.DecodeString(privateKeyHex)
 	if nil != err {
 		return nil, err
 	}
+
+	prefix, err := bech32Prefix(api)
+	if err != nil {
+		return nil, err
+	}
+
+	pk := ethsecp256k1.PrivKey{
+		Key: privatekeyBytes,
+	}
+
+	b2NodeAddress, err := b2NodeAddress(pk, prefix)
+	if err != nil {
+		return nil, err
+	}
+
+	block, err := latestBlock(api)
+	if err != nil {
+		return nil, err
+	}
+
 	return &NodeClient{
-		PrivateKey: ethsecp256k1.PrivKey{
-			Key: privatekeyBytes,
-		},
+		PrivateKey:    pk,
 		AddressPrefix: prefix,
-		ChainID:       chainID,
+		ChainID:       block.Block.Header.ChainID,
 		GrpcConn:      grpcConn,
-		API:           rpcURL,
+		API:           api,
 		CoinDenom:     coinDenom,
-		GasPrices:     gasPrices,
 		log:           logger,
+		B2NodeAddress: b2NodeAddress,
 	}, nil
 }
 
@@ -87,7 +97,8 @@ func (n *NodeClient) BridgeModuleEventType(eventType string) string {
 
 func (n *NodeClient) GetAccountInfo(address string) (*eTypes.EthAccount, error) {
 	authClient := authTypes.NewQueryClient(n.GrpcConn)
-	res, err := authClient.Account(context.Background(), &authTypes.QueryAccountRequest{Address: address})
+	ctx := context.Background()
+	res, err := authClient.Account(ctx, &authTypes.QueryAccountRequest{Address: address})
 	if err != nil {
 		return nil, fmt.Errorf("[NodeClient] GetAccountInfo err: %s", err)
 	}
@@ -100,7 +111,12 @@ func (n *NodeClient) GetAccountInfo(address string) (*eTypes.EthAccount, error) 
 }
 
 func (n *NodeClient) GetGasPrice() (uint64, error) {
-	return n.GasPrices, nil
+	baseFee, err := n.BaseFee()
+	if err != nil {
+		return 0, err
+	}
+	baseFee *= 2
+	return baseFee, nil
 }
 
 func (n *NodeClient) broadcastTx(ctx context.Context, msgs ...sdk.Msg) (*tx.BroadcastTxResponse, error) {
@@ -130,11 +146,8 @@ func (n *NodeClient) buildSimTx(gasPrice uint64, msgs ...sdk.Msg) ([]byte, error
 	if err != nil {
 		return nil, fmt.Errorf("[BuildSimTx][SetMsgs] err: %s", err)
 	}
-	b2nodeAddress, err := n.B2NodeSenderAddress()
-	if err != nil {
-		return nil, err
-	}
-	ethAccount, err := n.GetAccountInfo(b2nodeAddress)
+
+	ethAccount, err := n.GetAccountInfo(n.B2NodeAddress)
 	if nil != err {
 		return nil, fmt.Errorf("[BuildSimTx][GetAccountInfo]err: %s", err)
 	}
@@ -149,9 +162,10 @@ func (n *NodeClient) buildSimTx(gasPrice uint64, msgs ...sdk.Msg) ([]byte, error
 	if err != nil {
 		return nil, fmt.Errorf("[BuildSimTx][SetSignatures 1]err: %s", err)
 	}
+
 	txBuilder.SetGasLimit(DefaultBaseGasPrice)
 	txBuilder.SetFeeAmount(sdk.NewCoins(sdk.Coin{
-		Denom:  "aphoton",
+		Denom:  n.CoinDenom,
 		Amount: sdkmath.NewIntFromUint64(gasPrice * DefaultBaseGasPrice),
 	}))
 
@@ -180,12 +194,7 @@ func (n *NodeClient) buildSimTx(gasPrice uint64, msgs ...sdk.Msg) ([]byte, error
 }
 
 func (n *NodeClient) CreateDeposit(hash string, from string, to string, value int64) error {
-	// private key -> adddress
-	senderAddress, err := n.B2NodeSenderAddress()
-	if err != nil {
-		return err
-	}
-	msg := bridgeTypes.NewMsgCreateDeposit(senderAddress, hash, from, to, bridgeTypes.CoinType_COIN_TYPE_BTC, value, "")
+	msg := bridgeTypes.NewMsgCreateDeposit(n.B2NodeAddress, hash, from, to, bridgeTypes.CoinType_COIN_TYPE_BTC, value, "")
 	ctx := context.Background()
 	msgResponse, err := n.broadcastTx(ctx, msg)
 	if err != nil {
@@ -203,25 +212,11 @@ func (n *NodeClient) CreateDeposit(hash string, from string, to string, value in
 		n.log.Errorw("code", code)
 		return fmt.Errorf("[CreateDeposit][msgResponse.TxResponse.Code] err: %s", rawLog)
 	}
-	hexData := msgResponse.TxResponse.Data
-	byteData, err := hex.DecodeString(hexData)
-	if err != nil {
-		return fmt.Errorf("[CreateDeposit][hex.DecodeString] err: %s", err)
-	}
-	pbMsg := &sdk.TxMsgData{}
-	err = pbMsg.Unmarshal(byteData)
-	if err != nil {
-		return fmt.Errorf("[CreateDeposit][pbMsg.Unmarshal] err: %s", err)
-	}
 	return nil
 }
 
 func (n *NodeClient) UpdateDeposit(hash string, status bridgeTypes.DepositStatus, rollupTxHash string, fromAa string) error {
-	senderAddress, err := n.B2NodeSenderAddress()
-	if err != nil {
-		return err
-	}
-	msg := bridgeTypes.NewMsgUpdateDeposit(senderAddress, hash, status, rollupTxHash, fromAa)
+	msg := bridgeTypes.NewMsgUpdateDeposit(n.B2NodeAddress, hash, status, rollupTxHash, fromAa)
 	ctx := context.Background()
 	msgResponse, err := n.broadcastTx(ctx, msg)
 	if err != nil {
@@ -240,16 +235,6 @@ func (n *NodeClient) UpdateDeposit(hash string, status bridgeTypes.DepositStatus
 		}
 		n.log.Errorw("code", code)
 		return fmt.Errorf("[UpdateDeposit][msgResponse.TxResponse.Code] err: %s", rawLog)
-	}
-	hexData := msgResponse.TxResponse.Data
-	byteData, err := hex.DecodeString(hexData)
-	if err != nil {
-		return fmt.Errorf("[UpdateDeposit][hex.DecodeString] err: %s", err)
-	}
-	pbMsg := &sdk.TxMsgData{}
-	err = pbMsg.Unmarshal(byteData)
-	if err != nil {
-		return fmt.Errorf("[UpdateDeposit][pbMsg.Unmarshal] err: %s", err)
 	}
 	return nil
 }
@@ -270,27 +255,34 @@ func (n *NodeClient) QueryDeposit(hash string) (*bridgeTypes.Deposit, error) {
 }
 
 func (n *NodeClient) LatestBlock() (int64, error) {
-	latestBlockJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s", n.API, "cosmos/base/tendermint/v1beta1/blocks/latest"))
+	block, err := latestBlock(n.API)
 	if err != nil {
 		return 0, err
 	}
-	block, err := ParseJSONB2NodeBlock(latestBlockJSON)
-	if err != nil {
-		return 0, err
-	}
-
 	blockHeight, err := strconv.ParseInt(block.Block.Header.Height, 10, 64)
 	if err != nil {
 		return 0, err
 	}
-
 	return blockHeight, nil
+}
+
+func latestBlock(api string) (*B2NodeBlock, error) {
+	latestBlockJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s", api, "cosmos/base/tendermint/v1beta1/blocks/latest"))
+	if err != nil {
+		return nil, err
+	}
+	var block B2NodeBlock
+	err = ParseJSONB2Node(latestBlockJSON, &block)
+	if err != nil {
+		return nil, err
+	}
+	return &block, nil
 }
 
 func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.B2NodeTxParseResult, error) {
 	txsJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s%d&%s%s",
 		n.API,
-		"/cosmos/tx/v1beta1/txs?events=tx.height=",
+		"cosmos/tx/v1beta1/txs?events=tx.height=",
 		height,
 		"message.module=",
 		"bridge",
@@ -298,7 +290,8 @@ func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.
 	if err != nil {
 		return nil, err
 	}
-	txs, err := ParseJSONB2NodeTxs(txsJSON)
+	var txs B2NodeTxs
+	err = ParseJSONB2Node(txsJSON, &txs)
 	if err != nil {
 		return nil, err
 	}
@@ -365,17 +358,39 @@ func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.
 	return b2NodeTxParseResult, nil
 }
 
-func (n *NodeClient) B2NodeSenderAddress() (string, error) {
-	privateKey, err := n.PrivateKey.ToECDSA()
+func (n *NodeClient) BaseFee() (uint64, error) {
+	queryClient := feeTypes.NewQueryClient(n.GrpcConn)
+	res, err := queryClient.Params(context.Background(), &feeTypes.QueryParamsRequest{})
+	if err != nil {
+		return 0, err
+	}
+	return res.Params.BaseFee.Uint64(), nil
+}
+
+func bech32Prefix(api string) (string, error) {
+	bech32PrefixJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s", api, "cosmos/auth/v1beta1/bech32"))
 	if err != nil {
 		return "", err
 	}
-	ethAddress := crypto.PubkeyToAddress(privateKey.PublicKey)
+	var bech32Prefix Bech32Prefix
+	err = ParseJSONB2Node(bech32PrefixJSON, &bech32Prefix)
+	if err != nil {
+		return "", err
+	}
+	return bech32Prefix.Bech32Prefix, nil
+}
+
+func b2NodeAddress(privateKey ethsecp256k1.PrivKey, prefix string) (string, error) {
+	privKey, err := privateKey.ToECDSA()
+	if err != nil {
+		return "", err
+	}
+	ethAddress := crypto.PubkeyToAddress(privKey.PublicKey)
 	bz, err := hex.DecodeString(ethAddress.Hex()[2:])
 	if err != nil {
 		return "", err
 	}
-	b2nodeAddress, err := bech32.ConvertAndEncode("ethm", bz)
+	b2nodeAddress, err := bech32.ConvertAndEncode(prefix, bz)
 	if err != nil {
 		return "", err
 	}
@@ -384,11 +399,7 @@ func (n *NodeClient) B2NodeSenderAddress() (string, error) {
 
 func (n *NodeClient) CreateWithdraw(txID string, txHashList []string, encodedData string) error {
 	// private key -> adddress
-	senderAddress, err := n.B2NodeSenderAddress()
-	if err != nil {
-		return err
-	}
-	msg := bridgeTypes.NewMsgCreateWithdraw(senderAddress, txID, txHashList, encodedData)
+	msg := bridgeTypes.NewMsgCreateWithdraw(n.B2NodeAddress, txID, txHashList, encodedData)
 	ctx := context.Background()
 	msgResponse, err := n.broadcastTx(ctx, msg)
 	if err != nil {
@@ -437,11 +448,7 @@ func (n *NodeClient) QueryWithdraw(txID string) (*bridgeTypes.Withdraw, error) {
 }
 
 func (n *NodeClient) UpdateWithdraw(txID string, status bridgeTypes.WithdrawStatus) error {
-	senderAddress, err := n.B2NodeSenderAddress()
-	if err != nil {
-		return err
-	}
-	msg := bridgeTypes.NewMsgUpdateWithdraw(senderAddress, txID, status)
+	msg := bridgeTypes.NewMsgUpdateWithdraw(n.B2NodeAddress, txID, status)
 	ctx := context.Background()
 	msgResponse, err := n.broadcastTx(ctx, msg)
 	if err != nil {

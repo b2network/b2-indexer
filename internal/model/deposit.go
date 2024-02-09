@@ -25,11 +25,12 @@ const (
 	DepositB2EoaTxStatusContextDeadlineExceeded = 7 // eoa transfer client context deadline exceeded
 
 	// b2 node status
-	DepositB2NodeTxStatusSuccess       = 0 // success
-	DepositB2NodeTxStatusPending       = 1 // pending
-	DepositB2NodeTxStatusFailed        = 2 // deposit invoke failed
-	DepositB2NodeTxStatusRollupPending = 3 // deposit success wait rollup invoke
-	DepositB2NodeTxStatusTxHashExist   = 4 // tx hash exist, b2-node deposit have been called
+	DepositB2NodeTxStatusSuccess                  = 0 // success
+	DepositB2NodeTxStatusPending                  = 1 // pending
+	DepositB2NodeTxStatusFailed                   = 2 // deposit invoke failed
+	DepositB2NodeTxStatusRollupPending            = 3 // deposit success wait rollup invoke
+	DepositB2NodeTxStatusTxHashExist              = 4 // tx hash exist, b2-node deposit have been called
+	DepositB2NodeTxStatusErrNotCallerGroupMembers = 5 // b2 node not caller group members
 )
 
 type Deposit struct {
@@ -50,6 +51,7 @@ type Deposit struct {
 	B2EoaTxStatus    int       `json:"b2_eoa_tx_status" gorm:"type:SMALLINT;default:1"`
 	BtcBlockTime     time.Time `json:"btc_block_time"`
 	B2NodeTxStatus   int       `json:"b2_node_tx_status" gorm:"type:SMALLINT;default:1"`
+	B2NodeTxRetry    int       `json:"b2_node_tx_retry" gorm:"type:SMALLINT;default:0"`
 }
 
 type DepositColumns struct {
@@ -69,6 +71,7 @@ type DepositColumns struct {
 	B2EoaTxStatus    string
 	BtcBlockTime     string
 	B2NodeTxStatus   string
+	B2NodeTxRetry    string
 }
 
 func (Deposit) TableName() string {
@@ -93,5 +96,6 @@ func (Deposit) Column() DepositColumns {
 		BtcBlockTime:     "btc_block_time",
 		B2TxRetry:        "b2_tx_retry",
 		B2NodeTxStatus:   "b2_node_tx_status",
+		B2NodeTxRetry:    "b2_node_tx_retry",
 	}
 }
