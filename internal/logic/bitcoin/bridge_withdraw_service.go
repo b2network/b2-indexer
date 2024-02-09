@@ -340,11 +340,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 	}
 }
 
-type TxData struct {
-	tx       wire.MsgTx
-	prevOuts map[wire.OutPoint]*wire.TxOut
-}
-
 func (bis *BridgeWithdrawService) BroadcastTx(tx *wire.MsgTx) (*chainhash.Hash, error) {
 	mempoolURL := bis.GetMempoolURL()
 	var buf bytes.Buffer
