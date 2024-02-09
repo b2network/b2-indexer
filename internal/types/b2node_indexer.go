@@ -16,6 +16,12 @@ type B2NODEBridge interface {
 	UpdateDeposit(hash string, status bridgeTypes.DepositStatus, rollupTxHash string, fromAa string) error
 	// LatestBlock get b2node latest block number
 	LatestBlock() (int64, error)
+	// CreateWithdraw b2node create withdraw record
+	CreateWithdraw(txID string, txHashList []string, encodedData string) error
+	// QueryWithdraw query withdraw record
+	QueryWithdraw(txID string) (*bridgeTypes.Withdraw, error)
+	// UpdateWithdraw b2node update withdraw status
+	UpdateWithdraw(txID string, status bridgeTypes.WithdrawStatus) error
 }
 
 type B2NodeTxParseResult struct {

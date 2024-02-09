@@ -2,6 +2,7 @@ package b2node
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/b2network/b2-indexer/internal/model"
@@ -187,6 +188,12 @@ func (bis *B2NodeIndexerService) HandleResults(
 			bis.log.Errorw("failed to save b2node index tx", "error", err,
 				"data", v)
 			return currentBlock, int64(v.BridgeModuleTxIndex), err
+		}
+		if v.EventType == EventTypeSignWithdraw {
+			err = bis.db.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTxColumns{}.BtcTxID), v.BridgeEventID).Update(model.WithdrawTxColumns{}.Status, model.BtcTxWithdrawSignatureCompleted).Error
+			if err != nil {
+				bis.log.Errorw("update WithdrawTx sign status err", "error", err, "btc_tx_id", v.BridgeEventID)
+			}
 		}
 		bis.log.Infow("save b2node index tx success", "currentBlock", currentBlock, "currentTxIndex", v.BridgeModuleTxIndex, "data", v)
 		time.Sleep(B2NodeIndexTxTimeout)

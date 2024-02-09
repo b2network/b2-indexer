@@ -33,6 +33,7 @@ const (
 	DefaultBaseGasPrice = 10_000_000
 
 	EventTypeCreateDeposit = "EventCreateDeposit"
+	EventTypeSignWithdraw  = "EventSignWithdraw"
 )
 
 type NodeClient struct {
@@ -269,7 +270,7 @@ func (n *NodeClient) QueryDeposit(hash string) (*bridgeTypes.Deposit, error) {
 }
 
 func (n *NodeClient) LatestBlock() (int64, error) {
-	latestBlockJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s", n.API, "/cosmos/base/tendermint/v1beta1/blocks/latest"))
+	latestBlockJSON, err := rpc.HTTPGet(fmt.Sprintf("%s/%s", n.API, "cosmos/base/tendermint/v1beta1/blocks/latest"))
 	if err != nil {
 		return 0, err
 	}
@@ -336,7 +337,27 @@ func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.
 							BridgeEventID:       createDepositID,
 						}
 						b2NodeTxParseResult = append(b2NodeTxParseResult, &txResult)
+					case n.BridgeModuleEventType(EventTypeSignWithdraw):
+						withdrawTxID := ""
+						for _, attr := range event.Attributes {
+							if attr.Key == "tx_id" {
+								withdrawTxID = strings.Trim(attr.Value, "\"")
+							}
+						}
+						txResult := types.B2NodeTxParseResult{
+							Height:              blockHeight,
+							TxHash:              tx.Txhash,
+							EventType:           EventTypeSignWithdraw,
+							BridgeModuleTxIndex: txIndex,
+							RawLog:              tx.RawLog,
+							TxCode:              tx.Code,
+							TxData:              tx.Data,
+							BridgeEventID:       withdrawTxID,
+						}
+						b2NodeTxParseResult = append(b2NodeTxParseResult, &txResult)
+
 					}
+
 				}
 			}
 		}
@@ -359,4 +380,96 @@ func (n *NodeClient) B2NodeSenderAddress() (string, error) {
 		return "", err
 	}
 	return b2nodeAddress, nil
+}
+
+func (n *NodeClient) CreateWithdraw(txID string, txHashList []string, encodedData string) error {
+	// private key -> adddress
+	senderAddress, err := n.B2NodeSenderAddress()
+	if err != nil {
+		return err
+	}
+	msg := bridgeTypes.NewMsgCreateWithdraw(senderAddress, txID, txHashList, encodedData)
+	ctx := context.Background()
+	msgResponse, err := n.broadcastTx(ctx, msg)
+	if err != nil {
+		return fmt.Errorf("[CreateWithdraw] err: %s", err)
+	}
+	code := msgResponse.TxResponse.Code
+	rawLog := msgResponse.TxResponse.RawLog
+	if code != 0 {
+		switch code {
+		case bridgeTypes.ErrIndexExist.ABCICode():
+			return bridgeTypes.ErrIndexExist
+		case bridgeTypes.ErrNotCallerGroupMembers.ABCICode():
+			return bridgeTypes.ErrNotCallerGroupMembers
+		case bridgeTypes.ErrNotCallerGroupMembers.ABCICode():
+			return bridgeTypes.ErrNotCallerGroupMembers
+		}
+		n.log.Errorw("code", code)
+		return fmt.Errorf("[CreateWithdraw][msgResponse.TxResponse.Code] err: %s", rawLog)
+	}
+	hexData := msgResponse.TxResponse.Data
+	byteData, err := hex.DecodeString(hexData)
+	if err != nil {
+		return fmt.Errorf("[CreateWithdraw][hex.DecodeString] err: %s", err)
+	}
+	pbMsg := &sdk.TxMsgData{}
+	err = pbMsg.Unmarshal(byteData)
+	if err != nil {
+		return fmt.Errorf("[CreateWithdraw][pbMsg.Unmarshal] err: %s", err)
+	}
+	return nil
+}
+
+func (n *NodeClient) QueryWithdraw(txID string) (*bridgeTypes.Withdraw, error) {
+	queryClient := bridgeTypes.NewQueryClient(n.GrpcConn)
+	res, err := queryClient.Withdraw(context.Background(), &bridgeTypes.QueryGetWithdrawRequest{
+		TxId: txID,
+	})
+	if err != nil {
+		switch err {
+		case bridgeTypes.ErrIndexNotExist:
+			return nil, bridgeTypes.ErrIndexNotExist
+		}
+		return nil, fmt.Errorf("[QueryWithdraw] err: %s", err)
+	}
+	return &res.Withdraw, nil
+}
+
+func (n *NodeClient) UpdateWithdraw(txID string, status bridgeTypes.WithdrawStatus) error {
+	senderAddress, err := n.B2NodeSenderAddress()
+	if err != nil {
+		return err
+	}
+	msg := bridgeTypes.NewMsgUpdateWithdraw(senderAddress, txID, status)
+	ctx := context.Background()
+	msgResponse, err := n.broadcastTx(ctx, msg)
+	if err != nil {
+		return fmt.Errorf("[UpdateWithdraw] err: %s", err)
+	}
+	code := msgResponse.TxResponse.Code
+	rawLog := msgResponse.TxResponse.RawLog
+	if code != 0 {
+		switch code {
+		case bridgeTypes.ErrIndexNotExist.ABCICode():
+			return bridgeTypes.ErrIndexNotExist
+		case bridgeTypes.ErrInvalidStatus.ABCICode():
+			return bridgeTypes.ErrInvalidStatus
+		case bridgeTypes.ErrNotCallerGroupMembers.ABCICode():
+			return bridgeTypes.ErrNotCallerGroupMembers
+		}
+		n.log.Errorw("code", code)
+		return fmt.Errorf("[UpdateWithdraw][msgResponse.TxResponse.Code] err: %s", rawLog)
+	}
+	hexData := msgResponse.TxResponse.Data
+	byteData, err := hex.DecodeString(hexData)
+	if err != nil {
+		return fmt.Errorf("[UpdateWithdraw][hex.DecodeString] err: %s", err)
+	}
+	pbMsg := &sdk.TxMsgData{}
+	err = pbMsg.Unmarshal(byteData)
+	if err != nil {
+		return fmt.Errorf("[UpdateWithdraw][pbMsg.Unmarshal] err: %s", err)
+	}
+	return nil
 }

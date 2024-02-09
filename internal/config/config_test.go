@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"os"
+	"strconv"
 	"testing"
 
 	"github.com/b2network/b2-indexer/internal/config"
@@ -35,6 +36,11 @@ func TestBitcoinConfig(t *testing.T) {
 	os.Unsetenv("ENABLE_EPS")
 	os.Unsetenv("EPS_URL")
 	os.Unsetenv("EPS_AUTHORIZATION")
+	os.Unsetenv("BITCOIN_BRIDGE_DEPOSIT")
+	os.Unsetenv("BITCOIN_BRIDGE_WITHDRAW")
+	os.Unsetenv("BITCOIN_BRIDGE_UNISAT_API_KEY")
+	os.Unsetenv("BITCOIN_BRIDGE_PUBLICKEYS")
+	os.Unsetenv("BITCOIN_BRIDGE_TIME_INTERVAL")
 	config, err := config.LoadBitcoinConfig("./testdata")
 	require.NoError(t, err)
 	require.Equal(t, "signet", config.NetworkName)
@@ -61,6 +67,10 @@ func TestBitcoinConfig(t *testing.T) {
 	require.Equal(t, true, config.Eps.EnableEps)
 	require.Equal(t, "127.0.0.1", config.Eps.URL)
 	require.Equal(t, "", config.Eps.Authorization)
+	require.Equal(t, "", config.Bridge.Deposit)
+	require.Equal(t, "", config.Bridge.Withdraw)
+	require.Equal(t, "", config.Bridge.UnisatApiKey)
+	require.Equal(t, int64(0), config.Bridge.TimeInterval)
 }
 
 func TestBitcoinConfigEnv(t *testing.T) {
@@ -88,6 +98,10 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	os.Setenv("ENABLE_EPS", "true")
 	os.Setenv("EPS_URL", "127.0.0.1")
 	os.Setenv("EPS_AUTHORIZATION", "")
+	os.Setenv("BITCOIN_BRIDGE_DEPOSIT", "")
+	os.Setenv("BITCOIN_BRIDGE_WITHDRAW", "")
+	os.Setenv("BITCOIN_BRIDGE_UNISAT_API_KEY", "")
+	os.Setenv("BITCOIN_BRIDGE_TIME_INTERVAL", strconv.FormatInt(0, 10))
 
 	config, err := config.LoadBitcoinConfig("./")
 	require.NoError(t, err)
@@ -112,6 +126,10 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	require.Equal(t, true, config.Eps.EnableEps)
 	require.Equal(t, "127.0.0.1", config.Eps.URL)
 	require.Equal(t, "", config.Eps.Authorization)
+	require.Equal(t, "", config.Bridge.Deposit)
+	require.Equal(t, "", config.Bridge.Withdraw)
+	require.Equal(t, "", config.Bridge.UnisatApiKey)
+	require.Equal(t, int64(0), config.Bridge.TimeInterval)
 }
 
 func TestChainParams(t *testing.T) {

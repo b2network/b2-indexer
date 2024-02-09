@@ -22,6 +22,7 @@ var (
 const (
 	// tx type
 	TxTypeTransfer = "transfer" // btc transfer
+	TxTypeWithdraw = "withdraw" // btc withdraw
 )
 
 // Indexer bitcoin indexer, parse and forward data
@@ -73,8 +74,13 @@ func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxPar
 		if err != nil {
 			return nil, nil, err
 		}
-
+		parseWithdrawTxs, err := b.parseWithdrawTx(v, k)
+		if err != nil {
+			return nil, nil, err
+		}
 		blockParsedResult = append(blockParsedResult, parseTxs...)
+		blockParsedResult = append(blockParsedResult, parseWithdrawTxs...)
+
 	}
 
 	return blockParsedResult, &blockResult.Header, nil
@@ -178,4 +184,41 @@ func (b *Indexer) LatestBlock() (int64, error) {
 // BlockChainInfo get block chain info
 func (b *Indexer) BlockChainInfo() (*btcjson.GetBlockChainInfoResult, error) {
 	return b.client.GetBlockChainInfo()
+}
+
+// parseTx parse transaction data
+func (b *Indexer) parseWithdrawTx(txResult *wire.MsgTx, index int) (parsedResult []*types.BitcoinTxParseResult, err error) {
+	for _, v := range txResult.TxIn {
+		prevTx, err := b.client.GetRawTransaction(&v.PreviousOutPoint.Hash)
+		if err != nil {
+			return nil, err
+		}
+		value := prevTx.MsgTx().TxOut[v.PreviousOutPoint.Index].Value
+		prePkScript := prevTx.MsgTx().TxOut[v.PreviousOutPoint.Index].PkScript
+		pkAddress, err := b.parseAddress(prePkScript)
+		if err != nil {
+			if errors.Is(err, ErrParsePkScript) {
+				continue
+			}
+			return nil, err
+		}
+
+		// if pk address eq dest listened address, after parse from address by vin prev tx
+		if pkAddress == b.listenAddress.EncodeAddress() {
+			fromAddress, err := b.parseFromAddress(txResult)
+			if err != nil {
+				return nil, fmt.Errorf("vin parse err:%w", err)
+			}
+			parsedResult = append(parsedResult, &types.BitcoinTxParseResult{
+				TxID:   txResult.TxHash().String(),
+				TxType: TxTypeWithdraw,
+				Index:  int64(index),
+				Value:  value,
+				From:   fromAddress,
+				To:     pkAddress,
+			})
+		}
+	}
+
+	return
 }

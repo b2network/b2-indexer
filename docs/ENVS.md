@@ -14,26 +14,31 @@
 
 ## Bitcoin configuration
 
-| Variable | Type| Description | Compulsoriness | Default value | Example value |
-| --- | --- | --- | --- | --- | --- |
-| BITCOIN_NETWORK_NAME | `string` | bitcoin network name | Required | testnet3 | `mainnet testnet3 regtest` |
-| BITCOIN_RPC_HOST | `string` | bitcoin rpc host | Required |  | `127.0.0.1` |
-| BITCOIN_RPC_PORT | `string` | bitcoin rpc port | Required |  | `8332` |
-| BITCOIN_RPC_USER | `string` | bitcoin rpc user | Required |  |  |
-| BITCOIN_RPC_PASS | `string` | bitcoin rpc password| Required |  |  |
-| BITCOIN_DISABLE_TLS | `bool` | bitcoin disable tls| Required |`true`  |  |
-| BITCOIN_WALLET_NAME | `string` | bitcoin wallet name| Required |  |  |
-| BITCOIN_ENABLE_INDEXER | `bool` | enable indexer service | Required |  | `false true` |
-| BITCOIN_INDEXER_LISTEN_ADDRESS | `string` | indexer service listen btc address | Required |  |  |
-| BITCOIN_BRIDGE_ETH_RPC_URL | `string` | bridge contract eth rpc url | Required |  | `https://zkevm-rpc.bsquared.network` |
-| BITCOIN_BRIDGE_ETH_PRIV_KEY | `string` | bridge contract eth invoke priv key | Required |  |  |
-| BITCOIN_BRIDGE_CONTRACT_ADDRESS | `string` | bridge contract address| Required |  |  |
-| BITCOIN_BRIDGE_ABI | `string` | bridge contract abi, if not set, will use default abi | - |  |  |
-| BITCOIN_BRIDGE_GAS_LIMIT | `number` | bridge contract gas limit  | Required |  | `3000000` |
-| BITCOIN_BRIDGE_AA_SCA_REGISTRY | `string` | aa sca registry | Required |  |  |
-| BITCOIN_BRIDGE_AA_KERNEL_FACTORY | `string` | aa sca registry | Required |  |  |
-| BITCOIN_BRIDGE_B2_NODE_RPC_URL | `string` | b2 node rpc url | Required |  |  |
-| BITCOIN_BRIDGE_B2_NODE_PRIV_KEY | `string` | b2 node priv key | Required |  |  |
-| ENABLE_EPS | `bool` | enable eps service | Required |  | false true |
-| EPS_URL | `string` | eps url | Required |  |  |
-| EPS_AUTHORIZATION | `string` | eps authorization | Required |  |  |
+| Variable | Type       | Description | Compulsoriness | Default value | Example value |
+| --- |------------|  | --- | --- | --- |
+| BITCOIN_NETWORK_NAME | `string`   | bitcoin network name | Required | testnet3 | `mainnet testnet3 regtest` |
+| BITCOIN_RPC_HOST | `string`   | bitcoin rpc host | Required |  | `127.0.0.1` |
+| BITCOIN_RPC_PORT | `string`   | bitcoin rpc port | Required |  | `8332` |
+| BITCOIN_RPC_USER | `string`   | bitcoin rpc user | Required |  |  |
+| BITCOIN_RPC_PASS | `string`   | bitcoin rpc password| Required |  |  |
+| BITCOIN_DISABLE_TLS | `bool`     | bitcoin disable tls| Required |`true`  |  |
+| BITCOIN_WALLET_NAME | `string`   | bitcoin wallet name| Required |  |  |
+| BITCOIN_ENABLE_INDEXER | `bool`     | enable indexer service | Required |  | `false true` |
+| BITCOIN_INDEXER_LISTEN_ADDRESS | `string`   | indexer service listen btc address | Required |  |  |
+| BITCOIN_BRIDGE_ETH_RPC_URL | `string`   | bridge contract eth rpc url | Required |  | `https://zkevm-rpc.bsquared.network` |
+| BITCOIN_BRIDGE_ETH_PRIV_KEY | `string`   | bridge contract eth invoke priv key | Required |  |  |
+| BITCOIN_BRIDGE_CONTRACT_ADDRESS | `string`   | bridge contract address| Required |  |  |
+| BITCOIN_BRIDGE_ABI | `string`   | bridge contract abi, if not set, will use default abi | - |  |  |
+| BITCOIN_BRIDGE_GAS_LIMIT | `number`   | bridge contract gas limit | Required |  | `3000000` |
+| BITCOIN_BRIDGE_AA_SCA_REGISTRY | `string`   | aa sca registry | Required |  |  |
+| BITCOIN_BRIDGE_AA_KERNEL_FACTORY | `string`   | aa sca registry | Required |  |  |
+| BITCOIN_BRIDGE_B2_NODE_RPC_URL | `string`   | b2 node rpc url | Required |  |  |
+| BITCOIN_BRIDGE_B2_NODE_PRIV_KEY | `string`   | b2 node priv key | Required |  |  |
+| ENABLE_EPS | `bool`     | enable eps service | Required |  | false true |
+| EPS_URL | `string`   | eps url | Required |  |  |
+| EPS_AUTHORIZATION | `string`   | eps authorization | Required |  |  |
+| BITCOIN_BRIDGE_DEPOSIT | `string`   | bridge deposit event hash | Required |  |  |
+| BITCOIN_BRIDGE_WITHDRAW | `string`   | bridge withdraw event hash | Required |  |  |
+| BITCOIN_BRIDGE_UNISAT_API_KEY | `string`   | bridge withdraw unisat api_key | Required |  |  |
+| BITCOIN_BRIDGE_PUBLICKEYS | `[]string` | bridge withdraw sign publickey | Required |  |  |
+| BITCOIN_BRIDGE_TIME_INTERVAL | `int64`    | bridge withdraw time interval | Required |  |  |

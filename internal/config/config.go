@@ -47,9 +47,7 @@ type BitconConfig struct {
 	// Bridge defines the bridge config
 	Bridge BridgeConfig `mapstructure:"bridge"`
 	// Fee defines the bitcoin tx fee
-	Fee int64 `mapstructure:"fee" env:"BITCOIN_FEE"`
-	// Evm defines the evm config
-	Evm EvmConfig `mapstructure:"evm"`
+	Fee int64     `mapstructure:"fee" env:"BITCOIN_FEE"`
 	Eps EpsConfig `mapstructure:"eps"`
 }
 
@@ -84,15 +82,18 @@ type BridgeConfig struct {
 	B2NodeGasPrices uint64 `mapstructure:"b2-node-gas-prices" env:"BITCOIN_BRIDGE_B2_NODE_GAS_PRICES" envDefault:"100000"`
 	// B2NodeDenom defines the b2 node denom
 	B2NodeDenom string `mapstructure:"b2-node-denom" env:"BITCOIN_BRIDGE_B2_NODE_DENOM" envDefault:"aphoton"`
-}
-
-type EvmConfig struct {
 	// EnableListener defines whether to enable the listener
-	EnableListener bool `mapstructure:"enable-listener" env:"BITCOIN_BRIDGE_ENABLE_LISTENER"`
+	EnableWithdrawListener bool `mapstructure:"enable-withdraw-listener" env:"BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER"`
 	// Deposit defines the deposit event hash
 	Deposit string `mapstructure:"deposit" env:"BITCOIN_BRIDGE_DEPOSIT"`
 	// Withdraw defines the withdraw event hash
 	Withdraw string `mapstructure:"withdraw" env:"BITCOIN_BRIDGE_WITHDRAW"`
+	// UnisatApiKey defines unisat api_key
+	UnisatApiKey string `mapstructure:"unisat-api-key" env:"BITCOIN_BRIDGE_UNISAT_API_KEY"`
+	// PublicKeys defines signer publickey
+	PublicKeys []string `mapstructure:"publickeys" env:"BITCOIN_BRIDGE_PUBLICKEYS"`
+	// TimeInterval defines withdraw time interval
+	TimeInterval int64 `mapstructure:"time-interval" env:"BITCOIN_BRIDGE_TIME_INTERVAL"`
 }
 
 type EpsConfig struct {

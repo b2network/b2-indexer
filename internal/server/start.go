@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/ethereum/go-ethereum/ethclient"
 	"os"
 	"os/signal"
 	"path"
@@ -172,6 +173,68 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		epsErrCh := make(chan error)
 		go func() {
 			if err := epsService.OnStart(); err != nil {
+				epsErrCh <- err
+			}
+		}()
+
+		select {
+		case err := <-epsErrCh:
+			return err
+		case <-time.After(5 * time.Second): // assume server started successfully
+		}
+	}
+
+	if bitcoinCfg.Bridge.EnableWithdrawListener {
+		logger.Infow("withdraw service starting...")
+		withdrawLoggerOpt := logger.NewOptions()
+		withdrawLoggerOpt.Format = ctx.Config.LogFormat
+		withdrawLoggerOpt.Level = ctx.Config.LogLevel
+		withdrawLoggerOpt.EnableColor = true
+		withdrawLoggerOpt.Name = "[withdraw]"
+		withdrawLogger := logger.New(withdrawLoggerOpt)
+
+		db, err := GetDBContextFromCmd(cmd)
+		if err != nil {
+			logger.Errorw("failed to get db context", "error", err.Error())
+			return err
+		}
+
+		btclient, err := rpcclient.New(&rpcclient.ConnConfig{
+			Host:         bitcoinCfg.RPCHost + ":" + bitcoinCfg.RPCPort + "/wallet/" + bitcoinCfg.WalletName,
+			User:         bitcoinCfg.RPCUser,
+			Pass:         bitcoinCfg.RPCPass,
+			HTTPPostMode: true, // Bitcoin core only supports HTTP POST mode
+			DisableTLS:   true, // Bitcoin core does not provide TLS by default
+		}, nil)
+		if err != nil {
+			logger.Errorw("EVMListenerService failed to create bitcoin client", "error", err.Error())
+			return err
+		}
+		defer func() {
+			btclient.Shutdown()
+		}()
+		defer func() {
+			btclient.Shutdown()
+		}()
+
+		ethlient, err := ethclient.Dial(bitcoinCfg.Bridge.EthRPCURL)
+		if err != nil {
+			logger.Errorw("EVMListenerService failed to create eth client", "error", err.Error())
+			return err
+		}
+		defer func() {
+			ethlient.Close()
+		}()
+		bridgeLogger := newLogger(ctx, "[bridge-withdraw]")
+		bridgeB2node, err := b2NodeClient(bitcoinCfg, bridgeLogger)
+		if err != nil {
+			return err
+		}
+		withdrawService := bitcoin.NewBridgeWithdrawService(btclient, ethlient, bitcoinCfg, db, withdrawLogger, bridgeB2node)
+
+		epsErrCh := make(chan error)
+		go func() {
+			if err := withdrawService.OnStart(); err != nil {
 				epsErrCh <- err
 			}
 		}()
