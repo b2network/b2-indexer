@@ -80,7 +80,6 @@ func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxPar
 		}
 		blockParsedResult = append(blockParsedResult, parseTxs...)
 		blockParsedResult = append(blockParsedResult, parseWithdrawTxs...)
-
 	}
 
 	return blockParsedResult, &blockResult.Header, nil
@@ -122,8 +121,7 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (parsedResult []*type
 			})
 		}
 	}
-
-	return
+	return nil, nil
 }
 
 // parseFromAddress from vin parse from address
@@ -219,6 +217,5 @@ func (b *Indexer) parseWithdrawTx(txResult *wire.MsgTx, index int) (parsedResult
 			})
 		}
 	}
-
-	return
+	return nil, nil
 }

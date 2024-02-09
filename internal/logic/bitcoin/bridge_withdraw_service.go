@@ -251,16 +251,13 @@ func (bis *BridgeWithdrawService) OnStart() error {
 		var withdraw model.Withdraw
 		err := bis.db.Model(&model.Withdraw{}).Last(&withdraw).Error
 		if err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				lastBlock = 0
-			} else {
+			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				bis.log.Errorw("BridgeWithdrawService get blockNumber failed", "error", err)
 				continue
 			}
 		} else {
 			lastBlock = withdraw.B2BlockNumber
 		}
-		lastBlock = 3969646
 		addresses := []common.Address{
 			common.HexToAddress(bis.config.Bridge.ContractAddress),
 		}
@@ -270,8 +267,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				common.HexToHash(bis.config.Bridge.Withdraw),
 			},
 		}
-		destAddresses := make([]string, 0, 10)
-		amounts := make([]int64, 0, 10)
 		for {
 			latestBlock, err := bis.ethCli.BlockNumber(context.Background())
 			if err != nil {
@@ -313,9 +308,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 
 						amount := DataToBigInt(vlog, 1)
 						destAddrStr := DataToString(vlog, 0)
-						destAddresses = append(destAddresses, destAddrStr)
-						amounts = append(amounts, amount.Int64())
-
 						withdrawData := model.Withdraw{
 							BtcFrom:       bis.config.IndexerListenAddress,
 							BtcTo:         destAddrStr,
