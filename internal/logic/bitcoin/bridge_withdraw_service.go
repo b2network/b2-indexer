@@ -136,8 +136,10 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				// create witdraw record
 				err = bis.b2node.CreateWithdraw(txID, b2TxHashes, btcTx)
 				if err != nil {
-					bis.Logger.Info("BridgeWithdrawService CreateWithdraw to b2node tx err", "error", err)
-					return err
+					if !errors.Is(err, bridgeTypes.ErrIndexExist) {
+						bis.Logger.Info("BridgeWithdrawService CreateWithdraw to b2node tx err", "error", err)
+						return err
+					}
 				}
 
 				bis.Logger.Info("BridgeWithdrawService broadcast tx success", "id", ids, "b2TxHashes", b2TxHashes)
@@ -228,8 +230,10 @@ func (bis *BridgeWithdrawService) OnStart() error {
 			for _, v := range withdrawTxList {
 				err := bis.b2node.UpdateWithdraw(v.BtcTxID, bridgeTypes.WithdrawStatus_WITHDRAW_STATUS_COMPLETED)
 				if err != nil {
-					bis.Logger.Info("BridgeWithdrawService UpdateWithdraw err", "error", err, "txID", v.BtcTxID)
-					continue
+					if !errors.Is(err, bridgeTypes.ErrIndexExist) {
+						bis.Logger.Info("BridgeWithdrawService UpdateWithdraw err", "error", err, "txID", v.BtcTxID)
+						continue
+					}
 				}
 				err = bis.db.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTxColumns{}.Status, model.BtcTxWithdrawCompleted).Error
 				if err != nil {
