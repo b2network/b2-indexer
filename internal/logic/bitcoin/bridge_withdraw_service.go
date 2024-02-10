@@ -3,6 +3,7 @@ package bitcoin
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -29,6 +30,7 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/btcsuite/btcd/btcutil"
+	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -37,6 +39,7 @@ import (
 const (
 	BridgeWithdrawServiceName = "BitcoinBridgeWithdrawService"
 	WithdrawHandleTime        = 10
+	WithdrawTXConfirmTime     = 60 * 5
 )
 
 // BridgeWithdrawService indexes transactions for json-rpc service.
@@ -213,6 +216,38 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					continue
 				}
 				bis.Logger.Info("BridgeWithdrawService broadcast tx success", "id", v.ID, "btcTxID", v.BtcTxID)
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			time.Sleep(time.Duration(WithdrawTXConfirmTime) * time.Second)
+			// confirm tx
+			var withdrawTxList []model.WithdrawTx
+			err := bis.db.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().Status), model.BtcTxWithdrawBroadcastSuccess).Find(&withdrawTxList).Error
+			if err != nil {
+				bis.log.Errorw("BridgeWithdrawService get broadcast tx failed", "error", err)
+				continue
+			}
+			for _, v := range withdrawTxList {
+				txHash, err := chainhash.NewHashFromStr(v.BtcTxHash)
+				if err != nil {
+					bis.Logger.Info("BridgeWithdrawService NewHashFromStr err", "error", err, "txhash", v.BtcTxHash)
+					continue
+				}
+				txRawResult, err := bis.btcCli.GetRawTransactionVerbose(txHash)
+				if err != nil {
+					bis.Logger.Info("BridgeWithdrawService GetRawTransactionVerbose err", "error", err, "txID", v.BtcTxID)
+					continue
+				}
+				if txRawResult.Confirmations >= 6 {
+					err = bis.db.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTxColumns{}.Status, model.BtcTxWithdrawSuccess).Error
+					if err != nil {
+						bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
+						continue
+					}
+				}
 			}
 		}
 	}()
@@ -500,10 +535,9 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 		outpoint := wire.NewOutPoint(&unspentTx.Outpoint.Hash, unspentTx.Outpoint.Index)
 		txIn := wire.NewTxIn(outpoint, nil, nil)
 		tx.AddTxIn(txIn)
-
-		multiSigScript, err := bis.GetMultiSigScript()
+		_, multiSigScript, err := bis.GenerateMultiSigScript(bis.config.Bridge.PublicKeys, 2)
 		if err != nil {
-			bis.log.Errorw("BridgeWithdrawService ConstructTx GetMultiSigScript err", "error", err)
+			bis.log.Errorw("BridgeWithdrawService ConstructTx GenerateMultiSigScript err", "error", err)
 			return "", "", err
 		}
 		unspentTx.Output.PkScript = multiSigScript
@@ -591,4 +625,44 @@ func (bis *BridgeWithdrawService) GetMultiSigScript() ([]byte, error) {
 		return nil, err
 	}
 	return multiSigScript, nil
+}
+
+func (bis *BridgeWithdrawService) GenerateMultiSigScript(xpubs []string, minSignNum int) (string, []byte, error) {
+	var defaultNet *chaincfg.Params
+	networkName := bis.config.NetworkName
+	defaultNet = config.ChainParams(networkName)
+	var allPubKeys []*btcutil.AddressPubKey
+	for _, xpub := range xpubs {
+		exPub, err := hdkeychain.NewKeyFromString(strings.TrimSpace(xpub))
+		if err != nil {
+			return "", nil, err
+		}
+		pubKey, err := exPub.ECPubKey()
+		if err != nil {
+			return "", nil, err
+		}
+		addressPubKey, err := btcutil.NewAddressPubKey(pubKey.SerializeCompressed(), defaultNet)
+		if err != nil {
+			return "", nil, err
+		}
+		allPubKeys = append(allPubKeys, addressPubKey)
+	}
+	builder := txscript.NewScriptBuilder()
+	builder.AddInt64(int64(minSignNum))
+	for _, key := range allPubKeys {
+		builder.AddData(key.ScriptAddress())
+	}
+	builder.AddInt64(int64(len(allPubKeys)))
+	builder.AddOp(txscript.OP_CHECKMULTISIG)
+	script, err := builder.Script()
+	if err != nil {
+		return "", nil, err
+	}
+	h256 := sha256.Sum256(script)
+	witnessProg := h256[:]
+	address, err := btcutil.NewAddressWitnessScriptHash(witnessProg, defaultNet)
+	if err != nil {
+		return "", nil, err
+	}
+	return address.EncodeAddress(), script, nil
 }

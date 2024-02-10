@@ -74,12 +74,7 @@ func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxPar
 		if err != nil {
 			return nil, nil, err
 		}
-		parseWithdrawTxs, err := b.parseWithdrawTx(v, k)
-		if err != nil {
-			return nil, nil, err
-		}
 		blockParsedResult = append(blockParsedResult, parseTxs...)
-		blockParsedResult = append(blockParsedResult, parseWithdrawTxs...)
 	}
 
 	return blockParsedResult, &blockResult.Header, nil
