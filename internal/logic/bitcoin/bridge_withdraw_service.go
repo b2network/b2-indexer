@@ -631,7 +631,7 @@ func (bis *BridgeWithdrawService) GenerateMultiSigScript(xpubs []string, minSign
 	var defaultNet *chaincfg.Params
 	networkName := bis.config.NetworkName
 	defaultNet = config.ChainParams(networkName)
-	var allPubKeys []*btcutil.AddressPubKey
+	allPubKeys := make([]*btcutil.AddressPubKey, 0, len(xpubs))
 	for _, xpub := range xpubs {
 		exPub, err := hdkeychain.NewKeyFromString(strings.TrimSpace(xpub))
 		if err != nil {
