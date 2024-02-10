@@ -3,6 +3,7 @@ package bitcoin
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/b2network/b2-indexer/internal/model"
@@ -247,6 +248,13 @@ func (bis *IndexerService) HandleResults(
 			bis.log.Errorw("failed to save bitcoin index tx", "error", err,
 				"data", v)
 			return currentBlock, v.Index, err
+		}
+		if v.TxType == TxTypeWithdraw {
+			err = bis.db.Model(model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTxColumns{}.BtcTxID), v.TxID).Update(model.WithdrawTxColumns{}.Status, model.BtcTxWithdrawSuccess).Error
+			if err != nil {
+				bis.log.Errorw("failed to update WithdrawTx status err", "error", err,
+					"error", err, "btc_tx_id", v.TxID)
+			}
 		}
 		bis.log.Infow("save bitcoin index tx success", "currentBlock", currentBlock, "currentTxIndex", v.Index, "data", v)
 		time.Sleep(IndexTxTimeout)
