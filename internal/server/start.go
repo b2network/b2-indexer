@@ -150,6 +150,35 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			return err
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}
+
+		// start b2node update deposit service
+		b2nodeUpdateDepositLogger := newLogger(ctx, "[b2node-update-deposit]")
+		b2nodeUpdateDepositBridge, err := b2NodeClient(ctx.BitcoinConfig, b2nodeUpdateDepositLogger)
+		if err != nil {
+			logger.Errorw("failed to create b2node", "error", err.Error())
+			return err
+		}
+
+		b2nodeUpdateDepositDB, err := GetDBContextFromCmd(cmd)
+		if err != nil {
+			logger.Errorw("failed to get db context", "error", err.Error())
+			return err
+		}
+
+		b2NodeUpdateDepositService := b2node.NewUpdateDepositService(b2nodeUpdateDepositBridge, b2nodeUpdateDepositDB, b2nodeUpdateDepositLogger)
+
+		b2NodeUpdateDepositErrCh := make(chan error)
+		go func() {
+			if err := b2NodeUpdateDepositService.Start(); err != nil {
+				b2NodeUpdateDepositErrCh <- err
+			}
+		}()
+
+		select {
+		case err := <-b2NodeUpdateDepositErrCh:
+			return err
+		case <-time.After(5 * time.Second): // assume server started successfully
+		}
 	}
 
 	if bitcoinCfg.Eps.EnableEps {

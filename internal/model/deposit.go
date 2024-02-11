@@ -17,6 +17,7 @@ const (
 	DepositB2TxStatusInsufficientBalance        = 6 // deposit insufficient balance
 	DepositB2TxStatusContextDeadlineExceeded    = 7 // deposit client context deadline exceeded, Chain transaction is stuck
 	DepositB2TxStatusFromAccountGasInsufficient = 8 // deposit evm from account gas insufficient
+	DepositB2TxStatusWaitMined                  = 9 // deposit wait mined
 
 	DepositB2EoaTxStatusSuccess                 = 0 // eoa transfer success
 	DepositB2EoaTxStatusPending                 = 1 // eoa transfer pending

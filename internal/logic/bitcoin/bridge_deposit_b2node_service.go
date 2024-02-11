@@ -90,18 +90,10 @@ func (bis *BridgeDepositB2NodeService) HandleDeposit(deposit model.Deposit) erro
 			deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusTxHashExist
 		default:
 			deposit.B2NodeTxRetry++
-			if deposit.B2NodeTxRetry >= DepositB2NodeRetry {
-				deposit.B2NodeTxStatus = model.DepositB2TxStatusFailed
-				bis.log.Errorw("invoke b2node deposit send tx retry exceed max",
-					"error", err.Error(),
-					"retryMax", DepositB2NodeRetry,
-					"data", deposit)
-			} else {
-				deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusPending
-				bis.log.Errorw("invoke b2node deposit send tx retry",
-					"error", err.Error(),
-					"data", deposit)
-			}
+			deposit.B2NodeTxStatus = model.DepositB2NodeTxStatusPending
+			bis.log.Errorw("invoke b2node deposit send tx retry",
+				"error", err.Error(),
+				"data", deposit)
 			time.Sleep(DepositB2NodeErrTimeout)
 		}
 	} else {
