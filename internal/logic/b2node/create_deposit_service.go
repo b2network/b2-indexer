@@ -1,4 +1,4 @@
-package bitcoin
+package b2node
 
 import (
 	"fmt"
@@ -13,17 +13,17 @@ import (
 )
 
 const (
-	BridgeDepositB2NodeServiceName = "BitcoinBridgeDepositB2NodeService"
+	B2NodeCreateDepositServiceName = "B2NodeCreateDepositService"
 	BatchDepositB2NodeWaitTimeout  = 10 * time.Second
 	BatchDepositB2NodeLimit        = 100
 	B2NodeWaitMinedTimeout         = 2 * time.Hour
-	HandleDepositB2NodeTimeout     = 500 * time.Millisecond
-	DepositB2NodeRetry             = 10
+	HandleDepositB2NodeTimeout     = 1 * time.Second
 	DepositB2NodeErrTimeout        = 10 * time.Minute
 )
 
-// BridgeDepositB2NodeService l1->b2-node
-type BridgeDepositB2NodeService struct {
+// B2NodeCreateDepositService l1->b2-node
+// B2node create deposit record
+type B2NodeCreateDepositService struct { //nolint
 	service.BaseService
 
 	b2node types.B2NODEBridge
@@ -32,19 +32,19 @@ type BridgeDepositB2NodeService struct {
 	log log.Logger
 }
 
-// NewBridgeDepositB2NodeService returns a new service instance.
-func NewBridgeDepositB2NodeService(
+// NewB2NodeCreateDepositService returns a new service instance.
+func NewB2NodeCreateDepositService(
 	b2node types.B2NODEBridge,
 	db *gorm.DB,
 	logger log.Logger,
-) *BridgeDepositB2NodeService {
-	is := &BridgeDepositB2NodeService{b2node: b2node, db: db, log: logger}
-	is.BaseService = *service.NewBaseService(nil, BridgeDepositB2NodeServiceName, is)
+) *B2NodeCreateDepositService {
+	is := &B2NodeCreateDepositService{b2node: b2node, db: db, log: logger}
+	is.BaseService = *service.NewBaseService(nil, B2NodeCreateDepositServiceName, is)
 	return is
 }
 
 // OnStart
-func (bis *BridgeDepositB2NodeService) OnStart() error {
+func (bis *B2NodeCreateDepositService) OnStart() error {
 	ticker := time.NewTicker(BatchDepositB2NodeWaitTimeout)
 	for {
 		<-ticker.C
@@ -75,7 +75,7 @@ func (bis *BridgeDepositB2NodeService) OnStart() error {
 	}
 }
 
-func (bis *BridgeDepositB2NodeService) HandleDeposit(deposit model.Deposit) error {
+func (bis *B2NodeCreateDepositService) HandleDeposit(deposit model.Deposit) error {
 	defer func() {
 		if err := recover(); err != nil {
 			bis.log.Errorw("panic err", err)
