@@ -132,7 +132,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					BtcTx:      btcTx,
 					B2TxHashes: string(b2TxHashesByte),
 				}
-				if err = bis.db.Create(&withdrawTxData).Error; err != nil {
+				if err = tx.Create(&withdrawTxData).Error; err != nil {
 					bis.log.Errorw("BridgeWithdrawService create withdrawTx err", "b2TxHashes", b2TxHashes)
 					return err
 				}
@@ -242,7 +242,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					continue
 				}
 				if txRawResult.Confirmations >= 6 {
-					err = bis.db.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTxColumns{}.Status, model.BtcTxWithdrawSuccess).Error
+					err = bis.db.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTx{}.Column().Status, model.BtcTxWithdrawSuccess).Error
 					if err != nil {
 						bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
 						continue
@@ -270,7 +270,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 						continue
 					}
 				}
-				err = bis.db.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTxColumns{}.Status, model.BtcTxWithdrawCompleted).Error
+				err = bis.db.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTx{}.Column().Status, model.BtcTxWithdrawCompleted).Error
 				if err != nil {
 					bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
 					continue

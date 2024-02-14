@@ -191,8 +191,8 @@ func (bis *B2NodeIndexerService) HandleResults(
 		}
 		if v.EventType == EventTypeSignWithdraw {
 			err = bis.db.Model(&model.WithdrawTx{}).
-				Where(fmt.Sprintf("%s = ?", model.WithdrawTxColumns{}.BtcTxID), v.BridgeEventID).
-				Update(model.WithdrawTxColumns{}.Status, model.BtcTxWithdrawSignatureCompleted).Error
+				Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().BtcTxID), v.BridgeEventID).
+				Update(model.WithdrawTx{}.Column().Status, model.BtcTxWithdrawSignatureCompleted).Error
 			if err != nil {
 				bis.log.Errorw("update WithdrawTx sign status err", "error", err, "btc_tx_id", v.BridgeEventID)
 			}
