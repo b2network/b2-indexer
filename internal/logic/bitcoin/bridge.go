@@ -253,15 +253,15 @@ func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte)
 	return receipt, nil
 }
 
-func (b *Bridge) TransactionByHash(hash string) (*types.Transaction, error) {
+func (b *Bridge) TransactionReceipt(hash string) (*types.Receipt, error) {
 	client, err := ethclient.Dial(b.EthRPCURL)
 	if err != nil {
 		return nil, err
 	}
 
-	tx, _, err := client.TransactionByHash(context.Background(), common.HexToHash(hash))
+	receipt, err := client.TransactionReceipt(context.Background(), common.HexToHash(hash))
 	if err != nil {
 		return nil, err
 	}
-	return tx, nil
+	return receipt, nil
 }

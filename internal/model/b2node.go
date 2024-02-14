@@ -5,7 +5,7 @@ type B2Node struct {
 	Height              int64  `json:"height" gorm:"column:height"`
 	BridgeModuleTxIndex int    `json:"bridge_module_tx_index" gorm:"column:bridge_module_tx_index"`
 	TxHash              string `json:"tx_hash" gorm:"column:tx_hash;type:varchar(66);not null;default:''"`
-	EventType           string `json:"event_type" gorm:"column:event_type;not null;default:''"`
+	EventType           string `json:"event_type" gorm:"column:event_type;type:varchar(60);not null;default:''"`
 	Messages            string `json:"messages" gorm:"column:messages;not null;default:''"`
 	RawLog              string `json:"raw_log" gorm:"column:raw_log;not null;default:''"`
 	TxCode              int    `json:"tx_code" gorm:"column:tx_code"`
