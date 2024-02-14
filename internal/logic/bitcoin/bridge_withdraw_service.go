@@ -327,6 +327,9 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				}
 
 				for _, vlog := range logs {
+					if withdraw.B2TxIndex == vlog.TxIndex && withdraw.B2LogIndex == vlog.Index {
+						continue
+					}
 					eventHash := common.BytesToHash(vlog.Topics[0].Bytes())
 					if eventHash == common.HexToHash(bis.config.Bridge.Withdraw) {
 						data := WithdrawEvent{
