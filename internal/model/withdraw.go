@@ -64,6 +64,14 @@ type UnspentOutput struct {
 	Output   *wire.TxOut
 }
 
+type FeeRates struct {
+	FastestFee  int `json:"fastestFee"`
+	HalfHourFee int `json:"halfHourFee"`
+	HourFee     int `json:"hourFee"`
+	EconomyFee  int `json:"economyFee"`
+	MinimumFee  int `json:"minimumFee"`
+}
+
 type WithdrawColumns struct {
 	BtcTxHash     string
 	BtcTx         string

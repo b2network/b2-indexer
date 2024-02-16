@@ -97,6 +97,9 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				bis.log.Errorw("BridgeWithdrawService get blockNumber failed", "error", err)
 				continue
 			}
+			if len(withdrawList) == 0 {
+				continue
+			}
 			var destAddressList []string
 			var amounts []int64
 			var ids []int64
@@ -162,6 +165,9 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				bis.log.Errorw("BridgeWithdrawService get broadcast tx failed", "error", err)
 				continue
 			}
+			if len(withdrawTxList) == 0 {
+				continue
+			}
 			for _, v := range withdrawTxList {
 				pack, err := psbt.NewFromRawBytes(strings.NewReader(v.BtcTx), true)
 				if err != nil {
@@ -201,7 +207,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					sign02 := signes[1][i].Sign
 					in.Witness = wire.TxWitness{nil, sign01, sign02, preTx[i].WitnessUtxo.PkScript}
 				}
-				txHash, err := bis.BroadcastTx(tx)
+				txHash, err := bis.btcCli.SendRawTransaction(tx, true)
 				if err != nil {
 					bis.log.Errorw("BridgeWithdrawService broadcast tx err", "error", err)
 					continue
@@ -228,6 +234,9 @@ func (bis *BridgeWithdrawService) OnStart() error {
 			err := bis.db.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().Status), model.BtcTxWithdrawBroadcastSuccess).Find(&withdrawTxList).Error
 			if err != nil {
 				bis.log.Errorw("BridgeWithdrawService get broadcast tx failed", "error", err)
+				continue
+			}
+			if len(withdrawTxList) == 0 {
 				continue
 			}
 			for _, v := range withdrawTxList {
@@ -260,6 +269,9 @@ func (bis *BridgeWithdrawService) OnStart() error {
 			err := bis.db.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().Status), model.BtcTxWithdrawSuccess).Find(&withdrawTxList).Error
 			if err != nil {
 				bis.log.Errorw("BridgeWithdrawService get broadcast tx failed", "error", err)
+				continue
+			}
+			if len(withdrawTxList) == 0 {
 				continue
 			}
 			for _, v := range withdrawTxList {
@@ -303,6 +315,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 			},
 		}
 		for {
+			time.Sleep(time.Duration(WithdrawHandleTime) * time.Second)
 			latestBlock, err := bis.ethCli.BlockNumber(context.Background())
 			if err != nil {
 				bis.log.Errorw("BridgeWithdrawService HeaderByNumber is failed:", "err", err)
@@ -374,8 +387,6 @@ func (bis *BridgeWithdrawService) BroadcastTx(tx *wire.MsgTx) (*chainhash.Hash, 
 	if err := tx.Serialize(&buf); err != nil {
 		return nil, err
 	}
-	fmt.Println(hex.EncodeToString(buf.Bytes()))
-	fmt.Println(len(hex.EncodeToString(buf.Bytes())))
 	req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("%s/tx", mempoolURL), strings.NewReader(hex.EncodeToString(buf.Bytes())))
 	if err != nil {
 		return nil, err
@@ -668,4 +679,29 @@ func (bis *BridgeWithdrawService) GenerateMultiSigScript(xpubs []string, minSign
 		return "", nil, err
 	}
 	return address.EncodeAddress(), script, nil
+}
+
+func (bis *BridgeWithdrawService) GetFeeRate() (*model.FeeRates, error) {
+	mempoolURL := bis.GetMempoolURL()
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("%s/v1/fees/recommended", mempoolURL), strings.NewReader(""))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Content-Type", "application/json")
+	req.Header.Add("Accept", "application/json")
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var feeRates model.FeeRates
+	err = json.Unmarshal(body, &feeRates)
+	if err != nil {
+		return nil, err
+	}
+	return &feeRates, nil
 }
