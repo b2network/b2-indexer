@@ -66,6 +66,7 @@ func TestBitcoinConfig(t *testing.T) {
 	require.Equal(t, "", config.Bridge.Withdraw)
 	require.Equal(t, "", config.Bridge.UnisatAPIKey)
 	require.Equal(t, int64(0), config.Bridge.TimeInterval)
+	require.Equal(t, []string{""}, config.Bridge.PublicKeys)
 }
 
 func TestBitcoinConfigEnv(t *testing.T) {
@@ -97,6 +98,7 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	os.Setenv("BITCOIN_BRIDGE_WITHDRAW", "")
 	os.Setenv("BITCOIN_BRIDGE_UNISAT_API_KEY", "")
 	os.Setenv("BITCOIN_BRIDGE_TIME_INTERVAL", strconv.FormatInt(0, 10))
+	os.Setenv("BITCOIN_BRIDGE_PUBLICKEYS", "")
 
 	config, err := config.LoadBitcoinConfig("./")
 	require.NoError(t, err)
@@ -125,6 +127,7 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	require.Equal(t, "", config.Bridge.Withdraw)
 	require.Equal(t, "", config.Bridge.UnisatAPIKey)
 	require.Equal(t, int64(0), config.Bridge.TimeInterval)
+	require.Equal(t, []string(nil), config.Bridge.PublicKeys)
 }
 
 func TestChainParams(t *testing.T) {
