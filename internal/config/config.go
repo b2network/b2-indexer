@@ -44,6 +44,8 @@ type BitconConfig struct {
 	EnableIndexer bool `mapstructure:"enable-indexer" env:"BITCOIN_ENABLE_INDEXER"`
 	// IndexerListenAddress defines the address to listen on
 	IndexerListenAddress string `mapstructure:"indexer-listen-address" env:"BITCOIN_INDEXER_LISTEN_ADDRESS"`
+	// IndexerListenTargetConfirmations defines the number of confirmations to listen on
+	IndexerListenTargetConfirmations int64 `mapstructure:"indexer-listen-target-confirmations" env:"BITCOIN_INDEXER_LISTEN_TARGET_CONFIRMATIONS" envDefault:"1"`
 	// Bridge defines the bridge config
 	Bridge BridgeConfig `mapstructure:"bridge"`
 	// Fee defines the bitcoin tx fee

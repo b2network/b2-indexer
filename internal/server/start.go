@@ -42,7 +42,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		bitcoinParam := config.ChainParams(bitcoinCfg.NetworkName)
 
 		bidxLogger := newLogger(ctx, "[bitcoin-indexer]")
-		bidxer, err := bitcoin.NewBitcoinIndexer(bidxLogger, bclient, bitcoinParam, bitcoinCfg.IndexerListenAddress)
+		bidxer, err := bitcoin.NewBitcoinIndexer(bidxLogger, bclient, bitcoinParam, bitcoinCfg.IndexerListenAddress, bitcoinCfg.IndexerListenTargetConfirmations)
 		if err != nil {
 			logger.Errorw("failed to new bitcoin indexer indexer", "error", err.Error())
 			return err

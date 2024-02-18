@@ -7,6 +7,7 @@ disable-tls = true
 wallet-name = "b2node"
 enable-indexer = true
 indexer-listen-address = "tb1qfhhxljfajcppfhwa09uxwty5dz4xwfptnqmvtv"
+indexer-listen-target-confirmations = 1
 fee = 200000
 
 [bridge]
