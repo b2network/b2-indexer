@@ -2,13 +2,22 @@ package model
 
 import "github.com/btcsuite/btcd/wire"
 
+// tx status sequence
+// 1.1 BtcTxWithdrawPending
+// 1.2 BtcTxWithdrawSubmitTxMsg
+// 1.3 BtcTxWithdrawSignatureCompleted
+// 1.4 BtcTxWithdrawBroadcastSuccess/BtcTxWithdrawBroadcastFailed
+// 1.5 BtcTxWithdrawConfirmed
+// 1.6 BtcTxWithdrawSuccess/BtcTxWithdrawFailed
 const (
 	BtcTxWithdrawPending = iota + 1
 	BtcTxWithdrawSuccess
-	BtcTxWithdrawCompleted
+	BtcTxWithdrawFailed
 	BtcTxWithdrawSubmitTxMsg
 	BtcTxWithdrawSignatureCompleted
 	BtcTxWithdrawBroadcastSuccess
+	BtcTxWithdrawBroadcastFailed
+	BtcTxWithdrawConfirmed
 )
 
 type Withdraw struct {
