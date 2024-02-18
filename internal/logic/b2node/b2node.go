@@ -38,9 +38,7 @@ const (
 	EventTypeSignWithdraw  = "EventSignWithdraw"
 )
 
-var (
-	txLock sync.Mutex
-)
+var txLock sync.Mutex
 
 type NodeClient struct {
 	PrivateKey    ethsecp256k1.PrivKey
