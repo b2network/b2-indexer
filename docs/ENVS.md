@@ -25,6 +25,7 @@
 | BITCOIN_WALLET_NAME | `string`   | bitcoin wallet name| Required |  |  |
 | BITCOIN_ENABLE_INDEXER | `bool`     | enable indexer service | Required |  | `false true` |
 | BITCOIN_INDEXER_LISTEN_ADDRESS | `string`   | indexer service listen btc address | Required |  |  |
+| BITCOIN_INDEXER_LISTEN_TARGET_CONFIRMATIONS | `number`   | target confirmations, adjust as needed | - | `1` |  |
 | BITCOIN_BRIDGE_ETH_RPC_URL | `string`   | bridge contract eth rpc url | Required |  | `https://zkevm-rpc.bsquared.network` |
 | BITCOIN_BRIDGE_ETH_PRIV_KEY | `string`   | bridge contract eth invoke priv key | Required |  |  |
 | BITCOIN_BRIDGE_CONTRACT_ADDRESS | `string`   | bridge contract address| Required |  |  |
