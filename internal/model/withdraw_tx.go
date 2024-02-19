@@ -2,10 +2,10 @@ package model
 
 type WithdrawTx struct {
 	Base
-	BtcTxID    string `json:"btc_tx_id" gorm:"type:varchar(256);not null;default:'';uniqueIndex;comment:bitcoin tx id"`
-	B2TxHashes string `json:"btc_tx_hashes" gorm:"type:text;not null;default:'';comment:bitcoin tx hash list"`
-	BtcTx      string `json:"btc_tx" gorm:"type:text;not null;default:'';comment:bitcoin tx"`
-	BtcTxHash  string `json:"btc_txHash" gorm:"type:varchar(256);not null;default:'';comment:bitcoin tx hash"`
+	BtcTxID    string `json:"btc_tx_id" gorm:"type:varchar(256);default:'';uniqueIndex;comment:bitcoin tx id"`
+	B2TxHashes string `json:"btc_tx_hashes" gorm:"type:text;default:'';comment:bitcoin tx hash list"`
+	BtcTx      string `json:"btc_tx" gorm:"type:text;default:'';comment:bitcoin tx"`
+	BtcTxHash  string `json:"btc_txHash" gorm:"type:varchar(256);default:'';comment:bitcoin tx hash"`
 	Status     int    `json:"status" gorm:"type:smallint;default:1"`
 	Reason     string `json:"reason" gorm:"type:varchar(256);default:'';comment:error reason"`
 }

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
 	"io"
 	"math/big"
 	"net/http"
@@ -25,7 +26,6 @@ import (
 	"github.com/cometbft/cometbft/libs/service"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
 	"github.com/go-resty/resty/v2"
 	"gorm.io/gorm"
 
@@ -40,6 +40,36 @@ const (
 	BridgeWithdrawServiceName = "BitcoinBridgeWithdrawService"
 	WithdrawHandleTime        = 10
 	WithdrawTXConfirmTime     = 60 * 5
+
+	// P2SHSize 23 bytes.
+	P2SHSize = 23
+	// P2SHOutputSize 32 bytes
+	//      - value: 8 bytes
+	//      - var_int: 1 byte (pkscript_length)
+	//      - pkscript (p2sh): 23 bytes
+	P2SHOutputSize = 8 + 1 + P2SHSize
+	// InputSize 41 bytes
+	//	- PreviousOutPoint:
+	//		- Hash: 32 bytes
+	//		- Index: 4 bytes
+	//	- OP_DATA: 1 byte (ScriptSigLength)
+	//	- ScriptSig: 0 bytes
+	//	- Witness <----	we use "Witness" instead of "ScriptSig" for
+	// 			transaction validation, but "Witness" is stored
+	// 			separately and weight for it size is smaller. So
+	// 			we separate the calculation of ordinary data
+	// 			from witness data.
+	//	- Sequence: 4 bytes
+	InputSize = 32 + 4 + 1 + 4
+	// MultiSigSize 71 bytes
+	//	- OP_2: 1 byte
+	//	- OP_DATA: 1 byte (pubKeyAlice length)
+	//	- pubKeyAlice: 33 bytes
+	//	- OP_DATA: 1 byte (pubKeyBob length)
+	//	- pubKeyBob: 33 bytes
+	//	- OP_2: 1 byte
+	//	- OP_CHECKMULTISIG: 1 byte
+	MultiSigSize = 1 + 1 + 33 + 1 + 33 + 1 + 1
 )
 
 // BridgeWithdrawService indexes transactions for json-rpc service.
@@ -206,14 +236,17 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					}
 					signes = append(signes, sign)
 					count++
-					if count == 2 {
+					if count == bis.config.Bridge.MultisigNum {
 						break
 					}
 				}
-				for i, in := range tx.TxIn {
-					sign01 := signes[0][i].Sign
-					sign02 := signes[1][i].Sign
-					in.Witness = wire.TxWitness{nil, sign01, sign02, preTx[i].WitnessUtxo.PkScript}
+				var signList []byte
+				for index, in := range tx.TxIn {
+					for i := 0; i < bis.config.Bridge.MultisigNum; i++ {
+						sign := signes[i][index].Sign
+						signList = append(signList, sign...)
+					}
+					in.Witness = wire.TxWitness{nil, signList, preTx[index].WitnessUtxo.PkScript}
 				}
 				var status int
 				var reason string
@@ -591,6 +624,14 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 	}
 
 	tx := wire.NewMsgTx(wire.TxVersion)
+	changeScript, err := txscript.PayToAddrScript(sourceAddr)
+	if err != nil {
+		bis.log.Errorw("BridgeWithdrawService transferToBtc PayToAddrScript sourceAddr failed: ", "err", err)
+		return "", "", err
+	}
+	var txSize int
+	var outputSize int
+	var fee int
 	for index, destAddress := range destAddressList {
 		destAddr, err := btcutil.DecodeAddress(destAddress, defaultNet)
 		if err != nil {
@@ -603,12 +644,21 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 			return "", "", err
 		}
 		tx.AddTxOut(wire.NewTxOut(amounts[index], destinationScript))
+		outputSize += wire.NewTxOut(amounts[index], destinationScript).SerializeSize()
+		//outputSize += P2SHOutputSize
 	}
-
+	outputSize += P2SHOutputSize
 	var pInput psbt.PInput
+	feeRate, err := bis.GetFeeRate()
+	if err != nil {
+		bis.log.Errorw("BridgeWithdrawService GetFeeRate err: ", "err", err)
+		return "", "", err
+	}
+	txSize += outputSize
 	pInputArry := make([]psbt.PInput, 0)
 	totalInputAmount := btcutil.Amount(0)
 	for _, unspentTx := range unspentTxs {
+		var inputSize int
 		outpoint := wire.NewOutPoint(&unspentTx.Outpoint.Hash, unspentTx.Outpoint.Index)
 		txIn := wire.NewTxIn(outpoint, nil, nil)
 		tx.AddTxIn(txIn)
@@ -622,21 +672,21 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 		pInput.WitnessScript = multiSigScript
 		pInputArry = append(pInputArry, pInput)
 		totalInputAmount += btcutil.Amount(unspentTx.Output.Value)
-		if int64(totalInputAmount) > (totalTransferAmount + bis.config.Fee) {
+		inputSize = InputSize + bis.GetMultiSigWitnessSize()
+		txSize += inputSize
+		fee = txSize * feeRate.FastestFee
+		if int64(totalInputAmount) > (totalTransferAmount + int64(fee)) {
 			break
 		}
 	}
-
-	changeAmount := int64(totalInputAmount) - bis.config.Fee - totalTransferAmount
+	changeAmount := int64(totalInputAmount) - int64(fee) - totalTransferAmount
 	if changeAmount < 0 {
+		bis.log.Errorw("BridgeWithdrawService ConstructTx insufficient balance err",
+			"totalInputAmount", totalInputAmount, "fee", fee, "totalTransferAmount", totalTransferAmount)
 		return "", "", errors.New("insufficient balance")
 	}
-	changeScript, err := txscript.PayToAddrScript(sourceAddr)
-	if err != nil {
-		bis.log.Errorw("BridgeWithdrawService transferToBtc PayToAddrScript sourceAddr failed: ", "err", err)
-		return "", "", err
-	}
 	tx.AddTxOut(wire.NewTxOut(changeAmount, changeScript))
+	bis.log.Infow("BridgeWithdrawService ConstructTx fee", "tx_id", tx.TxHash().String(), "fee", fee)
 
 	txCopy := tx.Copy()
 	unsignedPsbt, err := psbt.NewFromUnsignedTx(txCopy)
@@ -749,4 +799,17 @@ func (bis *BridgeWithdrawService) GetFeeRate() (*model.FeeRates, error) {
 		return nil, err
 	}
 	return &feeRates, nil
+}
+
+func (bis *BridgeWithdrawService) GetMultiSigWitnessSize() int {
+	//	- NumberOfWitnessElements: 1 byte
+	//	- NilLength: 1 byte
+	//	- sigAliceLength: 1 byte
+	//	- sigAlice: 73 bytes
+	//	- sigBobLength: 1 byte
+	//	- sigBob: 73 bytes
+	//	- WitnessScriptLength: 1 byte
+	//	- WitnessScript (MultiSig)
+	// MultiSigWitnessSize = 1 + 1 + 1 + 73 + 1 + 73 + 1 + MultiSigSize
+	return 1 + 1 + 1 + MultiSigSize + bis.config.Bridge.MultisigNum*74
 }

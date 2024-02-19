@@ -39,6 +39,7 @@ func TestBitcoinConfig(t *testing.T) {
 	os.Unsetenv("BITCOIN_BRIDGE_UNISAT_API_KEY")
 	os.Unsetenv("BITCOIN_BRIDGE_PUBLICKEYS")
 	os.Unsetenv("BITCOIN_BRIDGE_TIME_INTERVAL")
+	os.Unsetenv("BITCOIN_BRIDGE_MULTISIG_NUM")
 	config, err := config.LoadBitcoinConfig("./testdata")
 	require.NoError(t, err)
 	require.Equal(t, "signet", config.NetworkName)
@@ -67,6 +68,7 @@ func TestBitcoinConfig(t *testing.T) {
 	require.Equal(t, "", config.Bridge.UnisatAPIKey)
 	require.Equal(t, int64(0), config.Bridge.TimeInterval)
 	require.Equal(t, []string{""}, config.Bridge.PublicKeys)
+	require.Equal(t, 0, config.Bridge.MultisigNum)
 }
 
 func TestBitcoinConfigEnv(t *testing.T) {
@@ -99,6 +101,7 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	os.Setenv("BITCOIN_BRIDGE_UNISAT_API_KEY", "")
 	os.Setenv("BITCOIN_BRIDGE_TIME_INTERVAL", strconv.FormatInt(0, 10))
 	os.Setenv("BITCOIN_BRIDGE_PUBLICKEYS", "")
+	os.Setenv("BITCOIN_BRIDGE_MULTISIG_NUM", strconv.FormatInt(0, 10))
 
 	config, err := config.LoadBitcoinConfig("./")
 	require.NoError(t, err)
@@ -128,6 +131,7 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	require.Equal(t, "", config.Bridge.UnisatAPIKey)
 	require.Equal(t, int64(0), config.Bridge.TimeInterval)
 	require.Equal(t, []string(nil), config.Bridge.PublicKeys)
+	require.Equal(t, 0, config.Bridge.MultisigNum)
 }
 
 func TestChainParams(t *testing.T) {

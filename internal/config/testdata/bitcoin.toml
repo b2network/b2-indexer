@@ -7,7 +7,6 @@ disable-tls = true
 wallet-name = "b2node"
 enable-indexer = true
 indexer-listen-address = "tb1qfhhxljfajcppfhwa09uxwty5dz4xwfptnqmvtv"
-fee = 200000
 
 [bridge]
 eth-rpc-url = "localhost:8545"
@@ -29,6 +28,7 @@ withdraw = ""
 unisat-api-key = ""
 publickeys = [""]
 time-interval = 0
+multisig-num = 0
 
 [eps]
 enable-eps = true

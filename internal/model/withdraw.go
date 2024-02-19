@@ -22,12 +22,12 @@ const (
 
 type Withdraw struct {
 	Base
-	BtcFrom       string `json:"btc_from" gorm:"type:varchar(256);not null;default:'';index"`
-	BtcTo         string `json:"btc_to" gorm:"type:varchar(256);not null;default:'';index"`
+	BtcFrom       string `json:"btc_from" gorm:"type:varchar(256);default:'';index"`
+	BtcTo         string `json:"btc_to" gorm:"type:varchar(256);default:'';index"`
 	BtcValue      int64  `json:"btc_value" gorm:"type:bigint;default:0;comment:bitcoin transfer value"`
 	B2BlockNumber uint64 `json:"b2_block_number" gorm:"type:bigint;comment:b2 block number"`
 	B2BlockHash   string `json:"b2_block_hash" gorm:"type:varchar(256);comment:b2 block hash"`
-	B2TxHash      string `json:"b2_tx_hash" gorm:"type:varchar(256);not null;default:'';uniqueIndex;comment:b2 network tx hash"`
+	B2TxHash      string `json:"b2_tx_hash" gorm:"type:varchar(256);default:'';uniqueIndex;comment:b2 network tx hash"`
 	B2TxIndex     uint   `json:"b2_tx_index" gorm:"type:bigint;comment:b2 tx index"`
 	B2LogIndex    uint   `json:"b2_log_index" gorm:"type:int;comment:b2 log index"`
 	Status        int    `json:"status" gorm:"type:smallint;default:1"`

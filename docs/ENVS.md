@@ -44,3 +44,4 @@
 | BITCOIN_BRIDGE_UNISAT_API_KEY | `string`   | bridge withdraw unisat api_key | Required |  |  |
 | BITCOIN_BRIDGE_PUBLICKEYS | `[]string` | bridge withdraw sign publickey | Required |  |  |
 | BITCOIN_BRIDGE_TIME_INTERVAL | `int64`    | bridge withdraw time interval | Required |  |  |
+| BITCOIN_BRIDGE_MULTISIG_NUM | `int`    | bridge withdraw multisig num | Required |  |  |
