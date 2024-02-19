@@ -105,22 +105,22 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		}
 
 		// start l1->b2node
-		bridgeB2NodeLogger := newLogger(ctx, "[bridge-deposit-b2node]")
-		bridgeDepositB2node, err := b2NodeClient(bitcoinCfg, bridgeB2NodeLogger)
+		b2NodeCreaterDepositLogger := newLogger(ctx, "[b2node-create-deposit]")
+		b2NodeCreateDeposit, err := b2NodeClient(bitcoinCfg, b2NodeCreaterDepositLogger)
 		if err != nil {
 			return err
 		}
 
-		bridgeDepositB2NodeService := bitcoin.NewBridgeDepositB2NodeService(bridgeDepositB2node, db, bridgeB2NodeLogger)
-		bridgeDepositB2NodeErrCh := make(chan error)
+		b2NodeCreaterDepositService := b2node.NewB2NodeCreateDepositService(b2NodeCreateDeposit, db, b2NodeCreaterDepositLogger)
+		b2NodeCreateDepositErrCh := make(chan error)
 		go func() {
-			if err := bridgeDepositB2NodeService.Start(); err != nil {
-				bridgeDepositB2NodeErrCh <- err
+			if err := b2NodeCreaterDepositService.Start(); err != nil {
+				b2NodeCreateDepositErrCh <- err
 			}
 		}()
 
 		select {
-		case err := <-bridgeDepositB2NodeErrCh:
+		case err := <-b2NodeCreateDepositErrCh:
 			return err
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}

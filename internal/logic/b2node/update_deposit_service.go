@@ -15,9 +15,7 @@ import (
 const (
 	B2NodeUpdateDepositServiceName = "B2NodeUpdateDepositService"
 	B2NodeUpdateDepositWaitTimeout = 1 * time.Minute
-	// B2NodeIndexBlockTimeout   = 1 * time.Second
-	// B2NodeIndexTxTimeout      = 100 * time.Millisecond
-	BatchDepositLimit = 100
+	BatchDepositLimit              = 100
 )
 
 // UpdateDepositService update b2node deposit record

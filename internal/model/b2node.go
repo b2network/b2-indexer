@@ -17,3 +17,31 @@ type B2Node struct {
 func (B2Node) TableName() string {
 	return "b2node_history"
 }
+
+type B2NodeColumns struct {
+	Height              string
+	BridgeModuleTxIndex string
+	TxHash              string
+	EventType           string
+	Messages            string
+	RawLog              string
+	TxCode              string
+	TxData              string
+	BridgeEventID       string
+	Status              string
+}
+
+func (B2Node) Column() B2NodeColumns {
+	return B2NodeColumns{
+		Height:              "height",
+		BridgeModuleTxIndex: "bridge_module_tx_index",
+		TxHash:              "tx_hash",
+		EventType:           "event_type",
+		Messages:            "messages",
+		RawLog:              "raw_log",
+		TxCode:              "tx_code",
+		TxData:              "tx_data",
+		BridgeEventID:       "bridge_event_id",
+		Status:              "status",
+	}
+}

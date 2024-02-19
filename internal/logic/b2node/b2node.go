@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
@@ -36,6 +37,8 @@ const (
 	EventTypeCreateDeposit = "EventCreateDeposit"
 	EventTypeSignWithdraw  = "EventSignWithdraw"
 )
+
+var txLock sync.Mutex
 
 type NodeClient struct {
 	PrivateKey    ethsecp256k1.PrivKey
@@ -120,6 +123,8 @@ func (n *NodeClient) GetGasPrice() (uint64, error) {
 }
 
 func (n *NodeClient) broadcastTx(ctx context.Context, msgs ...sdk.Msg) (*tx.BroadcastTxResponse, error) {
+	txLock.Lock()
+	defer txLock.Unlock()
 	gasPrice, err := n.GetGasPrice()
 	if err != nil {
 		return nil, fmt.Errorf("[broadcastTx][GetEthGasPrice] err: %s", err)

@@ -21,7 +21,6 @@ const (
 	BatchDepositLimit        = 100
 	WaitMinedTimeout         = 2 * time.Hour
 	HandleDepositTimeout     = 1 * time.Second
-	DepositRetry             = 10
 )
 
 // BridgeDepositService l1->l2
@@ -150,20 +149,11 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 				"data", deposit)
 		default:
 			deposit.B2TxRetry++
-			if deposit.B2TxRetry >= DepositRetry {
-				deposit.B2TxStatus = model.DepositB2TxStatusFailed
-				bis.log.Errorw("invoke deposit send tx retry exceed max",
-					"error", err.Error(),
-					"retryMax", DepositRetry,
-					"btcTxHash", deposit.BtcTxHash,
-					"data", deposit)
-			} else {
-				deposit.B2TxStatus = model.DepositB2TxStatusPending
-				bis.log.Errorw("invoke deposit send tx retry",
-					"error", err.Error(),
-					"btcTxHash", deposit.BtcTxHash,
-					"data", deposit)
-			}
+			deposit.B2TxStatus = model.DepositB2TxStatusPending
+			bis.log.Errorw("invoke deposit send tx retry",
+				"error", err.Error(),
+				"btcTxHash", deposit.BtcTxHash,
+				"data", deposit)
 			// The call may not succeed due to network reasons. sleep wait for a while
 			time.Sleep(DepositErrTimeout)
 		}
