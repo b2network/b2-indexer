@@ -17,7 +17,7 @@ import (
 var (
 	ErrParsePkScript       = errors.New("parse pkscript err")
 	ErrDecodeListenAddress = errors.New("decode listen address err")
-	ErrDestConfirmations   = errors.New("target confirmation number was not reached")
+	ErrTargetConfirmations = errors.New("target confirmation number was not reached")
 )
 
 const (
@@ -67,7 +67,7 @@ func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxPar
 
 	if blockVerboseResult.Confirmations < b.TargetConfirmations {
 		return nil, nil, fmt.Errorf("%w, current confirmations:%d target confirmations: %d",
-			ErrDestConfirmations, blockVerboseResult.Confirmations, b.TargetConfirmations)
+			ErrTargetConfirmations, blockVerboseResult.Confirmations, b.TargetConfirmations)
 	}
 
 	blockParsedResult := make([]*types.BitcoinTxParseResult, 0)

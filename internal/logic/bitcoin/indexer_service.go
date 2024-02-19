@@ -125,13 +125,19 @@ func (bis *IndexerService) OnStart() error {
 			bis.log.Infow("start parse block", "currentBlock", i, "currentTxIndex", currentTxIndex)
 			txResults, blockHeader, err := bis.txIdxr.ParseBlock(i, currentTxIndex)
 			if err != nil {
-				bis.log.Errorw("parse block unknown err", "error", err.Error(), "currentBlock", i, "currentTxIndex", currentTxIndex)
+				if errors.Is(err, ErrTargetConfirmations) {
+					bis.log.Warnw("parse block confirmations", "error", err.Error(), "currentBlock", i, "currentTxIndex", currentTxIndex)
+					time.Sleep(NewBlockWaitTimeout)
+				} else {
+					bis.log.Errorw("parse block unknown err", "error", err.Error(), "currentBlock", i, "currentTxIndex", currentTxIndex)
+				}
 				if currentTxIndex == 0 {
 					currentBlock = i - 1
 				} else {
 					currentBlock = i
 					currentTxIndex--
 				}
+
 				break
 			}
 			if len(txResults) > 0 {
