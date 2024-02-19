@@ -280,7 +280,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 			time.Sleep(time.Duration(WithdrawHandleTime) * time.Second)
 			// complete tx
 			var withdrawTxList []model.WithdrawTx
-			err := bis.db.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().Status), model.BtcTxWithdrawConfirmed).Find(&withdrawTxList).Error
+			err := bis.db.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ? OR %s = ?", model.WithdrawTx{}.Column().Status, model.WithdrawTx{}.Column().Status), model.BtcTxWithdrawConfirmed, model.BtcTxWithdrawBroadcastFailed).Find(&withdrawTxList).Error
 			if err != nil {
 				bis.log.Errorw("BridgeWithdrawService get broadcast tx failed", "error", err)
 				continue
@@ -289,7 +289,19 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				continue
 			}
 			for _, v := range withdrawTxList {
-				err := bis.b2node.UpdateWithdraw(v.BtcTxID, bridgeTypes.WithdrawStatus_WITHDRAW_STATUS_COMPLETED)
+				var b2NodeStatus bridgeTypes.WithdrawStatus
+				var withdrawTxStatus int
+				var withdrawHistoryStatus int
+				if v.Status == model.BtcTxWithdrawConfirmed {
+					b2NodeStatus = bridgeTypes.WithdrawStatus_WITHDRAW_STATUS_COMPLETED
+					withdrawTxStatus = model.BtcTxWithdrawSuccess
+					withdrawHistoryStatus = model.BtcTxWithdrawSuccess
+				} else {
+					b2NodeStatus = bridgeTypes.WithdrawStatus_WITHDRAW_STATUS_FAILED
+					withdrawTxStatus = model.BtcTxWithdrawFailed
+					withdrawHistoryStatus = model.BtcTxWithdrawPending
+				}
+				err := bis.b2node.UpdateWithdraw(v.BtcTxID, b2NodeStatus)
 				if err != nil {
 					if !errors.Is(err, bridgeTypes.ErrIndexExist) {
 						bis.Logger.Info("BridgeWithdrawService UpdateWithdraw err", "error", err, "txID", v.BtcTxID)
@@ -297,7 +309,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					}
 				}
 				err = bis.db.Transaction(func(tx *gorm.DB) error {
-					err = tx.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTx{}.Column().Status, model.BtcTxWithdrawSuccess).Error
+					err = tx.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTx{}.Column().Status, withdrawTxStatus).Error
 					if err != nil {
 						bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
 						return err
@@ -307,50 +319,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					if err != nil {
 						return err
 					}
-					err = tx.Model(&model.Withdraw{}).Where(fmt.Sprintf("%s in (?)", model.Withdraw{}.Column().B2TxHash), b2TxHashList).Update(model.Withdraw{}.Column().Status, model.BtcTxWithdrawSuccess).Error
-					if err != nil {
-						bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
-						return err
-					}
-					return nil
-				})
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			time.Sleep(time.Duration(WithdrawHandleTime) * time.Second)
-			// deal with broadcast failed tx
-			var withdrawTxList []model.WithdrawTx
-			err := bis.db.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().Status), model.BtcTxWithdrawBroadcastFailed).Find(&withdrawTxList).Error
-			if err != nil {
-				bis.log.Errorw("BridgeWithdrawService get broadcast tx failed", "error", err)
-				continue
-			}
-			if len(withdrawTxList) == 0 {
-				continue
-			}
-			for _, v := range withdrawTxList {
-				err := bis.b2node.UpdateWithdraw(v.BtcTxID, bridgeTypes.WithdrawStatus_WITHDRAW_STATUS_FAILED)
-				if err != nil {
-					if !errors.Is(err, bridgeTypes.ErrIndexExist) {
-						bis.Logger.Info("BridgeWithdrawService UpdateWithdraw err", "error", err, "txID", v.BtcTxID)
-						continue
-					}
-				}
-				err = bis.db.Transaction(func(tx *gorm.DB) error {
-					err = tx.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTx{}.Column().Status, model.BtcTxWithdrawFailed).Error
-					if err != nil {
-						bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
-						return err
-					}
-					var b2TxHashList []string
-					err = json.Unmarshal([]byte(v.B2TxHashes), &b2TxHashList)
-					if err != nil {
-						return err
-					}
-					err = tx.Model(&model.Withdraw{}).Where(fmt.Sprintf("%s in (?)", model.Withdraw{}.Column().B2TxHash), b2TxHashList).Update(model.Withdraw{}.Column().Status, model.BtcTxWithdrawPending).Error
+					err = tx.Model(&model.Withdraw{}).Where(fmt.Sprintf("%s in (?)", model.Withdraw{}.Column().B2TxHash), b2TxHashList).Update(model.Withdraw{}.Column().Status, withdrawHistoryStatus).Error
 					if err != nil {
 						bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
 						return err
