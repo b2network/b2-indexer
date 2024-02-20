@@ -221,7 +221,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					bis.Logger.Info("BridgeWithdrawService QueryWithdraw err", "error", err)
 					continue
 				}
-				count := 0
 				var signes [][]model.Sign
 				for _, signHex := range withdrawInfo.Signatures {
 					signByte, err := hex.DecodeString(signHex)
@@ -236,18 +235,15 @@ func (bis *BridgeWithdrawService) OnStart() error {
 						continue
 					}
 					signes = append(signes, sign)
-					count++
-					if count == bis.config.Bridge.MultisigNum {
-						break
-					}
 				}
-				var signList []byte
 				for index, in := range tx.TxIn {
+					witness := wire.TxWitness{nil}
 					for i := 0; i < bis.config.Bridge.MultisigNum; i++ {
 						sign := signes[i][index].Sign
-						signList = append(signList, sign...)
+						witness = append(witness, sign)
 					}
-					in.Witness = wire.TxWitness{nil, signList, preTx[index].WitnessUtxo.PkScript}
+					witness = append(witness, preTx[index].WitnessUtxo.PkScript)
+					in.Witness = witness
 				}
 				var status int
 				var reason string
@@ -686,7 +682,7 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 		return "", "", errors.New("insufficient balance")
 	}
 	tx.AddTxOut(wire.NewTxOut(changeAmount, changeScript))
-	bis.log.Infow("BridgeWithdrawService ConstructTx fee", "tx_id", tx.TxHash().String(), "fee", fee)
+	bis.log.Infow("BridgeWithdrawService ConstructTx fee", "tx_id", tx.TxHash().String(), "fee", fee, "feeRate", feeRate)
 
 	txCopy := tx.Copy()
 	unsignedPsbt, err := psbt.NewFromUnsignedTx(txCopy)
