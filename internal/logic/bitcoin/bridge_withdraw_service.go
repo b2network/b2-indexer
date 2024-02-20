@@ -818,8 +818,8 @@ func mergeDuplicateAddresses(destAddressList []string, amounts []int64) ([]strin
 		mergedAddresses[address] += amounts[i]
 	}
 
-	var uniqueAddresses []string
-	var mergedAmounts []int64
+	uniqueAddresses := make([]string, 0)
+	mergedAmounts := make([]int64, 0)
 
 	for address, amount := range mergedAddresses {
 		uniqueAddresses = append(uniqueAddresses, address)
