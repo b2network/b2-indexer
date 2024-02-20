@@ -183,14 +183,17 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				err = bis.b2node.CreateWithdraw(txID, b2TxHashes, btcTx)
 				if err != nil {
 					if !errors.Is(err, bridgeTypes.ErrIndexExist) {
-						bis.Logger.Info("BridgeWithdrawService CreateWithdraw to b2node tx err", "error", err)
+						bis.log.Errorw("BridgeWithdrawService CreateWithdraw to b2node tx err", "error", err)
 						return err
 					}
 				}
 
-				bis.Logger.Info("BridgeWithdrawService broadcast tx success", "id", ids, "b2TxHashes", b2TxHashes)
+				bis.log.Infow("BridgeWithdrawService broadcast tx success", "id", ids, "b2TxHashes", b2TxHashes)
 				return nil
 			})
+			if err != nil {
+				bis.log.Errorw("BridgeWithdrawService submit withdrawTx err", "error", err, "txID", txID)
+			}
 		}
 	}()
 
@@ -218,7 +221,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 
 				withdrawInfo, err := bis.b2node.QueryWithdraw(v.BtcTxID)
 				if err != nil {
-					bis.Logger.Info("BridgeWithdrawService QueryWithdraw err", "error", err)
+					bis.log.Errorw("BridgeWithdrawService QueryWithdraw err", "error", err)
 					continue
 				}
 				var signes [][]model.Sign
@@ -265,7 +268,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					bis.log.Errorw("BridgeWithdrawService broadcast tx update db err", "error", err, "id", v.ID)
 					continue
 				}
-				bis.Logger.Info("BridgeWithdrawService broadcast tx success", "id", v.ID, "btcTxID", v.BtcTxID)
+				bis.log.Infow("BridgeWithdrawService broadcast tx success", "id", v.ID, "btcTxID", v.BtcTxID)
 			}
 		}
 	}()
@@ -286,18 +289,18 @@ func (bis *BridgeWithdrawService) OnStart() error {
 			for _, v := range withdrawTxList {
 				txHash, err := chainhash.NewHashFromStr(v.BtcTxHash)
 				if err != nil {
-					bis.Logger.Info("BridgeWithdrawService NewHashFromStr err", "error", err, "txhash", v.BtcTxHash)
+					bis.log.Errorw("BridgeWithdrawService NewHashFromStr err", "error", err, "txhash", v.BtcTxHash)
 					continue
 				}
 				txRawResult, err := bis.btcCli.GetRawTransactionVerbose(txHash)
 				if err != nil {
-					bis.Logger.Info("BridgeWithdrawService GetRawTransactionVerbose err", "error", err, "txID", v.BtcTxID)
+					bis.log.Errorw("BridgeWithdrawService GetRawTransactionVerbose err", "error", err, "txID", v.BtcTxID)
 					continue
 				}
 				if txRawResult.Confirmations >= 6 {
 					err = bis.db.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTx{}.Column().Status, model.BtcTxWithdrawConfirmed).Error
 					if err != nil {
-						bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
+						bis.log.Errorw("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
 						continue
 					}
 				}
@@ -336,14 +339,14 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				err := bis.b2node.UpdateWithdraw(v.BtcTxID, b2NodeStatus)
 				if err != nil {
 					if !errors.Is(err, bridgeTypes.ErrIndexExist) {
-						bis.Logger.Info("BridgeWithdrawService UpdateWithdraw err", "error", err, "txID", v.BtcTxID)
+						bis.log.Errorw("BridgeWithdrawService UpdateWithdraw err", "error", err, "txID", v.BtcTxID)
 						continue
 					}
 				}
 				err = bis.db.Transaction(func(tx *gorm.DB) error {
 					err = tx.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTx{}.Column().Status, withdrawTxStatus).Error
 					if err != nil {
-						bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
+						bis.log.Errorw("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
 						return err
 					}
 					var b2TxHashList []string
@@ -353,11 +356,14 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					}
 					err = tx.Model(&model.Withdraw{}).Where(fmt.Sprintf("%s in (?)", model.Withdraw{}.Column().B2TxHash), b2TxHashList).Update(model.Withdraw{}.Column().Status, withdrawHistoryStatus).Error
 					if err != nil {
-						bis.Logger.Info("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
+						bis.log.Errorw("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", v.BtcTxID)
 						return err
 					}
 					return nil
 				})
+				if err != nil {
+					bis.log.Errorw("BridgeWithdrawService complete WithdrawTx err", "error", err, "txID", v.BtcTxID)
+				}
 			}
 		}
 	}()
@@ -405,7 +411,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				bis.log.Errorw("BridgeWithdrawService HeaderByNumber is failed:", "err", err)
 				continue
 			}
-			bis.Logger.Info("BridgeWithdrawService ethClient height", "height", latestBlock, "currentBlock", currentBlock)
+			bis.log.Infow("BridgeWithdrawService ethClient height", "height", latestBlock, "currentBlock", currentBlock)
 			if latestBlock == currentBlock {
 				continue
 			}
@@ -439,7 +445,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 							bis.log.Errorw("BridgeWithdrawService listener withdraw Marshal failed: ", "err", err)
 							continue
 						}
-						bis.Logger.Info("BridgeWithdrawService listener withdraw event: ", "num", i, "withdraw", string(value))
+						bis.log.Infow("BridgeWithdrawService listener withdraw event: ", "num", i, "withdraw", string(value))
 
 						amount := DataToBigInt(vlog, 1)
 						destAddrStr := DataToString(vlog, 0)
