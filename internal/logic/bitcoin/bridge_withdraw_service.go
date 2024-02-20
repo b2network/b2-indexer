@@ -8,12 +8,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
 	"io"
 	"math/big"
 	"net/http"
 	"strings"
 	"time"
+
+	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
 
 	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/model"
@@ -645,7 +646,6 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 		}
 		tx.AddTxOut(wire.NewTxOut(amounts[index], destinationScript))
 		outputSize += wire.NewTxOut(amounts[index], destinationScript).SerializeSize()
-		//outputSize += P2SHOutputSize
 	}
 	outputSize += P2SHOutputSize
 	var pInput psbt.PInput

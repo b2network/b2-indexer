@@ -87,7 +87,7 @@ type BridgeConfig struct {
 	// TimeInterval defines withdraw time interval
 	TimeInterval int64 `mapstructure:"time-interval" env:"BITCOIN_BRIDGE_TIME_INTERVAL"`
 	// MultisigNum defines withdraw multisig number
-	MultisigNum int `mapstructure:"multisig-num" env:"BITCOIN_BRIDGE_MULTISIG_NUM" env:"BITCOIN_BRIDGE_MULTISIG_NUM"`
+	MultisigNum int `mapstructure:"multisig-num" env:"BITCOIN_BRIDGE_MULTISIG_NUM"`
 }
 
 type EpsConfig struct {
