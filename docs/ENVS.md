@@ -37,6 +37,7 @@
 | BITCOIN_BRIDGE_B2_NODE_PRIV_KEY | `string`   | b2 node priv key | Required |  |  |
 | BITCOIN_BRIDGE_B2_NODE_GRPC_HOST | `string`   | b2 node grpc host | Required |  |  |
 | BITCOIN_BRIDGE_B2_NODE_GRPC_PORT | `string`   | b2 node grpc port | Required |  |  |
+| BITCOIN_BRIDGE_B2_NODE_DENOM | `string`   | b2 node denom | Required | `aphoton`  |  |
 | ENABLE_EPS | `bool`     | enable eps service | Required |  | false true |
 | EPS_URL | `string`   | eps url | Required |  |  |
 | EPS_AUTHORIZATION | `string`   | eps authorization | Required |  |  |
