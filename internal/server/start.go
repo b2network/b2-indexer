@@ -230,7 +230,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		}
 
 		btclient, err := rpcclient.New(&rpcclient.ConnConfig{
-			Host:         bitcoinCfg.RPCHost + ":" + bitcoinCfg.RPCPort + "/wallet/" + bitcoinCfg.WalletName,
+			Host:         bitcoinCfg.RPCHost + ":" + bitcoinCfg.RPCPort,
 			User:         bitcoinCfg.RPCUser,
 			Pass:         bitcoinCfg.RPCPass,
 			HTTPPostMode: true, // Bitcoin core only supports HTTP POST mode
@@ -240,9 +240,6 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			logger.Errorw("EVMListenerService failed to create bitcoin client", "error", err.Error())
 			return err
 		}
-		defer func() {
-			btclient.Shutdown()
-		}()
 		defer func() {
 			btclient.Shutdown()
 		}()
