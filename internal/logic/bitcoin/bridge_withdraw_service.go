@@ -175,7 +175,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					B2TxHashes: string(b2TxHashesByte),
 				}
 				if err = tx.Create(&withdrawTxData).Error; err != nil {
-					bis.log.Errorw("BridgeWithdrawService create withdrawTx err", "b2TxHashes", b2TxHashes)
+					bis.log.Errorw("BridgeWithdrawService create withdrawTx err", "b2TxHashes", b2TxHashes, "err", err)
 					return err
 				}
 
@@ -582,6 +582,7 @@ func (bis *BridgeWithdrawService) GetMempoolURL() string {
 
 func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts []int64, b2TxHashes []byte) (string, string, error) {
 	sourceAddrStr := bis.config.IndexerListenAddress
+	destAddressList, amounts = mergeDuplicateAddresses(destAddressList, amounts)
 
 	var defaultNet *chaincfg.Params
 	networkName := bis.config.NetworkName
@@ -808,4 +809,22 @@ func (bis *BridgeWithdrawService) GetMultiSigWitnessSize() int {
 	//	- WitnessScript (MultiSig)
 	// MultiSigWitnessSize = 1 + 1 + 1 + 73 + 1 + 73 + 1 + MultiSigSize
 	return 1 + 1 + 1 + MultiSigSize + bis.config.Bridge.MultisigNum*74
+}
+
+func mergeDuplicateAddresses(destAddressList []string, amounts []int64) ([]string, []int64) {
+	mergedAddresses := make(map[string]int64)
+
+	for i, address := range destAddressList {
+		mergedAddresses[address] += amounts[i]
+	}
+
+	var uniqueAddresses []string
+	var mergedAmounts []int64
+
+	for address, amount := range mergedAddresses {
+		uniqueAddresses = append(uniqueAddresses, address)
+		mergedAmounts = append(mergedAmounts, amount)
+	}
+
+	return uniqueAddresses, mergedAmounts
 }
