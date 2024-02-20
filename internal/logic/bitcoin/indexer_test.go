@@ -63,7 +63,9 @@ func TestNewBitcoinIndexer(t *testing.T) {
 			log.NewNopLogger(),
 			mockRpcClient(t),
 			&chaincfg.MainNetParams, // chainParams Do not affect the address
-			tc.listendAddress)
+			tc.listendAddress,
+			1,
+		)
 		if err != nil {
 			require.EqualError(t, err, tc.errMsg)
 		}
@@ -204,7 +206,8 @@ func mockBitcoinIndexer(t *testing.T, chainParams *chaincfg.Params) *bitcoin.Ind
 		log.NewNopLogger(),
 		mockRpcClient(t),
 		chainParams,
-		"tb1qukxc3sy3s3k5n5z9cxt3xyywgcjmp2tzudlz2n")
+		"tb1qukxc3sy3s3k5n5z9cxt3xyywgcjmp2tzudlz2n",
+		1)
 	require.NoError(t, err)
 	return indexer
 }
@@ -226,7 +229,9 @@ func bitcoinIndexerWithConfig(t *testing.T) *bitcoin.Indexer {
 		log.NewNopLogger(),
 		client,
 		bitcoinParam,
-		cfg.IndexerListenAddress)
+		cfg.IndexerListenAddress,
+		1,
+	)
 	require.NoError(t, err)
 	return indexer
 }

@@ -5,33 +5,42 @@ import (
 )
 
 const (
-	BtcTxTypeTransfer = 0 // transfer
+	BtcTxTypeTransfer = iota // transfer
+)
 
+const (
 	// b2 rollup status
-	DepositB2TxStatusSuccess                    = 0 // success
-	DepositB2TxStatusPending                    = 1 // pending
-	DepositB2TxStatusFailed                     = 2 // deposit invoke failed
-	DepositB2TxStatusWaitMinedFailed            = 3 // deposit wait mined failed
-	DepositB2TxStatusTxHashExist                = 4 // tx hash exist, deposit have been called
-	DepositB2TxStatusWaitMinedStatusFailed      = 5 // deposit wait mined status failed, status != 1
-	DepositB2TxStatusInsufficientBalance        = 6 // deposit insufficient balance
-	DepositB2TxStatusContextDeadlineExceeded    = 7 // deposit client context deadline exceeded, Chain transaction is stuck
-	DepositB2TxStatusFromAccountGasInsufficient = 8 // deposit evm from account gas insufficient
-	DepositB2TxStatusWaitMined                  = 9 // deposit wait mined
+	DepositB2TxStatusSuccess                    = iota // success
+	DepositB2TxStatusPending                           // pending
+	DepositB2TxStatusFailed                            // deposit invoke failed
+	DepositB2TxStatusWaitMinedFailed                   // deposit wait mined failed
+	DepositB2TxStatusTxHashExist                       // tx hash exist, deposit have been called
+	DepositB2TxStatusWaitMinedStatusFailed             // deposit wait mined status failed, status != 1
+	DepositB2TxStatusInsufficientBalance               // deposit insufficient balance
+	DepositB2TxStatusContextDeadlineExceeded           // deposit client context deadline exceeded, Chain transaction is stuck
+	DepositB2TxStatusFromAccountGasInsufficient        // deposit evm from account gas insufficient
+	DepositB2TxStatusWaitMined                         // deposit wait mined
+)
 
-	DepositB2EoaTxStatusSuccess                 = 0 // eoa transfer success
-	DepositB2EoaTxStatusPending                 = 1 // eoa transfer pending
-	DepositB2EoaTxStatusFailed                  = 2 // eoa transfer failed
-	DepositB2EoaTxStatusWaitMinedFailed         = 3 // eoa transfer wait mined failed
-	DepositB2EoaTxStatusContextDeadlineExceeded = 7 // eoa transfer client context deadline exceeded
+const (
+	DepositB2EoaTxStatusSuccess         = iota // eoa transfer success
+	DepositB2EoaTxStatusPending                // eoa transfer pending
+	DepositB2EoaTxStatusFailed                 // eoa transfer failed
+	DepositB2EoaTxStatusWaitMinedFailed        // eoa transfer wait mined failed
+	_
+	_
+	_
+	DepositB2EoaTxStatusContextDeadlineExceeded // eoa transfer client context deadline exceeded
+)
 
+const (
 	// b2 node status
-	DepositB2NodeTxStatusSuccess                  = 0 // success
-	DepositB2NodeTxStatusPending                  = 1 // pending
-	DepositB2NodeTxStatusFailed                   = 2 // deposit invoke failed
-	DepositB2NodeTxStatusRollupPending            = 3 // deposit success wait rollup invoke
-	DepositB2NodeTxStatusTxHashExist              = 4 // tx hash exist, b2-node deposit have been called
-	DepositB2NodeTxStatusErrNotCallerGroupMembers = 5 // b2 node not caller group members
+	DepositB2NodeTxStatusSuccess                  = iota // success
+	DepositB2NodeTxStatusPending                         // pending
+	DepositB2NodeTxStatusFailed                          // deposit invoke failed
+	DepositB2NodeTxStatusRollupPending                   // deposit success wait rollup invoke
+	DepositB2NodeTxStatusTxHashExist                     // tx hash exist, b2-node deposit have been called
+	DepositB2NodeTxStatusErrNotCallerGroupMembers        // b2 node not caller group members
 )
 
 type Deposit struct {

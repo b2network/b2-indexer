@@ -110,5 +110,6 @@ func (bis *B2NodeCreateDepositService) HandleDeposit(deposit model.Deposit) erro
 	if err != nil {
 		return err
 	}
+	bis.log.Infow("b2node create deposit success", "deposit", deposit)
 	return nil
 }

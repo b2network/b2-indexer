@@ -36,6 +36,7 @@ const (
 
 	EventTypeCreateDeposit = "EventCreateDeposit"
 	EventTypeSignWithdraw  = "EventSignWithdraw"
+	EventTypeUpdateDeposit = "EventUpdateDeposit"
 )
 
 var txLock sync.Mutex
@@ -98,8 +99,12 @@ func (n *NodeClient) BridgeModuleEventType(eventType string) string {
 	return "ethermint.bridge.v1." + eventType
 }
 
+func (n *NodeClient) GetGrpcConn() *grpc.ClientConn {
+	return n.GrpcConn
+}
+
 func (n *NodeClient) GetAccountInfo(address string) (*eTypes.EthAccount, error) {
-	authClient := authTypes.NewQueryClient(n.GrpcConn)
+	authClient := authTypes.NewQueryClient(n.GetGrpcConn())
 	ctx := context.Background()
 	res, err := authClient.Account(ctx, &authTypes.QueryAccountRequest{Address: address})
 	if err != nil {
@@ -133,7 +138,7 @@ func (n *NodeClient) broadcastTx(ctx context.Context, msgs ...sdk.Msg) (*tx.Broa
 	if err != nil {
 		return nil, fmt.Errorf("[broadcastTx] err: %s", err)
 	}
-	txClient := tx.NewServiceClient(n.GrpcConn)
+	txClient := tx.NewServiceClient(n.GetGrpcConn())
 	res, err := txClient.BroadcastTx(ctx, &tx.BroadcastTxRequest{
 		Mode:    tx.BroadcastMode_BROADCAST_MODE_BLOCK,
 		TxBytes: txBytes,
@@ -245,7 +250,7 @@ func (n *NodeClient) UpdateDeposit(hash string, status bridgeTypes.DepositStatus
 }
 
 func (n *NodeClient) QueryDeposit(hash string) (*bridgeTypes.Deposit, error) {
-	queryClient := bridgeTypes.NewQueryClient(n.GrpcConn)
+	queryClient := bridgeTypes.NewQueryClient(n.GetGrpcConn())
 	res, err := queryClient.Deposit(context.Background(), &bridgeTypes.QueryGetDepositRequest{
 		TxHash: hash,
 	})
@@ -353,6 +358,24 @@ func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.
 							BridgeEventID:       withdrawTxID,
 						}
 						b2NodeTxParseResult = append(b2NodeTxParseResult, &txResult)
+					case n.BridgeModuleEventType(EventTypeUpdateDeposit):
+						updateDepositID := ""
+						for _, attr := range event.Attributes {
+							if attr.Key == "tx_hash" {
+								updateDepositID = strings.Trim(attr.Value, "\"")
+							}
+						}
+						txResult := types.B2NodeTxParseResult{
+							Height:              blockHeight,
+							TxHash:              tx.Txhash,
+							EventType:           EventTypeUpdateDeposit,
+							BridgeModuleTxIndex: txIndex,
+							RawLog:              tx.RawLog,
+							TxCode:              tx.Code,
+							TxData:              tx.Data,
+							BridgeEventID:       updateDepositID,
+						}
+						b2NodeTxParseResult = append(b2NodeTxParseResult, &txResult)
 					}
 				}
 			}
@@ -362,7 +385,7 @@ func (n *NodeClient) ParseBlockBridgeEvent(height int64, index int64) ([]*types.
 }
 
 func (n *NodeClient) BaseFee() (uint64, error) {
-	queryClient := feeTypes.NewQueryClient(n.GrpcConn)
+	queryClient := feeTypes.NewQueryClient(n.GetGrpcConn())
 	res, err := queryClient.Params(context.Background(), &feeTypes.QueryParamsRequest{})
 	if err != nil {
 		return 0, err
@@ -434,7 +457,7 @@ func (n *NodeClient) CreateWithdraw(txID string, txHashList []string, encodedDat
 }
 
 func (n *NodeClient) QueryWithdraw(txID string) (*bridgeTypes.Withdraw, error) {
-	queryClient := bridgeTypes.NewQueryClient(n.GrpcConn)
+	queryClient := bridgeTypes.NewQueryClient(n.GetGrpcConn())
 	res, err := queryClient.Withdraw(context.Background(), &bridgeTypes.QueryGetWithdrawRequest{
 		TxId: txID,
 	})
