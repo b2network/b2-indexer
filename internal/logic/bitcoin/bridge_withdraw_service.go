@@ -3,7 +3,6 @@ package bitcoin
 import (
 	"bytes"
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -31,7 +30,6 @@ import (
 	"gorm.io/gorm"
 
 	"github.com/btcsuite/btcd/btcutil"
-	"github.com/btcsuite/btcd/btcutil/hdkeychain"
 	"github.com/btcsuite/btcd/btcutil/psbt"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -650,7 +648,7 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 		tx.AddTxOut(wire.NewTxOut(amounts[index], destinationScript))
 		outputSize += wire.NewTxOut(amounts[index], destinationScript).SerializeSize()
 	}
-	outputSize += P2SHOutputSize
+	outputSize += wire.NewTxOut(0, changeScript).SerializeSize()
 	var pInput psbt.PInput
 	feeRate, err := bis.GetFeeRate()
 	if err != nil {
@@ -665,7 +663,7 @@ func (bis *BridgeWithdrawService) ConstructTx(destAddressList []string, amounts 
 		outpoint := wire.NewOutPoint(&unspentTx.Outpoint.Hash, unspentTx.Outpoint.Index)
 		txIn := wire.NewTxIn(outpoint, nil, nil)
 		tx.AddTxIn(txIn)
-		multiSigScript, err := bis.GetMultiSigScript(bis.config.Bridge.PublicKeys, 2)
+		multiSigScript, err := bis.GetMultiSigScript(bis.config.Bridge.PublicKeys, bis.config.Bridge.MultisigNum)
 		if err != nil {
 			bis.log.Errorw("BridgeWithdrawService ConstructTx GenerateMultiSigScript err", "error", err)
 			return "", "", err
@@ -737,46 +735,6 @@ func (bis *BridgeWithdrawService) GetMultiSigScript(pubs []string, minSignNum in
 		return nil, err
 	}
 	return multiSigScript, nil
-}
-
-func (bis *BridgeWithdrawService) GenerateMultiSigScript(xpubs []string, minSignNum int) (string, []byte, error) {
-	var defaultNet *chaincfg.Params
-	networkName := bis.config.NetworkName
-	defaultNet = config.ChainParams(networkName)
-	allPubKeys := make([]*btcutil.AddressPubKey, 0, len(xpubs))
-	for _, xpub := range xpubs {
-		exPub, err := hdkeychain.NewKeyFromString(strings.TrimSpace(xpub))
-		if err != nil {
-			return "", nil, err
-		}
-		pubKey, err := exPub.ECPubKey()
-		if err != nil {
-			return "", nil, err
-		}
-		addressPubKey, err := btcutil.NewAddressPubKey(pubKey.SerializeCompressed(), defaultNet)
-		if err != nil {
-			return "", nil, err
-		}
-		allPubKeys = append(allPubKeys, addressPubKey)
-	}
-	builder := txscript.NewScriptBuilder()
-	builder.AddInt64(int64(minSignNum))
-	for _, key := range allPubKeys {
-		builder.AddData(key.ScriptAddress())
-	}
-	builder.AddInt64(int64(len(allPubKeys)))
-	builder.AddOp(txscript.OP_CHECKMULTISIG)
-	script, err := builder.Script()
-	if err != nil {
-		return "", nil, err
-	}
-	h256 := sha256.Sum256(script)
-	witnessProg := h256[:]
-	address, err := btcutil.NewAddressWitnessScriptHash(witnessProg, defaultNet)
-	if err != nil {
-		return "", nil, err
-	}
-	return address.EncodeAddress(), script, nil
 }
 
 func (bis *BridgeWithdrawService) GetFeeRate() (*model.FeeRates, error) {
