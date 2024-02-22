@@ -1,6 +1,7 @@
 package bitcoin
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -116,7 +117,6 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) ([]*types.BitcoinTxPa
 			}
 			return nil, err
 		}
-
 		// if pk address eq dest listened address, after parse from address by vin prev tx
 		if pkAddress == b.listenAddress.EncodeAddress() {
 			fromAddress, err := b.parseFromAddress(txResult)
@@ -139,7 +139,7 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) ([]*types.BitcoinTxPa
 // parseFromAddress from vin parse from address
 // return all possible values parsed from address
 // TODO: at present, it is assumed that it is a single from, and multiple from needs to be tested later
-func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []string, err error) {
+func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []types.BitcoinFrom, err error) {
 	for _, vin := range txResult.TxIn {
 		// get prev tx hash
 		prevTxID := vin.PreviousOutPoint.Hash
@@ -160,8 +160,15 @@ func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []string, 
 			}
 			return nil, err
 		}
-
-		fromAddress = append(fromAddress, vinPkAddress)
+		// parse sign pubkey
+		pubKey, err := b.parsePubKey(vin)
+		if err != nil {
+			return nil, err
+		}
+		fromAddress = append(fromAddress, types.BitcoinFrom{
+			Address: vinPkAddress,
+			PubKey:  pubKey,
+		})
 	}
 	return
 }
@@ -194,4 +201,15 @@ func (b *Indexer) LatestBlock() (int64, error) {
 // BlockChainInfo get block chain info
 func (b *Indexer) BlockChainInfo() (*btcjson.GetBlockChainInfoResult, error) {
 	return b.client.GetBlockChainInfo()
+}
+
+func (b *Indexer) parsePubKey(txIn *wire.TxIn) (string, error) {
+	if txIn.Witness != nil {
+		//P2WPKH
+		if len(txIn.Witness) == 2 {
+			pubkey := txIn.Witness[1]
+			return hex.EncodeToString(pubkey), nil
+		}
+	}
+	return "", fmt.Errorf("parse pubkey failed, not found pubkey or nonsupport ")
 }

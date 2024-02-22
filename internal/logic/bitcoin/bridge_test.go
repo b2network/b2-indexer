@@ -12,7 +12,9 @@ import (
 
 	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/logic/bitcoin"
+	b2types "github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -44,19 +46,15 @@ func TestNewBridge(t *testing.T) {
 		EthPrivKey:      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 		ABI:             "abi.json",
 		GasLimit:        1000000,
-		AASCARegistry:   "0x123456789abcdefgh",
-		AAKernelFactory: "0x123456789abcdefg",
 	}
 
-	bridge, err := bitcoin.NewBridge(bridgeCfg, abiPath, log.NewNopLogger())
+	bridge, err := bitcoin.NewBridge(bridgeCfg, abiPath, log.NewNopLogger(), &chaincfg.TestNet3Params)
 	assert.NoError(t, err)
 	assert.NotNil(t, bridge)
 	assert.Equal(t, bridgeCfg.EthRPCURL, bridge.EthRPCURL)
 	assert.Equal(t, common.HexToAddress("0x123456789abcdef"), bridge.ContractAddress)
 	assert.Equal(t, privateKey, bridge.EthPrivKey)
 	assert.Equal(t, ABI, bridge.ABI)
-	assert.Equal(t, common.HexToAddress("0x123456789abcdefgh"), bridge.AASCARegistry)
-	assert.Equal(t, common.HexToAddress("0x123456789abcdefg"), bridge.AAKernelFactory)
 }
 
 // TestLocalTransfer only test in local
@@ -70,7 +68,9 @@ func TestLocalTransfer(t *testing.T) {
 		{
 			name: "success",
 			args: []interface{}{
-				"tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
+				b2types.BitcoinFrom{
+					Address: "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
+				},
 				int64(123456),
 			},
 			err: nil,
@@ -78,7 +78,7 @@ func TestLocalTransfer(t *testing.T) {
 		{
 			name: "fail: address empty",
 			args: []interface{}{
-				"",
+				b2types.BitcoinFrom{},
 				int64(1234),
 			},
 			err: errors.New("bitcoin address is empty"),
@@ -87,7 +87,7 @@ func TestLocalTransfer(t *testing.T) {
 
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
-			hex, err := bridge.Transfer(tc.args[0].(string), tc.args[1].(int64))
+			hex, err := bridge.Transfer(tc.args[0].(b2types.BitcoinFrom), tc.args[1].(int64))
 			if err != nil {
 				assert.Equal(t, tc.err, err)
 			}
@@ -123,7 +123,9 @@ func TestLocalBitcoinAddressToEthAddress(t *testing.T) {
 
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
-			ethAddress, err := bridge.BitcoinAddressToEthAddress(tc.bitcoinAddress)
+			ethAddress, err := bridge.BitcoinAddressToEthAddress(b2types.BitcoinFrom{
+				Address: tc.bitcoinAddress,
+			})
 			require.NoError(t, err)
 			if !common.IsHexAddress(ethAddress) {
 				t.Errorf("bitcoinAddress: %s, ethAddress: %s", tc.bitcoinAddress, ethAddress)
@@ -178,8 +180,7 @@ func TestABIPack(t *testing.T) {
 func bridgeWithConfig(t *testing.T) *bitcoin.Bridge {
 	config, err := config.LoadBitcoinConfig("")
 	require.NoError(t, err)
-
-	bridge, err := bitcoin.NewBridge(config.Bridge, "./testdata", log.NewNopLogger())
+	bridge, err := bitcoin.NewBridge(config.Bridge, "./", log.NewNopLogger(), &chaincfg.TestNet3Params)
 	require.NoError(t, err)
 	return bridge
 }
@@ -187,7 +188,9 @@ func bridgeWithConfig(t *testing.T) *bitcoin.Bridge {
 func TestLocalDepositWaitMined(t *testing.T) {
 	bridge := bridgeWithConfig(t)
 	uuid := randHash(t)
-	address := "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy1"
+	address := b2types.BitcoinFrom{
+		Address: "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy1",
+	}
 	value := 123
 	bigValue := 11111111111111111
 
@@ -196,7 +199,7 @@ func TestLocalDepositWaitMined(t *testing.T) {
 	if err != nil {
 		assert.EqualError(t, errors.New("tx id is empty"), err.Error())
 	}
-	_, _, _, err = bridge.Deposit(uuid, "", int64(value))
+	_, _, _, err = bridge.Deposit(uuid, b2types.BitcoinFrom{}, int64(value))
 	if err != nil {
 		assert.EqualError(t, errors.New("bitcoin address is empty"), err.Error())
 	}

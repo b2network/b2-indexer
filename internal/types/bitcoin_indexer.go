@@ -12,7 +12,7 @@ type BITCOINTxIndexer interface {
 
 type BitcoinTxParseResult struct {
 	// from is l2 user address, by parse bitcoin get the address
-	From []string
+	From []BitcoinFrom
 	// to is listening address
 	To string
 	// value is from transfer amount
@@ -23,4 +23,9 @@ type BitcoinTxParseResult struct {
 	TxType string
 	// index is the index of the transaction in the block
 	Index int64
+}
+
+type BitcoinFrom struct {
+	Address string
+	PubKey  string
 }

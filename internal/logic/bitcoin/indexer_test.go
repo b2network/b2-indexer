@@ -1,6 +1,7 @@
 package bitcoin_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/b2network/b2-indexer/internal/config"
@@ -147,16 +148,17 @@ func TestLocalParseTx(t *testing.T) {
 		dest   []*types.BitcoinTxParseResult
 	}{
 		{
-			name:   "success",
-			height: 2540186,
+			name: "success",
+			// height: 2579043,
+			height: 2579061,
 			dest: []*types.BitcoinTxParseResult{
 				{
 					TxID:   "317ce1cc2f987c95d19ba13044c6298953d91c82274a2c34d7ac92a8df3dab0f",
 					TxType: bitcoin.TxTypeTransfer,
 					Index:  350,
-					From:   []string{"tb1qravmtnqvtpnmugeg7q90ck69lzznflu4w9amnw"},
-					To:     "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
-					Value:  2306,
+					// From:   []{"tb1qravmtnqvtpnmugeg7q90ck69lzznflu4w9amnw"},
+					To:    "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
+					Value: 2306,
 				},
 			},
 		},
@@ -169,6 +171,12 @@ func TestLocalParseTx(t *testing.T) {
 
 	for _, tc := range testCases {
 		results, _, err := indexer.ParseBlock(tc.height, 0)
+		for _, v := range results {
+			for _, vv := range v.From {
+				fmt.Println(vv.Address)
+				fmt.Println(vv.PubKey)
+			}
+		}
 		require.NoError(t, err)
 		require.Equal(t, results, tc.dest)
 	}
@@ -189,10 +197,12 @@ func TestLocalBlockChainInfo(t *testing.T) {
 }
 
 func mockRpcClient(t *testing.T) *rpcclient.Client {
+	cfg, err := config.LoadBitcoinConfig("")
+	require.NoError(t, err)
 	connCfg := &rpcclient.ConnConfig{
-		Host:         "127.0.0.1:38332",
-		User:         "user",
-		Pass:         "password",
+		Host:         cfg.RPCHost + ":" + cfg.RPCPort,
+		User:         cfg.RPCUser,
+		Pass:         cfg.RPCPass,
 		HTTPPostMode: true,
 		DisableTLS:   true,
 	}
@@ -202,18 +212,19 @@ func mockRpcClient(t *testing.T) *rpcclient.Client {
 }
 
 func mockBitcoinIndexer(t *testing.T, chainParams *chaincfg.Params) *bitcoin.Indexer {
+	cfg, err := config.LoadBitcoinConfig("")
 	indexer, err := bitcoin.NewBitcoinIndexer(
 		log.NewNopLogger(),
 		mockRpcClient(t),
 		chainParams,
-		"tb1qukxc3sy3s3k5n5z9cxt3xyywgcjmp2tzudlz2n",
-		1)
+		cfg.IndexerListenAddress,
+		cfg.IndexerListenTargetConfirmations)
 	require.NoError(t, err)
 	return indexer
 }
 
 func bitcoinIndexerWithConfig(t *testing.T) *bitcoin.Indexer {
-	cfg, err := config.LoadBitcoinConfig("./testdata")
+	cfg, err := config.LoadBitcoinConfig("")
 	require.NoError(t, err)
 	connCfg := &rpcclient.ConnConfig{
 		Host:         cfg.RPCHost + ":" + cfg.RPCPort,
@@ -230,7 +241,7 @@ func bitcoinIndexerWithConfig(t *testing.T) *bitcoin.Indexer {
 		client,
 		bitcoinParam,
 		cfg.IndexerListenAddress,
-		1,
+		cfg.IndexerListenTargetConfirmations,
 	)
 	require.NoError(t, err)
 	return indexer

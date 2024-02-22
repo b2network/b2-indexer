@@ -51,6 +51,7 @@ type Deposit struct {
 	BtcTxType        int       `json:"btc_tx_type" gorm:"type:SMALLINT;default:0;comment:btc tx type"`
 	BtcFroms         string    `json:"btc_froms" gorm:"type:jsonb;comment:bitcoin transfer, from may be multiple"`
 	BtcFrom          string    `json:"btc_from" gorm:"type:varchar(64);not null;default:'';index"`
+	BtcFromPubKey    string    `json:"btc_from_pubkey" gorm:"type:varchar(128);not null;default:''"`
 	BtcTo            string    `json:"btc_to" gorm:"type:varchar(64);not null;default:'';index"`
 	BtcFromAAAddress string    `json:"btc_from_aa_address" gorm:"type:varchar(42);default:'';comment:from aa address"`
 	BtcValue         int64     `json:"btc_value" gorm:"default:0;comment:bitcoin transfer value"`

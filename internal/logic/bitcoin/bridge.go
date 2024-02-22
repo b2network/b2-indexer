@@ -12,9 +12,11 @@ import (
 	"path"
 	"strings"
 
-	b2aa "github.com/b2network/b2-go-aa-utils"
 	"github.com/b2network/b2-indexer/internal/config"
+	b2types "github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
+	"github.com/b2network/b2-indexer/pkg/particle"
+	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -39,14 +41,14 @@ type Bridge struct {
 	ContractAddress common.Address
 	ABI             string
 	GasLimit        uint64
-	// AA contract address
-	AASCARegistry   common.Address
-	AAKernelFactory common.Address
 	logger          log.Logger
+	// particle aa
+	particle     *particle.Particle
+	bitcoinParam *chaincfg.Params
 }
 
 // NewBridge new bridge
-func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger) (*Bridge, error) {
+func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger, bitcoinParam *chaincfg.Params) (*Bridge, error) {
 	rpcURL, err := url.ParseRequestURI(bridgeCfg.EthRPCURL)
 	if err != nil {
 		return nil, err
@@ -67,21 +69,30 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger)
 		ABI = string(abi)
 	}
 
+	particle, err := particle.NewParticle(
+		bridgeCfg.AAParticleRPC,
+		bridgeCfg.AAParticleProjectID,
+		bridgeCfg.AAParticleServerKey,
+		bridgeCfg.AAParticleChainID)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Bridge{
 		EthRPCURL:       rpcURL.String(),
 		ContractAddress: common.HexToAddress(bridgeCfg.ContractAddress),
 		EthPrivKey:      privateKey,
 		ABI:             ABI,
 		GasLimit:        bridgeCfg.GasLimit,
-		AASCARegistry:   common.HexToAddress(bridgeCfg.AASCARegistry),
-		AAKernelFactory: common.HexToAddress(bridgeCfg.AAKernelFactory),
 		logger:          log,
+		particle:        particle,
+		bitcoinParam:    bitcoinParam,
 	}, nil
 }
 
 // Deposit to ethereum
-func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (*types.Transaction, []byte, string, error) {
-	if bitcoinAddress == "" {
+func (b *Bridge) Deposit(hash string, bitcoinAddress b2types.BitcoinFrom, amount int64) (*types.Transaction, []byte, string, error) {
+	if bitcoinAddress.Address == "" {
 		return nil, nil, "", fmt.Errorf("bitcoin address is empty")
 	}
 
@@ -111,8 +122,8 @@ func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (*typ
 
 // Transfer to ethereum
 // TODO: temp handle, future remove
-func (b *Bridge) Transfer(bitcoinAddress string, amount int64) (*types.Transaction, error) {
-	if bitcoinAddress == "" {
+func (b *Bridge) Transfer(bitcoinAddress b2types.BitcoinFrom, amount int64) (*types.Transaction, error) {
+	if bitcoinAddress.Address == "" {
 		return nil, fmt.Errorf("bitcoin address is empty")
 	}
 
@@ -221,17 +232,18 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 }
 
 // BitcoinAddressToEthAddress bitcoin address to eth address
-func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress string) (string, error) {
-	client, err := ethclient.Dial(b.EthRPCURL)
+func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
+	aaBtcAccount, err := b.particle.AAGetBTCAccount([]string{bitcoinAddress.PubKey})
 	if err != nil {
 		return "", err
 	}
 
-	targetEthAddress, err := b2aa.GetSCAAddress(client, b.AASCARegistry, b.AAKernelFactory, bitcoinAddress)
-	if err != nil {
-		return "", err
+	if len(aaBtcAccount.Result) != 1 {
+		b.logger.Errorw("AAGetBTCAccount", "result", aaBtcAccount)
+		return "", fmt.Errorf("AAGetBTCAccount result not match")
 	}
-	return targetEthAddress.String(), nil
+	b.logger.Infow("AAGetBTCAccount", "result", aaBtcAccount.Result[0])
+	return aaBtcAccount.Result[0].SmartAccountAddress, nil
 }
 
 // WaitMined wait tx mined
