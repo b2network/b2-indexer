@@ -403,10 +403,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 	}()
 
 	for {
-		time.Sleep(time.Minute)
-	}
-
-	for {
 		// listen withdraw
 		time.Sleep(time.Duration(WithdrawHandleTime) * time.Second)
 		var currentBlock uint64 // index current block number
