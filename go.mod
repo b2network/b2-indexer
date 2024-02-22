@@ -7,9 +7,7 @@ require (
 	github.com/b2network/b2-go-aa-utils v1.0.2
 	github.com/btcsuite/btcd v0.24.0
 	github.com/btcsuite/btcd/btcutil v1.1.5
-	github.com/btcsuite/btcd/btcutil/psbt v1.1.9
 	github.com/caarlos0/env/v6 v6.10.1
-	github.com/cometbft/cometbft v0.38.5
 	github.com/cosmos/cosmos-sdk v0.46.11
 	github.com/ethereum/go-ethereum v1.10.26
 	github.com/evmos/ethermint v0.22.0
@@ -23,7 +21,11 @@ require (
 	gorm.io/gorm v1.25.5
 )
 
-require github.com/tendermint/tendermint v0.34.27
+require (
+	github.com/btcsuite/btcd/btcutil/psbt v1.1.9
+	github.com/cometbft/cometbft v0.38.5
+	github.com/tendermint/tendermint v0.34.27
+)
 
 require (
 	github.com/deckarep/golang-set v1.8.0 // indirect
@@ -195,7 +197,7 @@ require (
 )
 
 replace (
-	github.com/evmos/ethermint => github.com/b2network/b2-node v0.0.0-20240206041603-7e77da937615
+	github.com/evmos/ethermint => github.com/b2network/b2-node v0.0.0-20240221101231-00b820aece2b
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.3-alpha.regen.1
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.27
 )

@@ -503,3 +503,51 @@ func (n *NodeClient) UpdateWithdraw(txID string, status bridgeTypes.WithdrawStat
 	}
 	return nil
 }
+
+func (n *NodeClient) DeleteWithdraw(txID string) error {
+	msg := bridgeTypes.NewMsgDeleteWithdraw(n.B2NodeAddress, txID)
+	ctx := context.Background()
+	msgResponse, err := n.broadcastTx(ctx, msg)
+	if err != nil {
+		return fmt.Errorf("[DeleteWithdraw] err: %s", err)
+	}
+	code := msgResponse.TxResponse.Code
+	rawLog := msgResponse.TxResponse.RawLog
+	if code != 0 {
+		switch code {
+		case bridgeTypes.ErrIndexNotExist.ABCICode():
+			return bridgeTypes.ErrIndexNotExist
+		case bridgeTypes.ErrInvalidStatus.ABCICode():
+			return bridgeTypes.ErrInvalidStatus
+		case bridgeTypes.ErrNotCallerGroupMembers.ABCICode():
+			return bridgeTypes.ErrNotCallerGroupMembers
+		}
+		n.log.Errorw("code", code)
+		return fmt.Errorf("[DeleteWithdraw][msgResponse.TxResponse.Code] err: %s", rawLog)
+	}
+	hexData := msgResponse.TxResponse.Data
+	byteData, err := hex.DecodeString(hexData)
+	if err != nil {
+		return fmt.Errorf("[DeleteWithdraw][hex.DecodeString] err: %s", err)
+	}
+	pbMsg := &sdk.TxMsgData{}
+	err = pbMsg.Unmarshal(byteData)
+	if err != nil {
+		return fmt.Errorf("[DeleteWithdraw][pbMsg.Unmarshal] err: %s", err)
+	}
+	return nil
+}
+
+func (n *NodeClient) QueryWithdrawByTxHash(txHash string) (*bridgeTypes.RollupTx, error) {
+	queryClient := bridgeTypes.NewQueryClient(n.GetGrpcConn())
+	res, err := queryClient.RollupTx(context.Background(), &bridgeTypes.QueryGetRollupTxRequest{
+		TxHash: txHash,
+	})
+	if err != nil {
+		if err == bridgeTypes.ErrIndexNotExist {
+			return nil, bridgeTypes.ErrIndexNotExist
+		}
+		return nil, fmt.Errorf("[QueryWithdraw] err: %s", err)
+	}
+	return &res.RollupTx, nil
+}
