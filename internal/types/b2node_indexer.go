@@ -22,6 +22,10 @@ type B2NODEBridge interface {
 	QueryWithdraw(txID string) (*bridgeTypes.Withdraw, error)
 	// UpdateWithdraw b2node update withdraw status
 	UpdateWithdraw(txID string, status bridgeTypes.WithdrawStatus) error
+	// DeleteWithdraw b2node delete withdraw
+	DeleteWithdraw(txID string) error
+	// QueryWithdrawByTxHash queries a withdraw record by tx_hash.
+	QueryWithdrawByTxHash(txHash string) (*bridgeTypes.RollupTx, error)
 }
 
 type B2NodeTxParseResult struct {
