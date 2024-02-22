@@ -365,17 +365,17 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					b2NodeStatus = bridgeTypes.WithdrawStatus_WITHDRAW_STATUS_COMPLETED
 					withdrawTxStatus = model.BtcTxWithdrawSuccess
 					withdrawHistoryStatus = model.BtcTxWithdrawSuccess
+					err := bis.b2node.UpdateWithdraw(v.BtcTxID, b2NodeStatus)
+					if err != nil {
+						if !errors.Is(err, bridgeTypes.ErrIndexExist) {
+							bis.log.Errorw("BridgeWithdrawService UpdateWithdraw err", "error", err, "txID", v.BtcTxID)
+							continue
+						}
+					}
 				} else {
 					b2NodeStatus = bridgeTypes.WithdrawStatus_WITHDRAW_STATUS_FAILED
 					withdrawTxStatus = model.BtcTxWithdrawFailed
 					withdrawHistoryStatus = model.BtcTxWithdrawPending
-				}
-				err := bis.b2node.UpdateWithdraw(v.BtcTxID, b2NodeStatus)
-				if err != nil {
-					if !errors.Is(err, bridgeTypes.ErrIndexExist) {
-						bis.log.Errorw("BridgeWithdrawService UpdateWithdraw err", "error", err, "txID", v.BtcTxID)
-						continue
-					}
 				}
 				err = bis.db.Transaction(func(tx *gorm.DB) error {
 					err = tx.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Update(model.WithdrawTx{}.Column().Status, withdrawTxStatus).Error
