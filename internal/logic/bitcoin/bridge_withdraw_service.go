@@ -26,8 +26,8 @@ import (
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
-	"github.com/cometbft/cometbft/libs/service"
 	"github.com/go-resty/resty/v2"
+	"github.com/tendermint/tendermint/libs/service"
 	"gorm.io/gorm"
 
 	"github.com/btcsuite/btcd/btcutil"

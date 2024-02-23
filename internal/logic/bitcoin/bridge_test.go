@@ -41,11 +41,15 @@ func TestNewBridge(t *testing.T) {
 	}
 
 	bridgeCfg := config.BridgeConfig{
-		EthRPCURL:       "http://localhost:8545",
-		ContractAddress: "0x123456789abcdef",
-		EthPrivKey:      "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-		ABI:             "abi.json",
-		GasLimit:        1000000,
+		EthRPCURL:           "http://localhost:8545",
+		ContractAddress:     "0x123456789abcdef",
+		EthPrivKey:          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+		ABI:                 "abi.json",
+		GasLimit:            1000000,
+		AAParticleRPC:       "http://localhost:8545",
+		AAParticleProjectID: "1111",
+		AAParticleServerKey: "",
+		AAParticleChainID:   1102,
 	}
 
 	bridge, err := bitcoin.NewBridge(bridgeCfg, abiPath, log.NewNopLogger(), &chaincfg.TestNet3Params)
@@ -70,8 +74,9 @@ func TestLocalTransfer(t *testing.T) {
 			args: []interface{}{
 				b2types.BitcoinFrom{
 					Address: "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
+					PubKey:  "0254639ea1f3c20b1930cc5f0db623b67959c1dbaeb19a3b2d57646bf74ed0c275",
 				},
-				int64(123456),
+				int64(20183783146),
 			},
 			err: nil,
 		},
@@ -101,32 +106,34 @@ func TestLocalBitcoinAddressToEthAddress(t *testing.T) {
 	bridge := bridgeWithConfig(t)
 	testCase := []struct {
 		name           string
-		bitcoinAddress string
+		bitcoinAddress b2types.BitcoinFrom
+		wantErr        bool
 	}{
 		{
-			name:           "success: Segwit (bech32)",
-			bitcoinAddress: "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
+			name: "success",
+			bitcoinAddress: b2types.BitcoinFrom{
+				Address: "1McUczq9Cq8DL1YwaQCr6nSseuEBkpQdBh",
+				PubKey:  "03fcff099be3b8a3cd38b21bfec9157346738c9eec7f28526d20e3b8bb7bb86e5b",
+			},
+			wantErr: false,
 		},
 		{
-			name:           "success: Segwit (bech32)",
-			bitcoinAddress: "bc1qf60zw2gec5qg2mk4nyjl0slnytu0s0p28k9her",
-		},
-		{
-			name:           "success: Legacy",
-			bitcoinAddress: "1KEFsFXrvuzMGd7Sdkwp7iTDcEcEv3GP1y",
-		},
-		{
-			name:           "success: Segwit",
-			bitcoinAddress: "3Q4g8hgbwZLZ7vA6U1Xp1UsBs7NBnC7zKS",
+			name: "pubkey fail",
+			bitcoinAddress: b2types.BitcoinFrom{
+				Address: "1McUczq9Cq8DL1YwaQCr6nSseuEBkpQdBh",
+				PubKey:  "fcff099be3b8a3cd38b21bfec9157346738c9eec7f28526d20e3b8bb7bb86e5b",
+			},
+			wantErr: true,
 		},
 	}
 
 	for _, tc := range testCase {
 		t.Run(tc.name, func(t *testing.T) {
-			ethAddress, err := bridge.BitcoinAddressToEthAddress(b2types.BitcoinFrom{
-				Address: tc.bitcoinAddress,
-			})
-			require.NoError(t, err)
+			ethAddress, err := bridge.BitcoinAddressToEthAddress(tc.bitcoinAddress)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("TestLocalBitcoinAddressToEthAddress() error = %v, wantErr %v", err, tc.wantErr)
+				return
+			}
 			if !common.IsHexAddress(ethAddress) {
 				t.Errorf("bitcoinAddress: %s, ethAddress: %s", tc.bitcoinAddress, ethAddress)
 			}

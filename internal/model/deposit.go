@@ -72,6 +72,7 @@ type DepositColumns struct {
 	BtcTxType        string
 	BtcFroms         string
 	BtcFrom          string
+	BtcFromPubKey    string
 	BtcTo            string
 	BtcFromAAAddress string
 	BtcValue         string
@@ -97,6 +98,7 @@ func (Deposit) Column() DepositColumns {
 		BtcTxType:        "btc_tx_type",
 		BtcFroms:         "btc_froms",
 		BtcFrom:          "btc_from",
+		BtcFromPubKey:    "btc_from_pubkey",
 		BtcTo:            "btc_to",
 		BtcFromAAAddress: "btc_from_aa_address",
 		BtcValue:         "btc_value",

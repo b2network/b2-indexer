@@ -4,7 +4,6 @@ go 1.21.4
 
 require (
 	cosmossdk.io/math v1.0.0-rc.0
-	github.com/b2network/b2-go-aa-utils v1.0.2
 	github.com/btcsuite/btcd v0.24.0
 	github.com/btcsuite/btcd/btcutil v1.1.5
 	github.com/caarlos0/env/v6 v6.10.1
@@ -23,7 +22,6 @@ require (
 
 require (
 	github.com/btcsuite/btcd/btcutil/psbt v1.1.9
-	github.com/cometbft/cometbft v0.38.5
 	github.com/tendermint/tendermint v0.34.27
 )
 

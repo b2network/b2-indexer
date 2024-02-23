@@ -201,6 +201,7 @@ func (bis *IndexerService) SaveParsedResult(
 			BtcTxIndex:     parseResult.Index,
 			BtcTxHash:      parseResult.TxID,
 			BtcFrom:        parseResult.From[0].Address,
+			BtcFromPubKey:  parseResult.From[0].PubKey,
 			BtcTo:          parseResult.To,
 			BtcValue:       parseResult.Value,
 			BtcFroms:       string(froms),

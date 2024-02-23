@@ -111,8 +111,7 @@ func (b *Bridge) Deposit(hash string, bitcoinAddress b2types.BitcoinFrom, amount
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
 	}
-
-	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, 0)
+	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, new(big.Int).SetInt64(0))
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -133,8 +132,13 @@ func (b *Bridge) Transfer(bitcoinAddress b2types.BitcoinFrom, amount int64) (*ty
 	if err != nil {
 		return nil, fmt.Errorf("btc address to eth address err:%w", err)
 	}
+	receipt, err := b.sendTransaction(ctx,
+		b.EthPrivKey,
+		common.HexToAddress(toAddress),
+		nil,
+		new(big.Int).Mul(new(big.Int).SetInt64(amount), new(big.Int).SetInt64(10000000000)),
+	)
 
-	receipt, err := b.sendTransaction(ctx, b.EthPrivKey, common.HexToAddress(toAddress), nil, amount*10000000000)
 	if err != nil {
 		return nil, fmt.Errorf("eth call err:%w", err)
 	}
@@ -143,7 +147,7 @@ func (b *Bridge) Transfer(bitcoinAddress b2types.BitcoinFrom, amount int64) (*ty
 }
 
 func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey,
-	toAddress common.Address, data []byte, value int64,
+	toAddress common.Address, data []byte, value *big.Int,
 ) (*types.Transaction, error) {
 	client, err := ethclient.Dial(b.EthRPCURL)
 	if err != nil {
@@ -160,7 +164,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	callMsg := ethereum.CallMsg{
 		From:     crypto.PubkeyToAddress(fromPriv.PublicKey),
 		To:       &toAddress,
-		Value:    big.NewInt(value),
+		Value:    value,
 		GasPrice: gasPrice,
 	}
 	if data != nil {
@@ -192,7 +196,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	legacyTx := types.LegacyTx{
 		Nonce:    nonce,
 		To:       &toAddress,
-		Value:    big.NewInt(value),
+		Value:    value,
 		Gas:      gas,
 		GasPrice: gasPrice,
 	}

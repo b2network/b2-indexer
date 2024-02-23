@@ -85,3 +85,13 @@ else
 endif
 
 .PHONY: test $(TEST_TARGETS)
+
+
+test-local:
+ifneq (,$(shell which tparse 2>/dev/null))
+	go test  -mod=readonly  -json $(ARGS) $(EXTRA_ARGS) $(TEST_PACKAGES)  | tparse
+else
+	go test  -mod=readonly $(ARGS)   $(EXTRA_ARGS) $(TEST_PACKAGES)
+endif
+
+.PHONY: test-local $(TEST_TARGETS)

@@ -19,6 +19,7 @@ var (
 	ErrParsePkScript       = errors.New("parse pkscript err")
 	ErrDecodeListenAddress = errors.New("decode listen address err")
 	ErrTargetConfirmations = errors.New("target confirmation number was not reached")
+	ErrParsePubKey         = errors.New("parse pubkey failed, not found pubkey or nonsupport ")
 )
 
 const (
@@ -123,6 +124,7 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) ([]*types.BitcoinTxPa
 			if err != nil {
 				return nil, fmt.Errorf("vin parse err:%w", err)
 			}
+
 			parsedResult = append(parsedResult, &types.BitcoinTxParseResult{
 				TxID:   txResult.TxHash().String(),
 				TxType: TxTypeTransfer,
@@ -163,6 +165,9 @@ func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []types.Bi
 		// parse sign pubkey
 		pubKey, err := b.parsePubKey(vin)
 		if err != nil {
+			if errors.Is(err, ErrParsePubKey) {
+				continue
+			}
 			return nil, err
 		}
 		fromAddress = append(fromAddress, types.BitcoinFrom{
@@ -205,11 +210,11 @@ func (b *Indexer) BlockChainInfo() (*btcjson.GetBlockChainInfoResult, error) {
 
 func (b *Indexer) parsePubKey(txIn *wire.TxIn) (string, error) {
 	if txIn.Witness != nil {
-		//P2WPKH
+		//only P2WPKH support
 		if len(txIn.Witness) == 2 {
 			pubkey := txIn.Witness[1]
 			return hex.EncodeToString(pubkey), nil
 		}
 	}
-	return "", fmt.Errorf("parse pubkey failed, not found pubkey or nonsupport ")
+	return "", ErrParsePubKey
 }
