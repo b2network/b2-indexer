@@ -175,7 +175,7 @@ func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []types.Bi
 			PubKey:  pubKey,
 		})
 	}
-	return
+	return fromAddress, nil
 }
 
 // parseAddress from pkscript parse address
