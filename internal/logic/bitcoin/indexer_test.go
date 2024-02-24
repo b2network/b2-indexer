@@ -210,7 +210,7 @@ func mockRpcClient(t *testing.T) *rpcclient.Client {
 }
 
 func mockBitcoinIndexer(t *testing.T, chainParams *chaincfg.Params) *bitcoin.Indexer {
-	cfg, err := config.LoadBitcoinConfig("")
+	cfg, err := config.LoadBitcoinConfig("../../config/testdata")
 	indexer, err := bitcoin.NewBitcoinIndexer(
 		log.NewNopLogger(),
 		mockRpcClient(t),
