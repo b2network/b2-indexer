@@ -8,7 +8,6 @@ import (
 
 	"github.com/b2network/b2-indexer/internal/model"
 	"github.com/b2network/b2-indexer/internal/types"
-	b2types "github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
 	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
 	"github.com/tendermint/tendermint/libs/service"
@@ -128,7 +127,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 	deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusPending
 
 	// send deposit tx
-	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, b2types.BitcoinFrom{
+	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, types.BitcoinFrom{
 		Address: deposit.BtcFrom,
 		PubKey:  deposit.BtcFromPubKey,
 	}, deposit.BtcValue)
@@ -247,7 +246,7 @@ func (bis *BridgeDepositService) HandleUnconfirmDeposit(deposit model.Deposit) e
 			"btcTxHash", deposit.BtcTxHash,
 			"b2txReceipt", b2txReceipt,
 			"data", deposit)
-		b2EoaTx, err := bis.bridge.Transfer(b2types.BitcoinFrom{
+		b2EoaTx, err := bis.bridge.Transfer(types.BitcoinFrom{
 			Address: deposit.BtcFrom,
 			PubKey:  deposit.BtcFromPubKey,
 		}, deposit.BtcValue)

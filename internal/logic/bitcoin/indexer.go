@@ -210,7 +210,7 @@ func (b *Indexer) BlockChainInfo() (*btcjson.GetBlockChainInfoResult, error) {
 
 func (b *Indexer) parsePubKey(txIn *wire.TxIn) (string, error) {
 	if txIn.Witness != nil {
-		//only P2WPKH support
+		// only P2WPKH support
 		if len(txIn.Witness) == 2 {
 			pubkey := txIn.Witness[1]
 			return hex.EncodeToString(pubkey), nil

@@ -138,7 +138,6 @@ func (b *Bridge) Transfer(bitcoinAddress b2types.BitcoinFrom, amount int64) (*ty
 		nil,
 		new(big.Int).Mul(new(big.Int).SetInt64(amount), new(big.Int).SetInt64(10000000000)),
 	)
-
 	if err != nil {
 		return nil, fmt.Errorf("eth call err:%w", err)
 	}
