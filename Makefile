@@ -25,6 +25,9 @@ $(BUILDDIR)/:
 image-build:
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
 
+image-build-linux:
+	docker build --platform=linux/amd64 -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+	
 image-push:
 	docker push --all-tags ${DOCKER_IMAGE}
 
