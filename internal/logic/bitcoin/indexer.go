@@ -125,6 +125,11 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) ([]*types.BitcoinTxPa
 				return nil, fmt.Errorf("vin parse err:%w", err)
 			}
 
+			//TODO: temp fix, if from is listened address, continue
+			if len(fromAddress) == 0 {
+				continue
+			}
+
 			parsedResult = append(parsedResult, &types.BitcoinTxParseResult{
 				TxID:   txResult.TxHash().String(),
 				TxType: TxTypeTransfer,
@@ -165,6 +170,7 @@ func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []types.Bi
 		// parse sign pubkey
 		pubKey, err := b.parsePubKey(vin)
 		if err != nil {
+			b.logger.Errorw("parse pubkey", "error", err, "vin", vin)
 			if errors.Is(err, ErrParsePubKey) {
 				continue
 			}

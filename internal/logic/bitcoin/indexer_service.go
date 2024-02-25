@@ -3,6 +3,7 @@ package bitcoin
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/b2network/b2-indexer/internal/model"
@@ -192,6 +193,10 @@ func (bis *IndexerService) SaveParsedResult(
 ) error {
 	// write db
 	err := bis.db.Transaction(func(tx *gorm.DB) error {
+		if len(parseResult.From) == 0 {
+			return fmt.Errorf("parse result from empty")
+		}
+
 		froms, err := json.Marshal(parseResult.From)
 		if err != nil {
 			return err
