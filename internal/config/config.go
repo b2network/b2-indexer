@@ -62,10 +62,14 @@ type BridgeConfig struct {
 	ABI string `mapstructure:"abi" env:"BITCOIN_BRIDGE_ABI"`
 	// GasLimit defines the  contract gas limit
 	GasLimit uint64 `mapstructure:"gas-limit" env:"BITCOIN_BRIDGE_GAS_LIMIT"`
-	// AASCARegistry defines the  contract AASCARegistry address
-	AASCARegistry string `mapstructure:"aa-sca-registry" env:"BITCOIN_BRIDGE_AA_SCA_REGISTRY"`
-	// AAKernelFactory defines the  contract AAKernelFactory address
-	AAKernelFactory string `mapstructure:"aa-kernel-factory" env:"BITCOIN_BRIDGE_AA_KERNEL_FACTORY"`
+	// AAParticleRPC defines the particle api
+	AAParticleRPC string `mapstructure:"aa-particle-api" env:"BITCOIN_BRIDGE_AA_PARTICLE_RPC"`
+	// AAParticleProjectID defines the particle project id
+	AAParticleProjectID string `mapstructure:"aa-particle-project-id" env:"BITCOIN_BRIDGE_AA_PARTICLE_PROJECT_ID"`
+	// AAParticleServerKey defines the particle server key
+	AAParticleServerKey string `mapstructure:"aa-particle-server-key" env:"BITCOIN_BRIDGE_AA_PARTICLE_SERVER_KEY"`
+	// AAParticleChainID defines the particle chain id
+	AAParticleChainID int `mapstructure:"aa-particle-chain-id" env:"BITCOIN_BRIDGE_AA_PARTICLE_CHAIN_ID"`
 	// B2NodeAPI defines the b2 node api
 	B2NodeAPI string `mapstructure:"b2-node-api" env:"BITCOIN_BRIDGE_B2_NODE_API"`
 	// B2NodePrivKey defines the b2 node private key

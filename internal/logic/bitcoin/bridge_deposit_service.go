@@ -125,8 +125,12 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 	}
 	// set init status
 	deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusPending
+
 	// send deposit tx
-	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, deposit.BtcFrom, deposit.BtcValue)
+	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, types.BitcoinFrom{
+		Address: deposit.BtcFrom,
+		PubKey:  deposit.BtcFromPubKey,
+	}, deposit.BtcValue)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrBrdigeDepositTxHashExist):
@@ -242,7 +246,10 @@ func (bis *BridgeDepositService) HandleUnconfirmDeposit(deposit model.Deposit) e
 			"btcTxHash", deposit.BtcTxHash,
 			"b2txReceipt", b2txReceipt,
 			"data", deposit)
-		b2EoaTx, err := bis.bridge.Transfer(deposit.BtcFrom, deposit.BtcValue)
+		b2EoaTx, err := bis.bridge.Transfer(types.BitcoinFrom{
+			Address: deposit.BtcFrom,
+			PubKey:  deposit.BtcFromPubKey,
+		}, deposit.BtcValue)
 		if err != nil {
 			deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusFailed
 			bis.log.Errorw("invoke eoa transfer tx unknown err",

@@ -14,6 +14,8 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
+	"github.com/go-resty/resty/v2"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
@@ -27,7 +29,6 @@ import (
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
 	"github.com/cometbft/cometbft/libs/service"
-	"github.com/go-resty/resty/v2"
 	"gorm.io/gorm"
 
 	"github.com/btcsuite/btcd/btcutil"
@@ -281,6 +282,11 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					}
 				} else {
 					status = model.BtcTxWithdrawBroadcastSuccess
+				}
+				err = bis.b2node.DeleteWithdraw(v.BtcTxID)
+				if err != nil {
+					bis.log.Errorw("BridgeWithdrawService DeleteWithdraw err", "error", err, "id", v.ID)
+					continue
 				}
 				updateFields := map[string]interface{}{
 					model.WithdrawTx{}.Column().BtcTxHash: txHash,

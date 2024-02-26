@@ -25,6 +25,9 @@ $(BUILDDIR)/:
 image-build:
 	docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
 
+image-build-linux:
+	docker build --platform=linux/amd64 -t ${DOCKER_IMAGE}:${DOCKER_TAG} .
+	
 image-push:
 	docker push --all-tags ${DOCKER_IMAGE}
 
@@ -85,3 +88,13 @@ else
 endif
 
 .PHONY: test $(TEST_TARGETS)
+
+
+test-local:
+ifneq (,$(shell which tparse 2>/dev/null))
+	go test  -mod=readonly  -json $(ARGS) $(EXTRA_ARGS) $(TEST_PACKAGES)  | tparse
+else
+	go test  -mod=readonly $(ARGS)   $(EXTRA_ARGS) $(TEST_PACKAGES)
+endif
+
+.PHONY: test-local $(TEST_TARGETS)

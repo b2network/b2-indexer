@@ -127,7 +127,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 
 		// start l1->l2 bridge service
 		bridgeLogger := newLogger(ctx, "[bridge-deposit]")
-		bridge, err := bitcoin.NewBridge(bitcoinCfg.Bridge, path.Join(home, "config"), bridgeLogger)
+		bridge, err := bitcoin.NewBridge(bitcoinCfg.Bridge, path.Join(home, "config"), bridgeLogger, bitcoinParam)
 		if err != nil {
 			logger.Errorw("failed to create bitcoin bridge", "error", err.Error())
 			return err

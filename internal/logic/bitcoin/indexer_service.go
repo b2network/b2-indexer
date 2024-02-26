@@ -3,12 +3,12 @@ package bitcoin
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/b2network/b2-indexer/internal/model"
 	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
-	"github.com/b2network/b2-indexer/pkg/utils"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/tendermint/tendermint/libs/service"
 	"gorm.io/gorm"
@@ -193,7 +193,15 @@ func (bis *IndexerService) SaveParsedResult(
 ) error {
 	// write db
 	err := bis.db.Transaction(func(tx *gorm.DB) error {
+		if len(parseResult.From) == 0 {
+			return fmt.Errorf("parse result from empty")
+		}
+
 		froms, err := json.Marshal(parseResult.From)
+		if err != nil {
+			return err
+		}
+		tos, err := json.Marshal(parseResult.Tos)
 		if err != nil {
 			return err
 		}
@@ -201,7 +209,9 @@ func (bis *IndexerService) SaveParsedResult(
 			BtcBlockNumber: btcBlockNumber,
 			BtcTxIndex:     parseResult.Index,
 			BtcTxHash:      parseResult.TxID,
-			BtcFrom:        parseResult.From[0],
+			BtcFrom:        parseResult.From[0].Address,
+			BtcFromPubKey:  parseResult.From[0].PubKey,
+			BtcTos:         string(tos),
 			BtcTo:          parseResult.To,
 			BtcValue:       parseResult.Value,
 			BtcFroms:       string(froms),
@@ -234,7 +244,7 @@ func (bis *IndexerService) HandleResults(
 ) (int64, int64, error) {
 	for _, v := range txResults {
 		// if from is listen address, skip
-		if utils.StrInArray(v.From, v.To) {
+		if bis.ToInFroms(v.From, v.To) {
 			bis.log.Infow("current transaction from is listen address", "currentBlock", currentBlock, "currentTxIndex", v.Index, "data", v)
 			continue
 		}
@@ -258,4 +268,13 @@ func (bis *IndexerService) HandleResults(
 		time.Sleep(IndexTxTimeout)
 	}
 	return currentBlock, 0, nil
+}
+
+func (bis *IndexerService) ToInFroms(a []types.BitcoinFrom, s string) bool {
+	for _, i := range a {
+		if i.Address == s {
+			return true
+		}
+	}
+	return false
 }

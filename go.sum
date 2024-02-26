@@ -219,8 +219,6 @@ github.com/armon/go-metrics v0.4.1 h1:hR91U9KYmb6bLBYLQjyM+3j+rcd/UhE+G78SFnF8gJ
 github.com/armon/go-metrics v0.4.1/go.mod h1:E6amYzXo6aW1tqzoZGT755KkbgrJsSdpwZ+3JqfkOG4=
 github.com/aws/aws-sdk-go v1.44.122 h1:p6mw01WBaNpbdP2xrisz5tIkcNwzj/HysobNoaAHjgo=
 github.com/aws/aws-sdk-go v1.44.122/go.mod h1:y4AeaBuwd2Lk+GepC1E9v0qOiTws0MIWAX4oIKwKHZo=
-github.com/b2network/b2-go-aa-utils v1.0.2 h1:y4wJAAiFvfbsn+fS6dRV1YBHpDB4KxX4dYf4VjYP2Vc=
-github.com/b2network/b2-go-aa-utils v1.0.2/go.mod h1:OL1kBzuRXu9yBocRszQc+xkNyIUM8b1UIilm+R3nVwY=
 github.com/b2network/b2-node v0.0.0-20240221101231-00b820aece2b h1:rpqZ/jL1plVIhIepVrlmYlI6ZNABbte9/2s6+KNIxEU=
 github.com/b2network/b2-node v0.0.0-20240221101231-00b820aece2b/go.mod h1:0DzyBVHFVETSCetg+Tug6eEE2WfUsSrLmXr4a6lbSsc=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
