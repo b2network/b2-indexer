@@ -101,7 +101,7 @@ func (Deposit) Column() DepositColumns {
 		BtcFroms:         "btc_froms",
 		BtcFrom:          "btc_from",
 		BtcFromPubKey:    "btc_from_pubkey",
-		BtcTos:           "tc_tos",
+		BtcTos:           "btc_tos",
 		BtcTo:            "btc_to",
 		BtcFromAAAddress: "btc_from_aa_address",
 		BtcValue:         "btc_value",
