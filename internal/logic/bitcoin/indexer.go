@@ -114,7 +114,7 @@ func (b *Indexer) getBlockByHeight(height int64) (*wire.MsgBlock, *btcjson.GetBl
 func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (*types.BitcoinTxParseResult, error) {
 	listenAddress := false
 	var totalValue int64
-	var tos []types.BitcoinTo
+	tos := make([]types.BitcoinTo, 0)
 	for _, v := range txResult.TxOut {
 		pkAddress, err := b.parseAddress(v.PkScript)
 		if err != nil {
