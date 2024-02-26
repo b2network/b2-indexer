@@ -201,12 +201,17 @@ func (bis *IndexerService) SaveParsedResult(
 		if err != nil {
 			return err
 		}
+		tos, err := json.Marshal(parseResult.Tos)
+		if err != nil {
+			return err
+		}
 		deposit := model.Deposit{
 			BtcBlockNumber: btcBlockNumber,
 			BtcTxIndex:     parseResult.Index,
 			BtcTxHash:      parseResult.TxID,
 			BtcFrom:        parseResult.From[0].Address,
 			BtcFromPubKey:  parseResult.From[0].PubKey,
+			BtcTos:         string(tos),
 			BtcTo:          parseResult.To,
 			BtcValue:       parseResult.Value,
 			BtcFroms:       string(froms),

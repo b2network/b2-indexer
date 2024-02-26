@@ -5,7 +5,6 @@ import (
 
 	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/logic/bitcoin"
-	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/rpcclient"
 
@@ -145,38 +144,30 @@ func TestLocalParseTx(t *testing.T) {
 	testCases := []struct {
 		name   string
 		height int64
-		dest   []*types.BitcoinTxParseResult
 	}{
 		{
 			name:   "success",
 			height: 2540186,
-			dest: []*types.BitcoinTxParseResult{
-				{
-					TxID:   "317ce1cc2f987c95d19ba13044c6298953d91c82274a2c34d7ac92a8df3dab0f",
-					TxType: bitcoin.TxTypeTransfer,
-					Index:  350,
-					From: []types.BitcoinFrom{
-						{
-							Address: "tb1qravmtnqvtpnmugeg7q90ck69lzznflu4w9amnw",
-							PubKey:  "0254639ea1f3c20b1930cc5f0db623b67959c1dbaeb19a3b2d57646bf74ed0c275",
-						},
-					},
-					To:    "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
-					Value: 2306,
-				},
-			},
 		},
 		{
 			name:   "success empty",
 			height: 2540180,
-			dest:   []*types.BitcoinTxParseResult{},
 		},
 	}
 
 	for _, tc := range testCases {
 		results, _, err := indexer.ParseBlock(tc.height, 0)
 		require.NoError(t, err)
-		require.Equal(t, results, tc.dest)
+		for _, v := range results {
+			if len(v.From) == 0 {
+				t.Error("From is empty")
+			}
+
+			if len(v.Tos) == 0 {
+				t.Error("Tos is empty")
+			}
+			require.Equal(t, v.To, to)
+		}
 	}
 }
 

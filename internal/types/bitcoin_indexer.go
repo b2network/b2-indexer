@@ -23,9 +23,16 @@ type BitcoinTxParseResult struct {
 	TxType string
 	// index is the index of the transaction in the block
 	Index int64
+	// tos tx all to info
+	Tos []BitcoinTo
 }
 
 type BitcoinFrom struct {
 	Address string
 	PubKey  string
+}
+
+type BitcoinTo struct {
+	Address string
+	Value   int64
 }

@@ -16,10 +16,11 @@ import (
 )
 
 var (
-	ErrParsePkScript       = errors.New("parse pkscript err")
-	ErrDecodeListenAddress = errors.New("decode listen address err")
-	ErrTargetConfirmations = errors.New("target confirmation number was not reached")
-	ErrParsePubKey         = errors.New("parse pubkey failed, not found pubkey or nonsupport ")
+	ErrParsePkScript         = errors.New("parse pkscript err")
+	ErrDecodeListenAddress   = errors.New("decode listen address err")
+	ErrTargetConfirmations   = errors.New("target confirmation number was not reached")
+	ErrParsePubKey           = errors.New("parse pubkey failed, not found pubkey or nonsupport ")
+	ErrParsePkScriptNullData = errors.New("parse pkscript null data err")
 )
 
 const (
@@ -84,7 +85,9 @@ func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxPar
 		if err != nil {
 			return nil, nil, err
 		}
-		blockParsedResult = append(blockParsedResult, parseTxs...)
+		if parseTxs != nil {
+			blockParsedResult = append(blockParsedResult, parseTxs)
+		}
 	}
 
 	return blockParsedResult, &blockResult.Header, nil
@@ -108,39 +111,58 @@ func (b *Indexer) getBlockByHeight(height int64) (*wire.MsgBlock, *btcjson.GetBl
 }
 
 // parseTx parse transaction data
-func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) ([]*types.BitcoinTxParseResult, error) {
-	var parsedResult []*types.BitcoinTxParseResult
+func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (*types.BitcoinTxParseResult, error) {
+	listenAddress := false
+	var totalValue int64
+	var tos []types.BitcoinTo
 	for _, v := range txResult.TxOut {
 		pkAddress, err := b.parseAddress(v.PkScript)
 		if err != nil {
 			if errors.Is(err, ErrParsePkScript) {
 				continue
 			}
-			return nil, err
-		}
-		// if pk address eq dest listened address, after parse from address by vin prev tx
-		if pkAddress == b.listenAddress.EncodeAddress() {
-			fromAddress, err := b.parseFromAddress(txResult)
-			if err != nil {
-				return nil, fmt.Errorf("vin parse err:%w", err)
-			}
-
-			// TODO: temp fix, if from is listened address, continue
-			if len(fromAddress) == 0 {
+			//TODO: handle null data
+			if errors.Is(err, ErrParsePkScriptNullData) {
 				continue
 			}
-
-			parsedResult = append(parsedResult, &types.BitcoinTxParseResult{
-				TxID:   txResult.TxHash().String(),
-				TxType: TxTypeTransfer,
-				Index:  int64(index),
-				Value:  v.Value,
-				From:   fromAddress,
-				To:     pkAddress,
-			})
+			return nil, err
+		}
+		parseTo := types.BitcoinTo{
+			Address: pkAddress,
+			Value:   v.Value,
+		}
+		tos = append(tos, parseTo)
+		// if pk address eq dest listened address, after parse from address by vin prev tx
+		if pkAddress == b.listenAddress.EncodeAddress() {
+			listenAddress = true
+			totalValue += v.Value
 		}
 	}
-	return parsedResult, nil
+	if listenAddress {
+		fromAddress, err := b.parseFromAddress(txResult)
+		if err != nil {
+			return nil, fmt.Errorf("vin parse err:%w", err)
+		}
+
+		// TODO: temp fix, if from is listened address, continue
+		if len(fromAddress) == 0 {
+			b.logger.Warnw("parse from address empty",
+				"txId", txResult.TxHash().String(),
+				"listenAddress", b.listenAddress.EncodeAddress())
+			return nil, nil
+		}
+
+		return &types.BitcoinTxParseResult{
+			TxID:   txResult.TxHash().String(),
+			TxType: TxTypeTransfer,
+			Index:  int64(index),
+			Value:  totalValue,
+			From:   fromAddress,
+			To:     b.listenAddress.EncodeAddress(),
+			Tos:    tos,
+		}, nil
+	}
+	return nil, nil
 }
 
 // parseFromAddress from vin parse from address
@@ -189,11 +211,27 @@ func (b *Indexer) ParseAddress(pkScript []byte) (string, error) {
 	return b.parseAddress(pkScript)
 }
 
+// parseNullData from pkscript parse null data
+func (b *Indexer) parseNullData(pkScript []byte) (string, error) {
+	pk, err := txscript.ParsePkScript(pkScript)
+	if err != nil {
+		return "", fmt.Errorf("%w:%s", ErrParsePkScript, err.Error())
+	}
+	if pk.Class() != txscript.NullDataTy {
+		return "", fmt.Errorf("not null data type")
+	}
+	return pk.String(), nil
+}
+
 // parseAddress from pkscript parse address
 func (b *Indexer) parseAddress(pkScript []byte) (string, error) {
 	pk, err := txscript.ParsePkScript(pkScript)
 	if err != nil {
 		return "", fmt.Errorf("%w:%s", ErrParsePkScript, err.Error())
+	}
+
+	if pk.Class() == txscript.NullDataTy {
+		return "", ErrParsePkScriptNullData
 	}
 
 	//  encodes the script into an address for the given chain.
