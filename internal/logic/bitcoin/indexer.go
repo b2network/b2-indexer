@@ -121,7 +121,7 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (*types.BitcoinTxPars
 			if errors.Is(err, ErrParsePkScript) {
 				continue
 			}
-			//TODO: handle null data
+			// TODO: handle null data
 			if errors.Is(err, ErrParsePkScriptNullData) {
 				continue
 			}
@@ -212,6 +212,8 @@ func (b *Indexer) ParseAddress(pkScript []byte) (string, error) {
 }
 
 // parseNullData from pkscript parse null data
+//
+//lint:ignore U1000 Ignore unused function temporarily for debugging
 func (b *Indexer) parseNullData(pkScript []byte) (string, error) {
 	pk, err := txscript.ParsePkScript(pkScript)
 	if err != nil {
