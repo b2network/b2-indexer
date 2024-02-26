@@ -274,13 +274,13 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					bis.log.Errorw("BridgeWithdrawService broadcast tx err", "error", err)
 					status = model.BtcTxWithdrawBroadcastFailed
 					reason = err.Error()
+					err = bis.b2node.DeleteWithdraw(v.BtcTxID)
+					if err != nil {
+						bis.log.Errorw("BridgeWithdrawService DeleteWithdraw err", "error", err, "id", v.ID)
+						continue
+					}
 				} else {
 					status = model.BtcTxWithdrawBroadcastSuccess
-				}
-				err = bis.b2node.DeleteWithdraw(v.BtcTxID)
-				if err != nil {
-					bis.log.Errorw("BridgeWithdrawService DeleteWithdraw err", "error", err, "id", v.ID)
-					continue
 				}
 				updateFields := map[string]interface{}{
 					model.WithdrawTx{}.Column().BtcTxHash: txHash,
@@ -411,11 +411,16 @@ func (bis *BridgeWithdrawService) OnStart() error {
 		var WithdrawIndex model.WithdrawIndex
 		if err := bis.db.First(&WithdrawIndex, 1).Error; err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
+				latestBlock, err := bis.ethCli.BlockNumber(context.Background())
+				if err != nil {
+					bis.log.Errorw("BridgeWithdrawService HeaderByNumber is failed:", "error", err)
+					continue
+				}
 				WithdrawIndex = model.WithdrawIndex{
 					Base: model.Base{
 						ID: 1,
 					},
-					B2IndexBlock: 0,
+					B2IndexBlock: latestBlock,
 					B2IndexTx:    0,
 					B2LogIndex:   0,
 				}
