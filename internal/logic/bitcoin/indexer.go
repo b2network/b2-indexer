@@ -146,7 +146,7 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (*types.BitcoinTxPars
 
 		// TODO: temp fix, if from is listened address, continue
 		if len(fromAddress) == 0 {
-			b.logger.Warnw("parse from address empty",
+			b.logger.Warnw("parse from address empty or nonsupport tx type",
 				"txId", txResult.TxHash().String(),
 				"listenAddress", b.listenAddress.EncodeAddress())
 			return nil, nil
@@ -184,7 +184,7 @@ func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []types.Bi
 		vinPkAddress, err := b.parseAddress(vinPKScript)
 		if err != nil {
 			b.logger.Errorw("vin parse address", "error", err)
-			if errors.Is(err, ErrParsePkScript) {
+			if errors.Is(err, ErrParsePkScript) || errors.Is(err, ErrParsePkScriptNullData) {
 				continue
 			}
 			return nil, err
@@ -192,8 +192,11 @@ func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []types.Bi
 		// parse sign pubkey
 		pubKey, err := b.parsePubKey(vin)
 		if err != nil {
-			b.logger.Errorw("parse pubkey", "error", err, "vin", vin)
 			if errors.Is(err, ErrParsePubKey) {
+				b.logger.Warnw(ErrParsePubKey.Error(),
+					"vin", vin,
+					"txId", txResult.TxHash().String(),
+				)
 				continue
 			}
 			return nil, err
