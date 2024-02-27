@@ -196,7 +196,11 @@ func (bis *BridgeWithdrawService) OnStart() error {
 						return err
 					}
 				} else {
-					err = tx.Model(&model.WithdrawTx{}).Where("id = ?", withdrawTx.ID).Update(model.WithdrawTx{}.Column().Status, model.BtcTxWithdrawPending).Error
+					updateFields := map[string]interface{}{
+						model.WithdrawTx{}.Column().Status: model.BtcTxWithdrawPending,
+						model.WithdrawTx{}.Column().Reason: "",
+					}
+					err = tx.Model(&model.WithdrawTx{}).Where("id = ?", withdrawTx.ID).Updates(updateFields).Error
 					if err != nil {
 						bis.log.Errorw("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", withdrawTx.BtcTxID)
 						return err
@@ -281,7 +285,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				var reason string
 				txHash, err := bis.btcCli.SendRawTransaction(tx, true)
 				if err != nil {
-					bis.log.Errorw("BridgeWithdrawService broadcast tx err", "error", err)
+					bis.log.Errorw("BridgeWithdrawService broadcast tx err", "id", v.ID, "txID", v.BtcTxID, "error", err)
 					status = model.BtcTxWithdrawBroadcastFailed
 					reason = err.Error()
 					err = bis.b2node.DeleteWithdraw(v.BtcTxID)
