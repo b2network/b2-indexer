@@ -288,7 +288,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					model.WithdrawTx{}.Column().Status:    status,
 					model.WithdrawTx{}.Column().Reason:    reason,
 				}
-				err = bis.db.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().BtcTxID), v.BtcTxID).Updates(updateFields).Error
+				err = bis.db.Model(&model.WithdrawTx{}).Where("id = ?", v.ID).Updates(updateFields).Error
 				if err != nil {
 					bis.log.Errorw("BridgeWithdrawService broadcast tx update db err", "error", err, "id", v.ID)
 					continue
