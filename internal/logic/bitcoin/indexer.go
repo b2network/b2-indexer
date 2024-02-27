@@ -184,7 +184,7 @@ func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []types.Bi
 		vinPkAddress, err := b.parseAddress(vinPKScript)
 		if err != nil {
 			b.logger.Errorw("vin parse address", "error", err)
-			if errors.Is(err, ErrParsePkScript) {
+			if errors.Is(err, ErrParsePkScript) || errors.Is(err, ErrParsePkScriptNullData) {
 				continue
 			}
 			return nil, err
@@ -192,8 +192,8 @@ func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []types.Bi
 		// parse sign pubkey
 		pubKey, err := b.parsePubKey(vin)
 		if err != nil {
-			b.logger.Errorw("parse pubkey", "error", err, "vin", vin)
 			if errors.Is(err, ErrParsePubKey) {
+				b.logger.Warnw("parse pubkey", "error", err, "vin", vin)
 				continue
 			}
 			return nil, err
