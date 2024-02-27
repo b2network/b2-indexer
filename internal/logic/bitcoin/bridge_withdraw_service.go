@@ -283,11 +283,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				} else {
 					status = model.BtcTxWithdrawBroadcastSuccess
 				}
-				err = bis.b2node.DeleteWithdraw(v.BtcTxID)
-				if err != nil {
-					bis.log.Errorw("BridgeWithdrawService DeleteWithdraw err", "error", err, "id", v.ID)
-					continue
-				}
 				updateFields := map[string]interface{}{
 					model.WithdrawTx{}.Column().BtcTxHash: txHash,
 					model.WithdrawTx{}.Column().Status:    status,
