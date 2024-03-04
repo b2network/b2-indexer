@@ -2,12 +2,13 @@ package server
 
 import (
 	"fmt"
-	"github.com/b2network/b2-indexer/internal/logic/rollup"
 	"os"
 	"os/signal"
 	"path"
 	"syscall"
 	"time"
+
+	"github.com/b2network/b2-indexer/internal/logic/rollup"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
