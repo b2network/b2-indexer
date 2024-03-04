@@ -14,9 +14,9 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum"
-	"github.com/go-resty/resty/v2"
-
 	"github.com/ethereum/go-ethereum/common"
+
+	"github.com/go-resty/resty/v2"
 
 	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
 
@@ -180,18 +180,31 @@ func (bis *BridgeWithdrawService) OnStart() error {
 			err = bis.db.Transaction(func(tx *gorm.DB) error {
 				err = tx.Model(&model.Withdraw{}).Where("id in (?)", ids).Update(model.Withdraw{}.Column().Status, model.BtcTxWithdrawSubmitTxMsg).Error
 				if err != nil {
-					bis.log.Errorw("BridgeWithdrawService broadcast tx update db err", "error", err, "id", ids)
+					bis.log.Errorw("BridgeWithdrawService submit withdraw tx update db err", "error", err, "id", ids)
 					return err
 				}
-
 				withdrawTxData := model.WithdrawTx{
 					BtcTxID:    txID,
 					BtcTx:      btcTx,
 					B2TxHashes: string(b2TxHashesByte),
 				}
-				if err = tx.Create(&withdrawTxData).Error; err != nil {
-					bis.log.Errorw("BridgeWithdrawService create withdrawTx err", "b2TxHashes", b2TxHashes, "error", err)
-					return err
+				var withdrawTx model.WithdrawTx
+				result := tx.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().BtcTxID), txID).First(&withdrawTx)
+				if result.RowsAffected == 0 {
+					if err = tx.Create(&withdrawTxData).Error; err != nil {
+						bis.log.Errorw("BridgeWithdrawService create withdrawTx err", "b2TxHashes", b2TxHashes, "error", err)
+						return err
+					}
+				} else {
+					updateFields := map[string]interface{}{
+						model.WithdrawTx{}.Column().Status: model.BtcTxWithdrawPending,
+						model.WithdrawTx{}.Column().Reason: "",
+					}
+					err = tx.Model(&model.WithdrawTx{}).Where("id = ?", withdrawTx.ID).Updates(updateFields).Error
+					if err != nil {
+						bis.log.Errorw("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", withdrawTx.BtcTxID)
+						return err
+					}
 				}
 
 				// create witdraw record
@@ -272,7 +285,7 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				var reason string
 				txHash, err := bis.btcCli.SendRawTransaction(tx, true)
 				if err != nil {
-					bis.log.Errorw("BridgeWithdrawService broadcast tx err", "error", err)
+					bis.log.Errorw("BridgeWithdrawService broadcast tx err", "id", v.ID, "txID", v.BtcTxID, "error", err)
 					status = model.BtcTxWithdrawBroadcastFailed
 					reason = err.Error()
 					err = bis.b2node.DeleteWithdraw(v.BtcTxID)
