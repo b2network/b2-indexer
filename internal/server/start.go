@@ -252,7 +252,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		if err != nil {
 			return err
 		}
-		rollupService := rollup.NewRollupService(ethlient, bitcoinCfg, db, rollupLogger)
+		rollupService := rollup.NewIndexerService(ethlient, bitcoinCfg, db, rollupLogger)
 
 		bridgeLogger := newLogger(ctx, "[bridge-withdraw]")
 		if err != nil {

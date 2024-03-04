@@ -20,13 +20,13 @@ import (
 )
 
 const (
-	RollupServiceName = "RollupService"
+	IndexerServiceName = "IndexerService"
 
 	WaitHandleTime = 10
 )
 
-// RollupService indexes transactions for json-rpc service.
-type RollupService struct {
+// IndexerService indexes transactions for json-rpc service.
+type IndexerService struct {
 	service.BaseService
 
 	ethCli *ethclient.Client
@@ -35,25 +35,25 @@ type RollupService struct {
 	log    log.Logger
 }
 
-// NewRollupService returns a new service instance.
-func NewRollupService(
+// NewIndexerService returns a new service instance.
+func NewIndexerService(
 	ethCli *ethclient.Client,
 	config *config.BitconConfig,
 	db *gorm.DB,
 	log log.Logger,
-) *RollupService {
-	is := &RollupService{ethCli: ethCli, config: config, db: db, log: log}
-	is.BaseService = *service.NewBaseService(nil, RollupServiceName, is)
+) *IndexerService {
+	is := &IndexerService{ethCli: ethCli, config: config, db: db, log: log}
+	is.BaseService = *service.NewBaseService(nil, IndexerServiceName, is)
 	return is
 }
 
 // OnStart implements service.Service by subscribing for new blocks
 // and indexing them by events.
-func (bis *RollupService) OnStart() error {
+func (bis *IndexerService) OnStart() error {
 	if !bis.db.Migrator().HasTable(&model.RollupIndex{}) {
 		err := bis.db.AutoMigrate(&model.RollupIndex{})
 		if err != nil {
-			bis.log.Errorw("RollupService create WithdrawIndex table", "error", err.Error())
+			bis.log.Errorw("IndexerService create WithdrawIndex table", "error", err.Error())
 			return err
 		}
 	}
@@ -69,7 +69,7 @@ func (bis *RollupService) OnStart() error {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				latestBlock, err := bis.ethCli.BlockNumber(context.Background())
 				if err != nil {
-					bis.log.Errorw("RollupService HeaderByNumber is failed:", "error", err)
+					bis.log.Errorw("IndexerService HeaderByNumber is failed:", "error", err)
 					continue
 				}
 				rollupIndex = model.RollupIndex{
@@ -103,15 +103,15 @@ func (bis *RollupService) OnStart() error {
 			time.Sleep(time.Duration(WaitHandleTime) * time.Second)
 			latestBlock, err := bis.ethCli.BlockNumber(context.Background())
 			if err != nil {
-				bis.log.Errorw("RollupService HeaderByNumber is failed:", "error", err)
+				bis.log.Errorw("IndexerService HeaderByNumber is failed:", "error", err)
 				continue
 			}
-			bis.log.Infow("RollupService ethClient height", "height", latestBlock, "currentBlock", currentBlock)
+			bis.log.Infow("IndexerService ethClient height", "height", latestBlock, "currentBlock", currentBlock)
 			if latestBlock == currentBlock {
 				continue
 			}
 			for i := currentBlock; i <= latestBlock; i++ {
-				bis.log.Infow("RollupService get log height:", "height", i)
+				bis.log.Infow("IndexerService get log height:", "height", i)
 				query := ethereum.FilterQuery{
 					FromBlock: big.NewInt(0).SetUint64(i),
 					ToBlock:   big.NewInt(0).SetUint64(i),
@@ -120,7 +120,7 @@ func (bis *RollupService) OnStart() error {
 				}
 				logs, err := bis.ethCli.FilterLogs(context.Background(), query)
 				if err != nil {
-					bis.log.Errorw("RollupService failed to fetch block", "height", i, "error", err)
+					bis.log.Errorw("IndexerService failed to fetch block", "height", i, "error", err)
 					continue
 				}
 
@@ -132,7 +132,7 @@ func (bis *RollupService) OnStart() error {
 					if eventHash == common.HexToHash(bis.config.Bridge.Withdraw) {
 						err = handelWithdrawEvent(vlog, bis.db, bis.config.IndexerListenAddress)
 						if err != nil {
-							bis.log.Errorw("RollupService handelWithdrawEvent err: ", "error", err)
+							bis.log.Errorw("IndexerService handelWithdrawEvent err: ", "error", err)
 							continue
 						}
 					}
