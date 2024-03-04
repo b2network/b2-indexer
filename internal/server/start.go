@@ -2,6 +2,7 @@ package server
 
 import (
 	"fmt"
+	"github.com/b2network/b2-indexer/internal/logic/rollup"
 	"os"
 	"os/signal"
 	"path"
@@ -216,13 +217,6 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 
 	if bitcoinCfg.Bridge.EnableWithdrawListener {
 		logger.Infow("withdraw service starting...")
-		withdrawLoggerOpt := logger.NewOptions()
-		withdrawLoggerOpt.Format = ctx.Config.LogFormat
-		withdrawLoggerOpt.Level = ctx.Config.LogLevel
-		withdrawLoggerOpt.EnableColor = true
-		withdrawLoggerOpt.Name = "[withdraw]"
-		withdrawLogger := logger.New(withdrawLoggerOpt)
-
 		db, err := GetDBContextFromCmd(cmd)
 		if err != nil {
 			logger.Errorw("failed to get db context", "error", err.Error())
@@ -252,16 +246,25 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		defer func() {
 			ethlient.Close()
 		}()
-		bridgeLogger := newLogger(ctx, "[bridge-withdraw]")
-		bridgeB2node, err := b2NodeClient(bitcoinCfg, bridgeLogger)
+
+		rollupLogger := newLogger(ctx, "[rollup-service]")
 		if err != nil {
 			return err
 		}
-		withdrawService := bitcoin.NewBridgeWithdrawService(btclient, ethlient, bitcoinCfg, db, withdrawLogger, bridgeB2node)
+		rollupService := rollup.NewRollupService(ethlient, bitcoinCfg, db, rollupLogger)
+
+		bridgeLogger := newLogger(ctx, "[bridge-withdraw]")
+		if err != nil {
+			return err
+		}
+		withdrawService := bitcoin.NewBridgeWithdrawService(btclient, ethlient, bitcoinCfg, db, bridgeLogger)
 
 		epsErrCh := make(chan error)
 		go func() {
 			if err := withdrawService.OnStart(); err != nil {
+				epsErrCh <- err
+			}
+			if err := rollupService.OnStart(); err != nil {
 				epsErrCh <- err
 			}
 		}()

@@ -2,27 +2,19 @@ package bitcoin
 
 import (
 	"bytes"
-	"context"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/big"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/go-resty/resty/v2"
-
-	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
 
 	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/model"
-	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
@@ -82,7 +74,6 @@ type BridgeWithdrawService struct {
 	config *config.BitconConfig
 	db     *gorm.DB
 	log    log.Logger
-	b2node types.B2NODEBridge
 }
 
 // NewBridgeWithdrawService returns a new service instance.
@@ -92,9 +83,8 @@ func NewBridgeWithdrawService(
 	config *config.BitconConfig,
 	db *gorm.DB,
 	log log.Logger,
-	b2node types.B2NODEBridge,
 ) *BridgeWithdrawService {
-	is := &BridgeWithdrawService{btcCli: btcCli, ethCli: ethCli, config: config, db: db, log: log, b2node: b2node}
+	is := &BridgeWithdrawService{btcCli: btcCli, ethCli: ethCli, config: config, db: db, log: log}
 	is.BaseService = *service.NewBaseService(nil, BridgeWithdrawServiceName, is)
 	return is
 }
@@ -116,114 +106,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 			return err
 		}
 	}
-
-	if !bis.db.Migrator().HasTable(&model.WithdrawIndex{}) {
-		err := bis.db.AutoMigrate(&model.WithdrawIndex{})
-		if err != nil {
-			bis.log.Errorw("BridgeWithdrawService create WithdrawIndex table", "error", err.Error())
-			return err
-		}
-	}
-
-	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				bis.log.Errorw("BridgeWithdrawService panic", "error", r)
-			}
-		}()
-		// submit withdraw tx msg
-		for {
-			timeInterval := bis.config.Bridge.TimeInterval
-			time.Sleep(time.Duration(timeInterval) * time.Second)
-			var withdrawList []model.Withdraw
-			err := bis.db.Model(&model.Withdraw{}).Where(fmt.Sprintf("%s = ?", model.Withdraw{}.Column().Status), model.BtcTxWithdrawPending).Find(&withdrawList).Error
-			if err != nil {
-				bis.log.Errorw("BridgeWithdrawService get blockNumber failed", "error", err)
-				continue
-			}
-			if len(withdrawList) == 0 {
-				continue
-			}
-			var destAddressList []string
-			var amounts []int64
-			var ids []int64
-			var b2TxHashes []string
-			for _, v := range withdrawList {
-				_, err := bis.b2node.QueryWithdrawByTxHash(v.B2TxHash)
-				if err != nil {
-					if !strings.Contains(err.Error(), "code = NotFound") {
-						bis.log.Errorw("BridgeWithdrawService QueryWithdrawByTxHash err", "error", err, "b2TxHash", v.B2TxHash)
-						continue
-					}
-					ids = append(ids, v.ID)
-					destAddressList = append(destAddressList, v.BtcTo)
-					amounts = append(amounts, v.BtcValue)
-					b2TxHashes = append(b2TxHashes, v.B2TxHash)
-				}
-			}
-			if len(ids) == 0 {
-				continue
-			}
-			b2TxHashesByte, err := json.Marshal(b2TxHashes)
-			if err != nil {
-				bis.log.Errorw("BridgeWithdrawService Marshal b2TxHashes err", "error", err, "id", ids)
-				continue
-			}
-			txID, btcTx, err := bis.ConstructTx(destAddressList, amounts, b2TxHashesByte)
-			if err != nil {
-				if errors.Is(err, errors.New("no unspent tx")) {
-					continue
-				}
-				bis.log.Errorw("BridgeWithdrawService transferToBtc failed: ", "error", err)
-				continue
-			}
-			err = bis.db.Transaction(func(tx *gorm.DB) error {
-				err = tx.Model(&model.Withdraw{}).Where("id in (?)", ids).Update(model.Withdraw{}.Column().Status, model.BtcTxWithdrawSubmitTxMsg).Error
-				if err != nil {
-					bis.log.Errorw("BridgeWithdrawService submit withdraw tx update db err", "error", err, "id", ids)
-					return err
-				}
-				withdrawTxData := model.WithdrawTx{
-					BtcTxID:    txID,
-					BtcTx:      btcTx,
-					B2TxHashes: string(b2TxHashesByte),
-				}
-				var withdrawTx model.WithdrawTx
-				result := tx.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().BtcTxID), txID).First(&withdrawTx)
-				if result.RowsAffected == 0 {
-					if err = tx.Create(&withdrawTxData).Error; err != nil {
-						bis.log.Errorw("BridgeWithdrawService create withdrawTx err", "b2TxHashes", b2TxHashes, "error", err)
-						return err
-					}
-				} else {
-					updateFields := map[string]interface{}{
-						model.WithdrawTx{}.Column().Status: model.BtcTxWithdrawPending,
-						model.WithdrawTx{}.Column().Reason: "",
-					}
-					err = tx.Model(&model.WithdrawTx{}).Where("id = ?", withdrawTx.ID).Updates(updateFields).Error
-					if err != nil {
-						bis.log.Errorw("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", withdrawTx.BtcTxID)
-						return err
-					}
-				}
-
-				// create witdraw record
-				err = bis.b2node.CreateWithdraw(txID, b2TxHashes, btcTx)
-				if err != nil {
-					if !errors.Is(err, bridgeTypes.ErrIndexExist) {
-						bis.log.Errorw("BridgeWithdrawService CreateWithdraw to b2node tx err", "error", err)
-						return err
-					}
-				}
-
-				bis.log.Infow("BridgeWithdrawService broadcast tx success", "id", ids, "b2TxHashes", b2TxHashes)
-				return nil
-			})
-			if err != nil {
-				bis.log.Errorw("BridgeWithdrawService submit withdrawTx err", "error", err, "txID", txID)
-			}
-		}
-	}()
 
 	go func() {
 		defer func() {
@@ -252,22 +134,18 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				tx := pack.UnsignedTx
 				preTx := pack.Inputs
 
-				withdrawInfo, err := bis.b2node.QueryWithdraw(v.BtcTxID)
-				if err != nil {
-					bis.log.Errorw("BridgeWithdrawService QueryWithdraw err", "error", err)
-					continue
-				}
 				var signes [][]model.Sign
-				for _, signHex := range withdrawInfo.Signatures {
+				var signatures []string
+				for _, signHex := range signatures {
 					signByte, err := hex.DecodeString(signHex)
 					if err != nil {
-						bis.log.Errorw("BridgeWithdrawService DecodeString sign err", "error", err, "btc_tx_id", withdrawInfo.TxId)
+						bis.log.Errorw("BridgeWithdrawService DecodeString sign err", "error", err)
 						continue
 					}
 					var sign []model.Sign
 					err = json.Unmarshal(signByte, &sign)
 					if err != nil {
-						bis.log.Errorw("BridgeWithdrawService Unmarshal sign err", "error", err, "btc_tx_id", withdrawInfo.TxId)
+						bis.log.Errorw("BridgeWithdrawService Unmarshal sign err", "error", err)
 						continue
 					}
 					signes = append(signes, sign)
@@ -288,11 +166,6 @@ func (bis *BridgeWithdrawService) OnStart() error {
 					bis.log.Errorw("BridgeWithdrawService broadcast tx err", "id", v.ID, "txID", v.BtcTxID, "error", err)
 					status = model.BtcTxWithdrawBroadcastFailed
 					reason = err.Error()
-					err = bis.b2node.DeleteWithdraw(v.BtcTxID)
-					if err != nil {
-						bis.log.Errorw("BridgeWithdrawService DeleteWithdraw err", "error", err, "id", v.ID)
-						continue
-					}
 				} else {
 					status = model.BtcTxWithdrawBroadcastSuccess
 				}
@@ -372,22 +245,12 @@ func (bis *BridgeWithdrawService) OnStart() error {
 				continue
 			}
 			for _, v := range withdrawTxList {
-				var b2NodeStatus bridgeTypes.WithdrawStatus
 				var withdrawTxStatus int
 				var withdrawHistoryStatus int
 				if v.Status == model.BtcTxWithdrawConfirmed {
-					b2NodeStatus = bridgeTypes.WithdrawStatus_WITHDRAW_STATUS_COMPLETED
 					withdrawTxStatus = model.BtcTxWithdrawSuccess
 					withdrawHistoryStatus = model.BtcTxWithdrawSuccess
-					err := bis.b2node.UpdateWithdraw(v.BtcTxID, b2NodeStatus)
-					if err != nil {
-						if !errors.Is(err, bridgeTypes.ErrIndexExist) {
-							bis.log.Errorw("BridgeWithdrawService UpdateWithdraw err", "error", err, "txID", v.BtcTxID)
-							continue
-						}
-					}
 				} else {
-					b2NodeStatus = bridgeTypes.WithdrawStatus_WITHDRAW_STATUS_FAILED
 					withdrawTxStatus = model.BtcTxWithdrawFailed
 					withdrawHistoryStatus = model.BtcTxWithdrawPending
 				}
@@ -417,118 +280,78 @@ func (bis *BridgeWithdrawService) OnStart() error {
 	}()
 
 	for {
-		// listen withdraw
-		time.Sleep(time.Duration(WithdrawHandleTime) * time.Second)
-		var currentBlock uint64 // index current block number
-		var currentTxIndex uint // index current block tx index
-		var currentLogIndex uint
-		var WithdrawIndex model.WithdrawIndex
-		if err := bis.db.First(&WithdrawIndex, 1).Error; err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				latestBlock, err := bis.ethCli.BlockNumber(context.Background())
-				if err != nil {
-					bis.log.Errorw("BridgeWithdrawService HeaderByNumber is failed:", "error", err)
-					continue
-				}
-				WithdrawIndex = model.WithdrawIndex{
-					Base: model.Base{
-						ID: 1,
-					},
-					B2IndexBlock: latestBlock,
-					B2IndexTx:    0,
-					B2LogIndex:   0,
-				}
-				if err := bis.db.Create(&WithdrawIndex).Error; err != nil {
+		timeInterval := bis.config.Bridge.TimeInterval
+		time.Sleep(time.Duration(timeInterval) * time.Second)
+		var withdrawList []model.Withdraw
+		err := bis.db.Model(&model.Withdraw{}).Where(fmt.Sprintf("%s = ?", model.Withdraw{}.Column().Status), model.BtcTxWithdrawPending).Find(&withdrawList).Error
+		if err != nil {
+			bis.log.Errorw("BridgeWithdrawService get blockNumber failed", "error", err)
+			continue
+		}
+		if len(withdrawList) == 0 {
+			continue
+		}
+		var destAddressList []string
+		var amounts []int64
+		var ids []int64
+		var b2TxHashes []string
+		for _, v := range withdrawList {
+			ids = append(ids, v.ID)
+			destAddressList = append(destAddressList, v.BtcTo)
+			amounts = append(amounts, v.BtcValue)
+			b2TxHashes = append(b2TxHashes, v.B2TxHash)
+		}
+		if len(ids) == 0 {
+			continue
+		}
+		b2TxHashesByte, err := json.Marshal(b2TxHashes)
+		if err != nil {
+			bis.log.Errorw("BridgeWithdrawService Marshal b2TxHashes err", "error", err, "id", ids)
+			continue
+		}
+		txID, btcTx, err := bis.ConstructTx(destAddressList, amounts, b2TxHashesByte)
+		if err != nil {
+			if errors.Is(err, errors.New("no unspent tx")) {
+				continue
+			}
+			bis.log.Errorw("BridgeWithdrawService transferToBtc failed: ", "error", err)
+			continue
+		}
+		err = bis.db.Transaction(func(tx *gorm.DB) error {
+			err = tx.Model(&model.Withdraw{}).Where("id in (?)", ids).Update(model.Withdraw{}.Column().Status, model.BtcTxWithdrawSubmitTxMsg).Error
+			if err != nil {
+				bis.log.Errorw("BridgeWithdrawService submit withdraw tx update db err", "error", err, "id", ids)
+				return err
+			}
+			withdrawTxData := model.WithdrawTx{
+				BtcTxID:    txID,
+				BtcTx:      btcTx,
+				B2TxHashes: string(b2TxHashesByte),
+			}
+			var withdrawTx model.WithdrawTx
+			result := tx.Model(&model.WithdrawTx{}).Where(fmt.Sprintf("%s = ?", model.WithdrawTx{}.Column().BtcTxID), txID).First(&withdrawTx)
+			if result.RowsAffected == 0 {
+				if err = tx.Create(&withdrawTxData).Error; err != nil {
+					bis.log.Errorw("BridgeWithdrawService create withdrawTx err", "b2TxHashes", b2TxHashes, "error", err)
 					return err
 				}
 			} else {
-				return err
-			}
-		}
-		currentBlock = WithdrawIndex.B2IndexBlock
-		currentTxIndex = WithdrawIndex.B2IndexTx
-		currentLogIndex = WithdrawIndex.B2LogIndex
-		addresses := []common.Address{
-			common.HexToAddress(bis.config.Bridge.ContractAddress),
-		}
-		topics := [][]common.Hash{
-			{
-				common.HexToHash(bis.config.Bridge.Deposit),
-				common.HexToHash(bis.config.Bridge.Withdraw),
-			},
-		}
-		for {
-			time.Sleep(time.Duration(WithdrawHandleTime) * time.Second)
-			latestBlock, err := bis.ethCli.BlockNumber(context.Background())
-			if err != nil {
-				bis.log.Errorw("BridgeWithdrawService HeaderByNumber is failed:", "error", err)
-				continue
-			}
-			bis.log.Infow("BridgeWithdrawService ethClient height", "height", latestBlock, "currentBlock", currentBlock)
-			if latestBlock == currentBlock {
-				continue
-			}
-			for i := currentBlock; i <= latestBlock; i++ {
-				bis.log.Infow("BridgeWithdrawService get log height:", "height", i)
-				query := ethereum.FilterQuery{
-					FromBlock: big.NewInt(0).SetUint64(i),
-					ToBlock:   big.NewInt(0).SetUint64(i),
-					Topics:    topics,
-					Addresses: addresses,
+				updateFields := map[string]interface{}{
+					model.WithdrawTx{}.Column().Status: model.BtcTxWithdrawPending,
+					model.WithdrawTx{}.Column().Reason: "",
 				}
-				logs, err := bis.ethCli.FilterLogs(context.Background(), query)
+				err = tx.Model(&model.WithdrawTx{}).Where("id = ?", withdrawTx.ID).Updates(updateFields).Error
 				if err != nil {
-					bis.log.Errorw("BridgeWithdrawService failed to fetch block", "height", i, "error", err)
-					continue
-				}
-
-				for _, vlog := range logs {
-					if currentBlock == vlog.BlockNumber && currentTxIndex == vlog.TxIndex && currentLogIndex == vlog.Index {
-						continue
-					}
-					eventHash := common.BytesToHash(vlog.Topics[0].Bytes())
-					if eventHash == common.HexToHash(bis.config.Bridge.Withdraw) {
-						data := WithdrawEvent{
-							FromAddress: TopicToAddress(vlog, 1),
-							ToAddress:   DataToString(vlog, 0),
-							Amount:      DataToBigInt(vlog, 1),
-						}
-						value, err := json.Marshal(&data)
-						if err != nil {
-							bis.log.Errorw("BridgeWithdrawService listener withdraw Marshal failed: ", "error", err)
-							continue
-						}
-						bis.log.Infow("BridgeWithdrawService listener withdraw event: ", "num", i, "withdraw", string(value))
-
-						amount := DataToBigInt(vlog, 1)
-						destAddrStr := DataToString(vlog, 0)
-						withdrawData := model.Withdraw{
-							BtcFrom:       bis.config.IndexerListenAddress,
-							BtcTo:         destAddrStr,
-							BtcValue:      amount.Int64(),
-							B2BlockNumber: vlog.BlockNumber,
-							B2BlockHash:   vlog.BlockHash.String(),
-							B2TxHash:      vlog.TxHash.String(),
-							B2TxIndex:     vlog.TxIndex,
-							B2LogIndex:    vlog.Index,
-						}
-						if err = bis.db.Create(&withdrawData).Error; err != nil {
-							bis.log.Errorw("BridgeWithdrawService create withdraw failed", "error", err, "withdraw", withdrawData)
-							return err
-						}
-					}
-					currentTxIndex = vlog.TxIndex
-					currentLogIndex = vlog.Index
-				}
-				currentBlock = i
-				WithdrawIndex.B2IndexBlock = currentBlock
-				WithdrawIndex.B2IndexTx = currentTxIndex
-				WithdrawIndex.B2LogIndex = currentLogIndex
-				if err := bis.db.Save(&WithdrawIndex).Error; err != nil {
-					bis.log.Errorw("failed to save b2 index block", "error", err, "currentBlock", i,
-						"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
+					bis.log.Errorw("BridgeWithdrawService Update WithdrawTx status err", "error", err, "txID", withdrawTx.BtcTxID)
+					return err
 				}
 			}
+
+			bis.log.Infow("BridgeWithdrawService broadcast tx success", "id", ids, "b2TxHashes", b2TxHashes)
+			return nil
+		})
+		if err != nil {
+			bis.log.Errorw("BridgeWithdrawService submit withdrawTx err", "error", err, "txID", txID)
 		}
 	}
 }

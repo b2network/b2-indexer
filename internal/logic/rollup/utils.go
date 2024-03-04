@@ -1,4 +1,4 @@
-package bitcoin
+package rollup
 
 import (
 	"math/big"
