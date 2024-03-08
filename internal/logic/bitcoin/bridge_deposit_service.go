@@ -9,8 +9,7 @@ import (
 	"github.com/b2network/b2-indexer/internal/model"
 	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
-	bridgeTypes "github.com/evmos/ethermint/x/bridge/types"
-	"github.com/tendermint/tendermint/libs/service"
+	"github.com/cometbft/cometbft/libs/service"
 	"gorm.io/gorm"
 )
 
@@ -28,7 +27,6 @@ type BridgeDepositService struct {
 	service.BaseService
 
 	bridge types.BITCOINBridge
-	b2node types.B2NODEBridge
 
 	db  *gorm.DB
 	log log.Logger
@@ -37,11 +35,10 @@ type BridgeDepositService struct {
 // NewBridgeDepositService returns a new service instance.
 func NewBridgeDepositService(
 	bridge types.BITCOINBridge,
-	b2node types.B2NODEBridge,
 	db *gorm.DB,
 	logger log.Logger,
 ) *BridgeDepositService {
-	is := &BridgeDepositService{bridge: bridge, b2node: b2node, db: db, log: logger}
+	is := &BridgeDepositService{bridge: bridge, db: db, log: logger}
 	is.BaseService = *service.NewBaseService(nil, BridgeDepositServiceName, is)
 	return is
 }
@@ -66,10 +63,6 @@ func (bis *BridgeDepositService) OnStart() error {
 					model.DepositB2TxStatusInsufficientBalance,
 					model.DepositB2TxStatusFromAccountGasInsufficient,
 				},
-			).
-			Where(
-				fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().B2NodeTxStatus),
-				model.DepositB2NodeTxStatusRollupPending,
 			).
 			Limit(BatchDepositLimit).
 			Find(&deposits).Error
@@ -118,18 +111,12 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 			bis.log.Errorw("panic err", err)
 		}
 	}()
-	// check b2node
-	ok := bis.CheckB2NodeDeposit(deposit)
-	if !ok {
-		return fmt.Errorf("check b2node deposit err")
-	}
 	// set init status
 	deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusPending
 
 	// send deposit tx
 	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, types.BitcoinFrom{
 		Address: deposit.BtcFrom,
-		PubKey:  deposit.BtcFromPubKey,
 	}, deposit.BtcValue)
 	if err != nil {
 		switch {
@@ -183,45 +170,6 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 	return nil
 }
 
-func (bis *BridgeDepositService) CheckB2NodeDeposit(deposit model.Deposit) bool {
-	defer func() {
-		if err := recover(); err != nil {
-			bis.log.Errorw("panic err", err)
-		}
-	}()
-	b2NodeCheck := true
-	// check b2node deposit
-	b2NodeDeposit, err := bis.b2node.QueryDeposit(deposit.BtcTxHash)
-	if err != nil {
-		bis.log.Errorw("failed query b2node deposit",
-			"error", err,
-			"deposit", deposit,
-			"b2node deposit", b2NodeDeposit,
-		)
-		b2NodeCheck = false
-	}
-	if b2NodeDeposit.Status != bridgeTypes.DepositStatus_DEPOSIT_STATUS_PENDING {
-		bis.log.Errorw("b2node deposit status mismatch",
-			"status", b2NodeDeposit.Status,
-			"deposit", deposit,
-			"b2node deposit", b2NodeDeposit,
-		)
-		b2NodeCheck = false
-	}
-	// check params
-	if b2NodeDeposit.GetFrom() != deposit.BtcFrom ||
-		b2NodeDeposit.GetTo() != deposit.BtcTo ||
-		b2NodeDeposit.GetValue() != deposit.BtcValue {
-		bis.log.Errorw("b2node deposit value mismatch",
-			"status", b2NodeDeposit.Status,
-			"deposit", deposit,
-			"b2node deposit", b2NodeDeposit,
-		)
-		b2NodeCheck = false
-	}
-	return b2NodeCheck
-}
-
 func (bis *BridgeDepositService) HandleUnconfirmDeposit(deposit model.Deposit) error {
 	defer func() {
 		if err := recover(); err != nil {
@@ -242,13 +190,11 @@ func (bis *BridgeDepositService) HandleUnconfirmDeposit(deposit model.Deposit) e
 		// try eoa transfer, only b2tx recepit status != 1
 		// NOTE: eoa tx is temp handle, It will be removed in the future
 		bis.log.Errorw("invoke deposit wait mined err try again by eoa transfer",
-			"error", err.Error(),
 			"btcTxHash", deposit.BtcTxHash,
 			"b2txReceipt", b2txReceipt,
 			"data", deposit)
 		b2EoaTx, err := bis.bridge.Transfer(types.BitcoinFrom{
 			Address: deposit.BtcFrom,
-			PubKey:  deposit.BtcFromPubKey,
 		}, deposit.BtcValue)
 		if err != nil {
 			deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusFailed
@@ -283,10 +229,9 @@ func (bis *BridgeDepositService) HandleUnconfirmDeposit(deposit model.Deposit) e
 	}
 
 	updateFields := map[string]interface{}{
-		model.Deposit{}.Column().B2TxStatus:     deposit.B2TxStatus,
-		model.Deposit{}.Column().B2EoaTxHash:    deposit.B2EoaTxHash,
-		model.Deposit{}.Column().B2EoaTxStatus:  deposit.B2EoaTxStatus,
-		model.Deposit{}.Column().B2NodeTxStatus: deposit.B2NodeTxStatus,
+		model.Deposit{}.Column().B2TxStatus:    deposit.B2TxStatus,
+		model.Deposit{}.Column().B2EoaTxHash:   deposit.B2EoaTxHash,
+		model.Deposit{}.Column().B2EoaTxStatus: deposit.B2EoaTxStatus,
 	}
 	err = bis.db.Model(&model.Deposit{}).
 		Where("id = ?", deposit.ID).

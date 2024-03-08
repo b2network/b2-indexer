@@ -74,7 +74,6 @@ func TestLocalTransfer(t *testing.T) {
 			args: []interface{}{
 				b2types.BitcoinFrom{
 					Address: "tb1qjda2l5spwyv4ekwe9keddymzuxynea2m2kj0qy",
-					PubKey:  "0254639ea1f3c20b1930cc5f0db623b67959c1dbaeb19a3b2d57646bf74ed0c275",
 				},
 				int64(20183783146),
 			},
@@ -113,7 +112,6 @@ func TestLocalBitcoinAddressToEthAddress(t *testing.T) {
 			name: "success",
 			bitcoinAddress: b2types.BitcoinFrom{
 				Address: "1McUczq9Cq8DL1YwaQCr6nSseuEBkpQdBh",
-				PubKey:  "03fcff099be3b8a3cd38b21bfec9157346738c9eec7f28526d20e3b8bb7bb86e5b",
 			},
 			wantErr: false,
 		},
@@ -121,7 +119,6 @@ func TestLocalBitcoinAddressToEthAddress(t *testing.T) {
 			name: "pubkey fail",
 			bitcoinAddress: b2types.BitcoinFrom{
 				Address: "1McUczq9Cq8DL1YwaQCr6nSseuEBkpQdBh",
-				PubKey:  "fcff099be3b8a3cd38b21bfec9157346738c9eec7f28526d20e3b8bb7bb86e5b",
 			},
 			wantErr: true,
 		},
