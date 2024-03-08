@@ -236,7 +236,7 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 
 // BitcoinAddressToEthAddress bitcoin address to eth address
 func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
-	//TODO: from bridge aa service get pubkey
+	// TODO: from bridge aa service get pubkey
 	pubkey := "0211ea8b57517d1fda6f543c3cb3d6c03593274b6d3989f0b3da2660e2e7226d76"
 	aaBtcAccount, err := b.particle.AAGetBTCAccount([]string{pubkey})
 	if err != nil {

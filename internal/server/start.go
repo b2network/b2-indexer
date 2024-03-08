@@ -212,6 +212,7 @@ func WaitForQuitSignals() int {
 	sig := <-sigs
 	return int(sig.(syscall.Signal)) + 128
 }
+
 func newLogger(ctx *Context, name string) logger.Logger {
 	bridgeB2NodeLoggerOpt := logger.NewOptions()
 	bridgeB2NodeLoggerOpt.Format = ctx.Config.LogFormat
