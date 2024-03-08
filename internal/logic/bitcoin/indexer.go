@@ -120,7 +120,7 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (*types.BitcoinTxPars
 			if errors.Is(err, ErrParsePkScript) {
 				continue
 			}
-			// TODO: handle null data
+			// null data
 			if errors.Is(err, ErrParsePkScriptNullData) {
 				continue
 			}

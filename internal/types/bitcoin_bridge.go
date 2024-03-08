@@ -16,4 +16,6 @@ type BITCOINBridge interface {
 	WaitMined(context.Context, *types.Transaction, []byte) (*types.Receipt, error)
 	// TransactionReceipt
 	TransactionReceipt(hash string) (*types.Receipt, error)
+	//  EnableEoaTransfer
+	EnableEoaTransfer() bool
 }

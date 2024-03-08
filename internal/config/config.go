@@ -62,8 +62,12 @@ type BridgeConfig struct {
 	ABI string `mapstructure:"abi" env:"BITCOIN_BRIDGE_ABI"`
 	// GasLimit defines the  contract gas limit
 	GasLimit uint64 `mapstructure:"gas-limit" env:"BITCOIN_BRIDGE_GAS_LIMIT"`
+	// if deposit invoke b2 failed(status != 1), Whether to allow invoke eoa trnasfer
+	EnableEoaTransfer bool `mapstructure:"enable-eoa-transfer" env:"BITCOIN_BRIDGE_ENABLE_EOA_TRANSFER" envDefault:"true"`
+	// AAPubKeyAPI get pubkey by btc address
+	AAPubKeyAPI string `mapstructure:"aa-pubkey-api" env:"BITCOIN_BRIDGE_AA_PUBKEY_API"`
 	// AAParticleRPC defines the particle api
-	AAParticleRPC string `mapstructure:"aa-particle-api" env:"BITCOIN_BRIDGE_AA_PARTICLE_RPC"`
+	AAParticleRPC string `mapstructure:"aa-particle-rpc" env:"BITCOIN_BRIDGE_AA_PARTICLE_RPC"`
 	// AAParticleProjectID defines the particle project id
 	AAParticleProjectID string `mapstructure:"aa-particle-project-id" env:"BITCOIN_BRIDGE_AA_PARTICLE_PROJECT_ID"`
 	// AAParticleServerKey defines the particle server key

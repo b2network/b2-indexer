@@ -14,6 +14,7 @@ import (
 
 	"github.com/b2network/b2-indexer/internal/config"
 	b2types "github.com/b2network/b2-indexer/internal/types"
+	"github.com/b2network/b2-indexer/pkg/aa"
 	"github.com/b2network/b2-indexer/pkg/log"
 	"github.com/b2network/b2-indexer/pkg/particle"
 	"github.com/btcsuite/btcd/chaincfg"
@@ -45,6 +46,10 @@ type Bridge struct {
 	// particle aa
 	particle     *particle.Particle
 	bitcoinParam *chaincfg.Params
+	// eoa transfer switch
+	enableEoaTransfer bool
+	// aa server
+	AAPubKeyAPI string
 }
 
 // NewBridge new bridge
@@ -79,14 +84,16 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger,
 	}
 
 	return &Bridge{
-		EthRPCURL:       rpcURL.String(),
-		ContractAddress: common.HexToAddress(bridgeCfg.ContractAddress),
-		EthPrivKey:      privateKey,
-		ABI:             ABI,
-		GasLimit:        bridgeCfg.GasLimit,
-		logger:          log,
-		particle:        particle,
-		bitcoinParam:    bitcoinParam,
+		EthRPCURL:         rpcURL.String(),
+		ContractAddress:   common.HexToAddress(bridgeCfg.ContractAddress),
+		EthPrivKey:        privateKey,
+		ABI:               ABI,
+		GasLimit:          bridgeCfg.GasLimit,
+		logger:            log,
+		particle:          particle,
+		bitcoinParam:      bitcoinParam,
+		enableEoaTransfer: bridgeCfg.EnableEoaTransfer,
+		AAPubKeyAPI:       bridgeCfg.AAPubKeyAPI,
 	}, nil
 }
 
@@ -236,8 +243,11 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 
 // BitcoinAddressToEthAddress bitcoin address to eth address
 func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
-	// TODO: from bridge aa service get pubkey
-	pubkey := "0211ea8b57517d1fda6f543c3cb3d6c03593274b6d3989f0b3da2660e2e7226d76"
+	pubkey, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
+	if err != nil {
+		return "", err
+	}
+	b.logger.Infow("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)
 	aaBtcAccount, err := b.particle.AAGetBTCAccount([]string{pubkey})
 	if err != nil {
 		return "", err
@@ -281,4 +291,8 @@ func (b *Bridge) TransactionReceipt(hash string) (*types.Receipt, error) {
 		return nil, err
 	}
 	return receipt, nil
+}
+
+func (b *Bridge) EnableEoaTransfer() bool {
+	return b.enableEoaTransfer
 }

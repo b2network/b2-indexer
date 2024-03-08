@@ -187,43 +187,49 @@ func (bis *BridgeDepositService) HandleUnconfirmDeposit(deposit model.Deposit) e
 	deposit.B2TxStatus = model.DepositB2TxStatusSuccess
 	if b2txReceipt.Status != 1 {
 		deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedStatusFailed
-		// try eoa transfer, only b2tx recepit status != 1
-		// NOTE: eoa tx is temp handle, It will be removed in the future
-		bis.log.Errorw("invoke deposit wait mined err try again by eoa transfer",
+		bis.log.Errorw("invoke deposit wait mined err, status != 1",
 			"btcTxHash", deposit.BtcTxHash,
 			"b2txReceipt", b2txReceipt,
 			"data", deposit)
-		b2EoaTx, err := bis.bridge.Transfer(types.BitcoinFrom{
-			Address: deposit.BtcFrom,
-		}, deposit.BtcValue)
-		if err != nil {
-			deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusFailed
-			bis.log.Errorw("invoke eoa transfer tx unknown err",
-				"error", err.Error(),
+		if bis.bridge.EnableEoaTransfer() {
+			// try eoa transfer, only b2tx recepit status != 1
+			// NOTE: eoa tx is temp handle, It will be removed in the future
+			bis.log.Errorw("invoke deposit wait mined err try again by eoa transfer",
 				"btcTxHash", deposit.BtcTxHash,
+				"b2txReceipt", b2txReceipt,
 				"data", deposit)
-		} else {
-			deposit.B2EoaTxHash = b2EoaTx.Hash().String()
-			// eoa wait mined
-			ctx2, cancel2 := context.WithTimeout(context.Background(), WaitMinedTimeout)
-			defer cancel2()
-			_, err := bis.bridge.WaitMined(ctx2, b2EoaTx, nil)
+			b2EoaTx, err := bis.bridge.Transfer(types.BitcoinFrom{
+				Address: deposit.BtcFrom,
+			}, deposit.BtcValue)
 			if err != nil {
-				deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusWaitMinedFailed
-				bis.log.Errorw("invoke eoa transfer wait mined err",
+				deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusFailed
+				bis.log.Errorw("invoke eoa transfer tx unknown err",
 					"error", err.Error(),
 					"btcTxHash", deposit.BtcTxHash,
 					"data", deposit)
-
-				if errors.Is(err, context.DeadlineExceeded) {
-					deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusContextDeadlineExceeded
-					bis.log.Error("invoke eoa transfer wait mined context deadline exceeded")
-				}
 			} else {
-				deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusSuccess
-				bis.log.Infow("invoke eoa transfer success",
-					"btcTxHash", deposit.BtcTxHash,
-					"data", deposit)
+				deposit.B2EoaTxHash = b2EoaTx.Hash().String()
+				// eoa wait mined
+				ctx2, cancel2 := context.WithTimeout(context.Background(), WaitMinedTimeout)
+				defer cancel2()
+				_, err := bis.bridge.WaitMined(ctx2, b2EoaTx, nil)
+				if err != nil {
+					deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusWaitMinedFailed
+					bis.log.Errorw("invoke eoa transfer wait mined err",
+						"error", err.Error(),
+						"btcTxHash", deposit.BtcTxHash,
+						"data", deposit)
+
+					if errors.Is(err, context.DeadlineExceeded) {
+						deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusContextDeadlineExceeded
+						bis.log.Error("invoke eoa transfer wait mined context deadline exceeded")
+					}
+				} else {
+					deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusSuccess
+					bis.log.Infow("invoke eoa transfer success",
+						"btcTxHash", deposit.BtcTxHash,
+						"data", deposit)
+				}
 			}
 		}
 	}
