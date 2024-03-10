@@ -20,6 +20,7 @@ const (
 	DepositB2TxStatusContextDeadlineExceeded           // deposit client context deadline exceeded, Chain transaction is stuck
 	DepositB2TxStatusFromAccountGasInsufficient        // deposit evm from account gas insufficient
 	DepositB2TxStatusWaitMined                         // deposit wait mined
+	DepositB2TxStatusAAAddressNotFound                 // aa address not found,  Start process processing separately
 )
 
 const (

@@ -7,6 +7,10 @@ import (
 	"github.com/b2network/b2-indexer/pkg/rpc"
 )
 
+var (
+	AddressNotFoundErrCode = "1001"
+)
+
 type Response struct {
 	Code    string
 	Message string
@@ -15,20 +19,21 @@ type Response struct {
 	}
 }
 
-func GetPubKey(api, btcAddress string) (string, error) {
+func GetPubKey(api, btcAddress string) (string, string, error) {
 	res, err := rpc.HTTPGet(api + "/" + btcAddress)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	btcResp := Response{}
 
 	err = json.Unmarshal(res, &btcResp)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	if btcResp.Code != "0" {
-		return "", fmt.Errorf("GetPubKey err: %s", btcResp.Message)
+		return "", "", fmt.Errorf("GetPubKey err: %s", btcResp.Message)
 	}
-	return btcResp.Data.Pubkey, nil
+
+	return btcResp.Code, btcResp.Data.Pubkey, nil
 }

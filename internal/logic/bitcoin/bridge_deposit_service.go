@@ -102,6 +102,33 @@ func (bis *BridgeDepositService) OnStart() error {
 
 			time.Sleep(HandleDepositTimeout)
 		}
+
+		// handle aa not found err
+		// If there is no binding between the registered address and pubkey
+		// an error will occur, which can be handled again next time
+		var aaNotFoundDeposits []model.Deposit
+		err = bis.db.
+			Where(
+				fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
+				[]int{
+					model.DepositB2TxStatusAAAddressNotFound,
+				},
+			).
+			Limit(BatchDepositLimit).
+			Find(&aaNotFoundDeposits).Error
+		if err != nil {
+			bis.log.Errorw("failed find tx from db", "error", err)
+		}
+
+		bis.log.Infow("start handle aa not found deposit", "deposit batch num", len(deposits))
+		for _, deposit := range aaNotFoundDeposits {
+			err = bis.HandleDeposit(deposit)
+			if err != nil {
+				bis.log.Errorw("handle aa not found deposit failed", "error", err, "deposit", deposit)
+			}
+
+			time.Sleep(HandleDepositTimeout)
+		}
 	}
 }
 
@@ -135,6 +162,12 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 		case errors.Is(err, ErrBridgeFromGasInsufficient):
 			deposit.B2TxStatus = model.DepositB2TxStatusFromAccountGasInsufficient
 			bis.log.Errorw("invoke deposit send tx from account gas insufficient",
+				"error", err.Error(),
+				"btcTxHash", deposit.BtcTxHash,
+				"data", deposit)
+		case errors.Is(err, ErrAAAddressNotFound):
+			deposit.B2TxStatus = model.DepositB2TxStatusAAAddressNotFound
+			bis.log.Errorw("invoke deposit send tx aa address not found",
 				"error", err.Error(),
 				"btcTxHash", deposit.BtcTxHash,
 				"data", deposit)

@@ -32,6 +32,7 @@ var (
 	ErrBrdigeDepositContractInsufficientBalance = errors.New("insufficient balance")
 	ErrBridgeWaitMinedStatus                    = errors.New("tx wait mined status failed")
 	ErrBridgeFromGasInsufficient                = errors.New("gas required exceeds allowanc")
+	ErrAAAddressNotFound                        = errors.New("address not found")
 )
 
 // Bridge bridge
@@ -243,9 +244,13 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 
 // BitcoinAddressToEthAddress bitcoin address to eth address
 func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
-	pubkey, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
+	code, pubkey, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
 	if err != nil {
+		b.logger.Errorw("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)
 		return "", err
+	}
+	if code == aa.AddressNotFoundErrCode {
+		return "", ErrAAAddressNotFound
 	}
 	b.logger.Infow("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)
 	aaBtcAccount, err := b.particle.AAGetBTCAccount([]string{pubkey})
