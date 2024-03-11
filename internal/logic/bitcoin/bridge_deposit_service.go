@@ -11,6 +11,7 @@ import (
 	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
 	"github.com/cometbft/cometbft/libs/service"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"gorm.io/gorm"
 )
 
@@ -82,7 +83,7 @@ func (bis *BridgeDepositService) Deposit(wg *sync.WaitGroup) {
 
 		bis.log.Infow("start handle deposit", "deposit batch num", len(deposits))
 		for _, deposit := range deposits {
-			err = bis.HandleDeposit(deposit)
+			err = bis.HandleDeposit(deposit, nil)
 			if err != nil {
 				bis.log.Errorw("handle deposit failed", "error", err, "deposit", deposit)
 			}
@@ -107,9 +108,9 @@ func (bis *BridgeDepositService) Deposit(wg *sync.WaitGroup) {
 			bis.log.Errorw("failed find tx from db", "error", err)
 		}
 
-		bis.log.Infow("start handle aa not found deposit", "deposit batch num", len(deposits))
+		bis.log.Infow("start handle aa not found deposit", "aa not found deposit batch num", len(aaNotFoundDeposits))
 		for _, deposit := range aaNotFoundDeposits {
-			err = bis.HandleDeposit(deposit)
+			err = bis.HandleDeposit(deposit, nil)
 			if err != nil {
 				bis.log.Errorw("handle aa not found deposit failed", "error", err, "deposit", deposit)
 			}
@@ -125,12 +126,33 @@ func (bis *BridgeDepositService) DeadlineExceededDeposit(wg *sync.WaitGroup) {
 	for {
 		<-ticker.C
 		ticker.Reset(BatchDepositWaitTimeout)
-		// TODO: handle deadline
-		bis.log.Infof("deadline deposit handle")
+		var deposits []model.Deposit
+		err := bis.db.
+			Where(
+				fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
+				[]int{
+					model.DepositB2TxStatusContextDeadlineExceeded,
+				},
+			).
+			Limit(BatchDepositLimit).
+			Find(&deposits).Error
+		if err != nil {
+			bis.log.Errorw("failed find tx from db", "error", err)
+		}
+
+		bis.log.Infow("start handle deadline deposit", "deposit batch num", len(deposits))
+		for _, deposit := range deposits {
+			err = bis.HandleDeadlineDeposit(deposit)
+			if err != nil {
+				bis.log.Errorw("handle deadline deposit failed", "error", err, "deposit", deposit)
+			}
+
+			time.Sleep(HandleDepositTimeout)
+		}
 	}
 }
 
-func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
+func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *ethTypes.Transaction) error {
 	defer func() {
 		if err := recover(); err != nil {
 			bis.log.Errorw("panic err", err)
@@ -139,11 +161,15 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 	// set init status
 	deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusPending
 
+	if oldTx != nil {
+		bis.log.Warnw("handle old deposit", "old tx:", oldTx)
+	}
+
 	// send deposit tx
 	// TODO: wait tx mined
 	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, types.BitcoinFrom{
 		Address: deposit.BtcFrom,
-	}, deposit.BtcValue)
+	}, deposit.BtcValue, oldTx)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrBrdigeDepositTxHashExist):
@@ -170,6 +196,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 				"error", err.Error(),
 				"btcTxHash", deposit.BtcTxHash,
 				"data", deposit)
+			// TODO: if nonce used
 		default:
 			deposit.B2TxRetry++
 			deposit.B2TxStatus = model.DepositB2TxStatusPending
@@ -273,5 +300,19 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 		return err
 	}
 	bis.log.Infow("handle deposit success", "btcTxHash", deposit.BtcTxHash, "deposit", deposit)
+	return nil
+}
+
+func (bis *BridgeDepositService) HandleDeadlineDeposit(deposit model.Deposit) error {
+
+	tx, isPending, err := bis.bridge.TransactionByHash(deposit.B2TxHash)
+	if err != nil {
+		return err
+	}
+
+	if isPending {
+		return bis.HandleDeposit(deposit, tx)
+	}
+
 	return nil
 }

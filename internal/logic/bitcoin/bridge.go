@@ -38,12 +38,13 @@ var (
 // Bridge bridge
 // TODO: only L1 -> L2, More calls may be supported later
 type Bridge struct {
-	EthRPCURL       string
-	EthPrivKey      *ecdsa.PrivateKey
-	ContractAddress common.Address
-	ABI             string
-	GasLimit        uint64
-	logger          log.Logger
+	EthRPCURL        string
+	EthPrivKey       *ecdsa.PrivateKey
+	ContractAddress  common.Address
+	ABI              string
+	GasLimit         uint64
+	GasPriceMultiple int64
+	logger           log.Logger
 	// particle aa
 	particle     *particle.Particle
 	bitcoinParam *chaincfg.Params
@@ -99,7 +100,12 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger,
 }
 
 // Deposit to ethereum
-func (b *Bridge) Deposit(hash string, bitcoinAddress b2types.BitcoinFrom, amount int64) (*types.Transaction, []byte, string, error) {
+func (b *Bridge) Deposit(
+	hash string,
+	bitcoinAddress b2types.BitcoinFrom,
+	amount int64,
+	oldTx *types.Transaction,
+) (*types.Transaction, []byte, string, error) {
 	if bitcoinAddress.Address == "" {
 		return nil, nil, "", fmt.Errorf("bitcoin address is empty")
 	}
@@ -119,6 +125,15 @@ func (b *Bridge) Deposit(hash string, bitcoinAddress b2types.BitcoinFrom, amount
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
 	}
+
+	if oldTx != nil {
+		tx, err := b.retrySendTransaction(ctx, oldTx, b.EthPrivKey)
+		if err != nil {
+			return nil, nil, "", err
+		}
+		return tx, oldTx.Data(), oldTx.To().String(), nil
+	}
+
 	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, new(big.Int).SetInt64(0))
 	if err != nil {
 		return nil, nil, "", err
@@ -168,6 +183,13 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	if err != nil {
 		return nil, err
 	}
+
+	if b.GasPriceMultiple != 0 {
+		gasPrice.Mul(gasPrice, big.NewInt(b.GasPriceMultiple))
+	}
+
+	b.logger.Infof("gas price:", gasPrice.String())
+
 	callMsg := ethereum.CallMsg{
 		From:     crypto.PubkeyToAddress(fromPriv.PublicKey),
 		To:       &toAddress,
@@ -213,6 +235,88 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	}
 
 	tx := types.NewTx(&legacyTx)
+
+	chainID, err := client.ChainID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// sign tx
+	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), fromPriv)
+	if err != nil {
+		return nil, err
+	}
+
+	// send tx
+	err = client.SendTransaction(ctx, signedTx)
+	if err != nil {
+		return nil, err
+	}
+
+	return signedTx, nil
+}
+func (b *Bridge) retrySendTransaction(
+	ctx context.Context,
+	oldTx *types.Transaction,
+	fromPriv *ecdsa.PrivateKey,
+) (*types.Transaction, error) {
+	client, err := ethclient.Dial(b.EthRPCURL)
+	if err != nil {
+		return nil, err
+	}
+	nonce := oldTx.Nonce()
+	gasPrice := oldTx.GasPrice()
+
+	if b.GasPriceMultiple != 0 {
+		gasPrice.Mul(gasPrice, big.NewInt(b.GasPriceMultiple))
+	}
+
+	b.logger.Infof("gas price:", gasPrice.String())
+
+	callMsg := ethereum.CallMsg{
+		From:     crypto.PubkeyToAddress(fromPriv.PublicKey),
+		To:       oldTx.To(),
+		Value:    oldTx.Value(),
+		GasPrice: gasPrice,
+	}
+	if oldTx.Data() != nil {
+		callMsg.Data = oldTx.Data()
+	}
+
+	// use eth_estimateGas only check deposit err
+	gas, err := client.EstimateGas(ctx, callMsg)
+	if err != nil {
+		// Other errors may occur that need to be handled
+		// The estimated gas cannot block the sending of a transaction
+		b.logger.Errorw("estimate gas err", "error", err.Error())
+		if strings.Contains(err.Error(), ErrBrdigeDepositTxHashExist.Error()) {
+			return nil, ErrBrdigeDepositTxHashExist
+		}
+
+		if strings.Contains(err.Error(), ErrBrdigeDepositContractInsufficientBalance.Error()) {
+			return nil, ErrBrdigeDepositContractInsufficientBalance
+		}
+
+		if strings.Contains(err.Error(), ErrBridgeFromGasInsufficient.Error()) {
+			return nil, ErrBridgeFromGasInsufficient
+		}
+
+		// estimate gas err, return, try again
+		return nil, err
+	}
+	gas *= 2
+	newlegacyTx := types.LegacyTx{
+		Nonce:    nonce,
+		To:       oldTx.To(),
+		Value:    oldTx.Value(),
+		Gas:      gas,
+		GasPrice: gasPrice,
+	}
+
+	if oldTx.Data() != nil {
+		newlegacyTx.Data = oldTx.Data()
+	}
+
+	tx := types.NewTx(&newlegacyTx)
 
 	chainID, err := client.ChainID(ctx)
 	if err != nil {
@@ -297,7 +401,18 @@ func (b *Bridge) TransactionReceipt(hash string) (*types.Receipt, error) {
 	}
 	return receipt, nil
 }
+func (b *Bridge) TransactionByHash(hash string) (*types.Transaction, bool, error) {
+	client, err := ethclient.Dial(b.EthRPCURL)
+	if err != nil {
+		return nil, false, err
+	}
 
+	tx, isPending, err := client.TransactionByHash(context.Background(), common.HexToHash(hash))
+	if err != nil {
+		return nil, false, err
+	}
+	return tx, isPending, nil
+}
 func (b *Bridge) EnableEoaTransfer() bool {
 	return b.enableEoaTransfer
 }
