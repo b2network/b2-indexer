@@ -7,9 +7,7 @@ import (
 	"github.com/b2network/b2-indexer/pkg/rpc"
 )
 
-var (
-	AddressNotFoundErrCode = "1001"
-)
+var AddressNotFoundErrCode = "1001"
 
 type Response struct {
 	Code    string

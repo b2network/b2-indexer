@@ -140,7 +140,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 	deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusPending
 
 	// send deposit tx
-	//TODO: wait tx mined
+	// TODO: wait tx mined
 	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, types.BitcoinFrom{
 		Address: deposit.BtcFrom,
 	}, deposit.BtcValue)
