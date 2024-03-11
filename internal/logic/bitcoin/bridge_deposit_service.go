@@ -54,7 +54,7 @@ func (bis *BridgeDepositService) OnStart() error {
 	return nil
 }
 
-func (bis *BridgeDepositService) Deposit(wg *sync.WaitGroup) error {
+func (bis *BridgeDepositService) Deposit(wg *sync.WaitGroup) {
 	defer wg.Done()
 	ticker := time.NewTicker(BatchDepositWaitTimeout)
 	for {
@@ -119,7 +119,7 @@ func (bis *BridgeDepositService) Deposit(wg *sync.WaitGroup) error {
 	}
 }
 
-func (bis *BridgeDepositService) DeadlineExceededDeposit(wg *sync.WaitGroup) error {
+func (bis *BridgeDepositService) DeadlineExceededDeposit(wg *sync.WaitGroup) {
 	wg.Done()
 	ticker := time.NewTicker(BatchDepositWaitTimeout)
 	for {
