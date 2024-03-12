@@ -101,7 +101,7 @@ func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (*typ
 		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
 	}
 
-	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, 0)
+	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, new(big.Int).SetInt64(0))
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -123,7 +123,12 @@ func (b *Bridge) Transfer(bitcoinAddress string, amount int64) (*types.Transacti
 		return nil, fmt.Errorf("btc address to eth address err:%w", err)
 	}
 
-	receipt, err := b.sendTransaction(ctx, b.EthPrivKey, common.HexToAddress(toAddress), nil, amount*10000000000)
+	receipt, err := b.sendTransaction(
+		ctx,
+		b.EthPrivKey,
+		common.HexToAddress(toAddress), nil,
+		new(big.Int).Mul(new(big.Int).SetInt64(amount), new(big.Int).SetInt64(10000000000)),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("eth call err:%w", err)
 	}
@@ -132,7 +137,7 @@ func (b *Bridge) Transfer(bitcoinAddress string, amount int64) (*types.Transacti
 }
 
 func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey,
-	toAddress common.Address, data []byte, value int64,
+	toAddress common.Address, data []byte, value *big.Int,
 ) (*types.Transaction, error) {
 	client, err := ethclient.Dial(b.EthRPCURL)
 	if err != nil {
@@ -152,10 +157,12 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	if err != nil {
 		return nil, err
 	}
+	// TODO: temp fix
+	gasPrice.Mul(gasPrice, big.NewInt(50))
 	callMsg := ethereum.CallMsg{
 		From:     crypto.PubkeyToAddress(*publicKeyECDSA),
 		To:       &toAddress,
-		Value:    big.NewInt(value),
+		Value:    value,
 		GasPrice: gasPrice,
 	}
 	if data != nil {
@@ -179,15 +186,15 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		if strings.Contains(err.Error(), ErrBridgeFromGasInsufficient.Error()) {
 			return nil, ErrBridgeFromGasInsufficient
 		}
-		gas = b.GasLimit
-	} else {
-		// Ensure that no transaction will fail due to insufficient gaslimit setting
-		gas *= 2
+
+		// estimate gas err, return, try again
+		return nil, err
 	}
+	gas *= 2
 	legacyTx := types.LegacyTx{
 		Nonce:    nonce,
 		To:       &toAddress,
-		Value:    big.NewInt(value),
+		Value:    value,
 		Gas:      gas,
 		GasPrice: gasPrice,
 	}
