@@ -158,7 +158,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		return nil, err
 	}
 	// TODO: temp fix
-	gasPrice.Mul(gasPrice, big.NewInt(50))
+	gasPrice.Mul(gasPrice, big.NewInt(2))
 	callMsg := ethereum.CallMsg{
 		From:     crypto.PubkeyToAddress(*publicKeyECDSA),
 		To:       &toAddress,
