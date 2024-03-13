@@ -16,10 +16,11 @@ import (
 const (
 	BridgeDepositServiceName = "BitcoinBridgeDepositService"
 	BatchDepositWaitTimeout  = 10 * time.Second
+	DepositErrTimeout        = 10 * time.Minute
 	BatchDepositLimit        = 100
 	WaitMinedTimeout         = 2 * time.Hour
-	HandleDepositTimeout     = 100 * time.Millisecond
-	DepositRetry             = 3
+	HandleDepositTimeout     = 1 * time.Second
+	DepositRetry             = 10 // temp fix, Increase retry times
 )
 
 // BridgeDepositService l1->l2
@@ -123,7 +124,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 					"data", deposit)
 			}
 			// The call may not succeed due to network reasons. sleep wait for a while
-			time.Sleep(BatchDepositWaitTimeout)
+			time.Sleep(DepositErrTimeout)
 		}
 	} else {
 		deposit.B2TxStatus = model.DepositB2TxStatusSuccess

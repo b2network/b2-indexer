@@ -64,6 +64,10 @@ type BridgeConfig struct {
 	ABI string `mapstructure:"abi" env:"BITCOIN_BRIDGE_ABI"`
 	// GasLimit defines the  contract gas limit
 	GasLimit uint64 `mapstructure:"gas-limit" env:"BITCOIN_BRIDGE_GAS_LIMIT"`
+	// GasPriceMultiple defines the gas price multiple, TODO: temp fix, base gas_price * n
+	GasPriceMultiple int64 `mapstructure:"gas-price-multiple" env:"BITCOIN_BRIDGE_GAS_PRICE_MULTIPLE" envDefault:"5"`
+	// B2ExplorerURL defines the b2 explorer url, TODO: temp use explorer gas prices
+	B2ExplorerURL string `mapstructure:"b2-explorer-url" env:"BITCOIN_BRIDGE_B2_EXPLORER_URL" envDefault:"https://blocksout-backend-role.bsquared.network"`
 	// AASCARegistry defines the  contract AASCARegistry address
 	AASCARegistry string `mapstructure:"aa-sca-registry" env:"BITCOIN_BRIDGE_AA_SCA_REGISTRY"`
 	// AAKernelFactory defines the  contract AAKernelFactory address
