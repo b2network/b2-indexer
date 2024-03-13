@@ -43,7 +43,7 @@ type Bridge struct {
 	ABI                  string
 	GasLimit             uint64
 	BaseGasPriceMultiple int64
-	B2ExplorerUrl        string
+	B2ExplorerURL        string
 	// AA contract address
 	AASCARegistry   common.Address
 	AAKernelFactory common.Address
@@ -89,7 +89,7 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger)
 		AAKernelFactory:      common.HexToAddress(bridgeCfg.AAKernelFactory),
 		logger:               log,
 		BaseGasPriceMultiple: bridgeCfg.GasPriceMultiple,
-		B2ExplorerUrl:        bridgeCfg.B2ExplorerURL,
+		B2ExplorerURL:        bridgeCfg.B2ExplorerURL,
 	}, nil
 }
 
@@ -174,7 +174,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	// TODO: temp fix
 	// first use b2 explorer stats gas price
 	// if fail, use base gas price
-	newGasPrice, err := b.gasPrices(gasPrice, b.B2ExplorerUrl)
+	newGasPrice, err := b.gasPrices(b.B2ExplorerURL)
 	if err != nil {
 		log.Errorf("get price err:%v", err.Error())
 		if b.BaseGasPriceMultiple != 0 {
@@ -302,8 +302,7 @@ func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte)
 	return receipt, nil
 }
 
-func (s *Bridge) gasPrices(
-	gasPrice *big.Int,
+func (b *Bridge) gasPrices(
 	b2ExplorerUrl string,
 ) (*big.Int, error) {
 	client := resty.New()
