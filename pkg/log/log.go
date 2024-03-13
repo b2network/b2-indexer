@@ -90,7 +90,7 @@ var (
 	mu  sync.Mutex
 )
 
-// init logger. level should be oneof "debug", "info", "warn", "error", "panic", "fatal", format should be oneof "console","json"
+// init logger. level should be one of "debug", "info", "warn", "error", "panic", "fatal", format should be oneof "console","json"
 func Init(level, format string) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -104,7 +104,7 @@ func Init(level, format string) {
 	std = New(options)
 }
 
-// New create logger by opts which can custmoized by command arguments.
+// New create logger by opts which can customized by command arguments.
 func New(opts *Options) *ZapLogger {
 	if opts == nil {
 		opts = NewOptions()

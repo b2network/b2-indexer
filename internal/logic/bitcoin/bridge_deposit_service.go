@@ -138,7 +138,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit) error {
 		defer cancel1()
 		b2txReceipt, err := bis.bridge.WaitMined(ctx1, b2Tx, nil)
 		if err != nil {
-			// try eoa transfer, only b2tx recepit status != 1
+			// try eoa transfer, only b2tx receipt status != 1
 			// NOTE: eoa tx is temp handle, It will be removed in the future
 			switch {
 			case errors.Is(err, ErrBridgeWaitMinedStatus):

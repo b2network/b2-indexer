@@ -8,7 +8,7 @@ import (
 
 // BITCOINBridge defines the interface of custom bitcoin bridge.
 type BITCOINBridge interface {
-	// Deposit transfers amout to address
+	// Deposit transfers amount to address
 	Deposit(string, string, int64) (*types.Transaction, []byte, string, error)
 	// Transfer amount to address
 	Transfer(string, int64) (*types.Transaction, error)

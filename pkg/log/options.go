@@ -60,7 +60,7 @@ func (opt *Options) Validate() error {
 		}
 	}
 	if !valid {
-		errorMsg = append(errorMsg, fmt.Sprintf("Invalid level, should be oneof %v", strings.Join(validLevels, ",")))
+		errorMsg = append(errorMsg, fmt.Sprintf("Invalid level, should be one of %v", strings.Join(validLevels, ",")))
 	}
 	if len(errorMsg) != 0 {
 		return errors.New(strings.Join(validLevels, ";"))
