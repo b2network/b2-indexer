@@ -174,7 +174,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	// TODO: temp fix
 	// first use b2 explorer stats gas price
 	// if fail, use base gas price
-	newGasPrice, err := b.gasPrices(gasPrice, b.BaseGasPriceMultiple, b.B2ExplorerUrl)
+	newGasPrice, err := b.gasPrices(gasPrice, b.B2ExplorerUrl)
 	if err != nil {
 		log.Errorf("get price err:%v", err.Error())
 		if b.BaseGasPriceMultiple != 0 {
@@ -304,7 +304,6 @@ func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte)
 
 func (s *Bridge) gasPrices(
 	gasPrice *big.Int,
-	gasPriceMultiple int64,
 	b2ExplorerUrl string,
 ) (*big.Int, error) {
 	client := resty.New()
