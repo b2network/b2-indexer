@@ -89,7 +89,7 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger)
 		AAKernelFactory:      common.HexToAddress(bridgeCfg.AAKernelFactory),
 		logger:               log,
 		BaseGasPriceMultiple: bridgeCfg.GasPriceMultiple,
-		B2ExplorerUrl:        bridgeCfg.B2ExplorerUrl,
+		B2ExplorerUrl:        bridgeCfg.B2ExplorerURL,
 	}, nil
 }
 
