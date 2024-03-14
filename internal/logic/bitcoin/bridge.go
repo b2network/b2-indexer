@@ -287,6 +287,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 
 	return signedTx, nil
 }
+
 func (b *Bridge) retrySendTransaction(
 	ctx context.Context,
 	oldTx *types.Transaction,
@@ -433,6 +434,7 @@ func (b *Bridge) TransactionReceipt(hash string) (*types.Receipt, error) {
 	}
 	return receipt, nil
 }
+
 func (b *Bridge) TransactionByHash(hash string) (*types.Transaction, bool, error) {
 	client, err := ethclient.Dial(b.EthRPCURL)
 	if err != nil {
@@ -445,9 +447,11 @@ func (b *Bridge) TransactionByHash(hash string) (*types.Transaction, bool, error
 	}
 	return tx, isPending, nil
 }
+
 func (b *Bridge) EnableEoaTransfer() bool {
 	return b.enableEoaTransfer
 }
+
 func (b *Bridge) gasPrices() (*big.Int, error) {
 	client := resty.New()
 	resp, err := client.R().

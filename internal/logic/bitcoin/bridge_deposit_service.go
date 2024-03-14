@@ -305,7 +305,6 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 }
 
 func (bis *BridgeDepositService) HandleDeadlineDeposit(deposit model.Deposit) error {
-
 	tx, isPending, err := bis.bridge.TransactionByHash(deposit.B2TxHash)
 	if err != nil {
 		return err
