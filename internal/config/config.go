@@ -74,6 +74,27 @@ type BridgeConfig struct {
 	AAParticleServerKey string `mapstructure:"aa-particle-server-key" env:"BITCOIN_BRIDGE_AA_PARTICLE_SERVER_KEY"`
 	// AAParticleChainID defines the particle chain id
 	AAParticleChainID int `mapstructure:"aa-particle-chain-id" env:"BITCOIN_BRIDGE_AA_PARTICLE_CHAIN_ID"`
+	// GasPriceMultiple defines the gas price multiple, TODO: temp fix, base gas_price * n
+	GasPriceMultiple int64 `mapstructure:"gas-price-multiple" env:"BITCOIN_BRIDGE_GAS_PRICE_MULTIPLE" envDefault:"5"`
+	// B2ExplorerURL defines the b2 explorer url, TODO: temp use explorer gas prices
+	B2ExplorerURL string `mapstructure:"b2-explorer-url" env:"BITCOIN_BRIDGE_B2_EXPLORER_URL" envDefault:"https://blocksout-backend-role.bsquared.network"`
+	// EnableListener defines whether to enable the listener
+	EnableWithdrawListener bool `mapstructure:"enable-withdraw-listener" env:"BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER"`
+	// Deposit defines the deposit event hash
+	Deposit string `mapstructure:"deposit" env:"BITCOIN_BRIDGE_DEPOSIT"`
+	// Withdraw defines the withdraw event hash
+	Withdraw string `mapstructure:"withdraw" env:"BITCOIN_BRIDGE_WITHDRAW"`
+	// UnisatApiKey defines unisat api_key
+	UnisatAPIKey string `mapstructure:"unisat-api-key" env:"BITCOIN_BRIDGE_UNISAT_API_KEY"`
+	// PublicKeys defines signer publickey
+	PublicKeys []string `mapstructure:"publickeys" env:"BITCOIN_BRIDGE_PUBLICKEYS"`
+	// TimeInterval defines withdraw time interval
+	TimeInterval int64 `mapstructure:"time-interval" env:"BITCOIN_BRIDGE_TIME_INTERVAL"`
+	// MultisigNum defines withdraw multisig number
+	MultisigNum int `mapstructure:"multisig-num" env:"BITCOIN_BRIDGE_MULTISIG_NUM"`
+}
+
+type EvmConfig struct {
 	// EnableListener defines whether to enable the listener
 	EnableWithdrawListener bool `mapstructure:"enable-withdraw-listener" env:"BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER"`
 	// Deposit defines the deposit event hash

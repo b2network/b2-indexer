@@ -22,6 +22,7 @@ const (
 	BatchDepositLimit        = 100
 	WaitMinedTimeout         = 2 * time.Hour
 	HandleDepositTimeout     = 1 * time.Second
+	DepositRetry             = 10 // temp fix, Increase retry times
 )
 
 // BridgeDepositService l1->l2

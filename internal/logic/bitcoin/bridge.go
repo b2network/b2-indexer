@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/big"
+	"net/http"
 	"net/url"
 	"os"
 	"path"
@@ -25,6 +27,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/go-resty/resty/v2"
 )
 
 var (
@@ -38,13 +41,14 @@ var (
 // Bridge bridge
 // TODO: only L1 -> L2, More calls may be supported later
 type Bridge struct {
-	EthRPCURL        string
-	EthPrivKey       *ecdsa.PrivateKey
-	ContractAddress  common.Address
-	ABI              string
-	GasLimit         uint64
-	GasPriceMultiple int64
-	logger           log.Logger
+	EthRPCURL            string
+	EthPrivKey           *ecdsa.PrivateKey
+	ContractAddress      common.Address
+	ABI                  string
+	GasLimit             uint64
+	BaseGasPriceMultiple int64
+	B2ExplorerURL        string
+	logger               log.Logger
 	// particle aa
 	particle     *particle.Particle
 	bitcoinParam *chaincfg.Params
@@ -52,6 +56,16 @@ type Bridge struct {
 	enableEoaTransfer bool
 	// aa server
 	AAPubKeyAPI string
+	// AA contract address
+	AASCARegistry   common.Address
+	AAKernelFactory common.Address
+}
+type B2ExplorerStatus struct {
+	GasPrices struct {
+		Fast    float64 `json:"fast"`
+		Slow    float64 `json:"slow"`
+		Average float64 `json:"average"`
+	} `json:"gas_prices"`
 }
 
 // NewBridge new bridge
@@ -86,16 +100,18 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger,
 	}
 
 	return &Bridge{
-		EthRPCURL:         rpcURL.String(),
-		ContractAddress:   common.HexToAddress(bridgeCfg.ContractAddress),
-		EthPrivKey:        privateKey,
-		ABI:               ABI,
-		GasLimit:          bridgeCfg.GasLimit,
-		logger:            log,
-		particle:          particle,
-		bitcoinParam:      bitcoinParam,
-		enableEoaTransfer: bridgeCfg.EnableEoaTransfer,
-		AAPubKeyAPI:       bridgeCfg.AAPubKeyAPI,
+		EthRPCURL:            rpcURL.String(),
+		ContractAddress:      common.HexToAddress(bridgeCfg.ContractAddress),
+		EthPrivKey:           privateKey,
+		ABI:                  ABI,
+		GasLimit:             bridgeCfg.GasLimit,
+		logger:               log,
+		particle:             particle,
+		bitcoinParam:         bitcoinParam,
+		enableEoaTransfer:    bridgeCfg.EnableEoaTransfer,
+		AAPubKeyAPI:          bridgeCfg.AAPubKeyAPI,
+		BaseGasPriceMultiple: bridgeCfg.GasPriceMultiple,
+		B2ExplorerURL:        bridgeCfg.B2ExplorerURL,
 	}, nil
 }
 
@@ -183,18 +199,35 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	if err != nil {
 		return nil, err
 	}
-
-	if b.GasPriceMultiple != 0 {
-		gasPrice.Mul(gasPrice, big.NewInt(b.GasPriceMultiple))
+	// TODO: temp fix
+	// first use b2 explorer stats gas price
+	// if fail, use base gas price
+	newGasPrice, err := b.gasPrices()
+	if err != nil {
+		log.Errorf("get price err:%v", err.Error())
+		if b.BaseGasPriceMultiple != 0 {
+			gasPrice.Mul(gasPrice, big.NewInt(b.BaseGasPriceMultiple))
+		}
+	} else {
+		if newGasPrice.Cmp(big.NewInt(0)) == 0 {
+			if b.BaseGasPriceMultiple != 0 {
+				gasPrice.Mul(gasPrice, big.NewInt(b.BaseGasPriceMultiple))
+			}
+		} else {
+			gasPrice = newGasPrice
+		}
 	}
 
-	b.logger.Infof("gas price:", gasPrice.String())
-
+	actualGasPrice := new(big.Int).Set(gasPrice)
+	log.Infof("gas price:%v", new(big.Float).Quo(new(big.Float).SetInt(actualGasPrice), big.NewFloat(1e9)).String())
+	log.Infof("gas price:%v", actualGasPrice.String())
+	log.Infof("nonce:%v", nonce)
+	log.Infof("from address:%v", crypto.PubkeyToAddress(fromPriv.PublicKey))
 	callMsg := ethereum.CallMsg{
 		From:     crypto.PubkeyToAddress(fromPriv.PublicKey),
 		To:       &toAddress,
 		Value:    value,
-		GasPrice: gasPrice,
+		GasPrice: actualGasPrice,
 	}
 	if data != nil {
 		callMsg.Data = data
@@ -227,7 +260,7 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		To:       &toAddress,
 		Value:    value,
 		Gas:      gas,
-		GasPrice: gasPrice,
+		GasPrice: actualGasPrice,
 	}
 
 	if data != nil {
@@ -266,9 +299,8 @@ func (b *Bridge) retrySendTransaction(
 	nonce := oldTx.Nonce()
 	gasPrice := oldTx.GasPrice()
 
-	if b.GasPriceMultiple != 0 {
-		gasPrice.Mul(gasPrice, big.NewInt(b.GasPriceMultiple))
-	}
+	// TODO: set new gas price
+	gasPrice.Mul(gasPrice, big.NewInt(b.BaseGasPriceMultiple))
 
 	b.logger.Infof("gas price:", gasPrice.String())
 
@@ -415,4 +447,28 @@ func (b *Bridge) TransactionByHash(hash string) (*types.Transaction, bool, error
 }
 func (b *Bridge) EnableEoaTransfer() bool {
 	return b.enableEoaTransfer
+}
+func (b *Bridge) gasPrices() (*big.Int, error) {
+	client := resty.New()
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		Get(b.B2ExplorerURL + "/api/v2/stats")
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode() != http.StatusOK {
+		return nil, fmt.Errorf("get gas price error, status code: %d", resp.StatusCode())
+	}
+
+	stats := &B2ExplorerStatus{}
+
+	log.Infof("b2 explorer status:", string(resp.Body()))
+	err = json.Unmarshal(resp.Body(), stats)
+	if err != nil {
+		return nil, err
+	}
+	gasPriceWei := new(big.Float).Mul(big.NewFloat(stats.GasPrices.Fast), big.NewFloat(1e9))
+	gasPriceInt := new(big.Int)
+	gasPriceWei.Int(gasPriceInt)
+	return gasPriceInt, nil
 }
