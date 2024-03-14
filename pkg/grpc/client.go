@@ -3,14 +3,17 @@ package grpc
 import (
 	"crypto/md5"
 	"fmt"
+	"sync"
+
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"sync"
 )
 
-var clientInstances map[string]*grpc.ClientConn
-var writeMutex sync.Mutex
+var (
+	clientInstances map[string]*grpc.ClientConn
+	writeMutex      sync.Mutex
+)
 
 func init() {
 	clientInstances = make(map[string]*grpc.ClientConn, 0)
@@ -18,9 +21,7 @@ func init() {
 
 type ClientOptionPort uint32
 
-var (
-	defaultClientOptionPort ClientOptionPort = 9000
-)
+var defaultClientOptionPort ClientOptionPort = 9000
 
 func WithClientPortOption(port uint32) ClientOptionPort {
 	return ClientOptionPort(port)
@@ -43,7 +44,7 @@ func GetClientConnection(serviceName string, options ...interface{}) (*grpc.Clie
 	defer writeMutex.Unlock()
 
 	// connect service
-	var serviceHost = fmt.Sprintf("%s:%d", serviceName, defaultClientOptionPort)
+	serviceHost := fmt.Sprintf("%s:%d", serviceName, defaultClientOptionPort)
 	conn, err := grpc.Dial(serviceHost, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, errors.WithStack(err)

@@ -28,7 +28,7 @@ type Context struct {
 	// Viper         *viper.Viper
 	Config        *config.Config
 	BitcoinConfig *config.BitconConfig
-	HttpConfig    *config.HttpConfig
+	HTTPConfig    *config.HTTPConfig
 	// Logger        logger.Logger
 	// Db *gorm.DB
 }
@@ -128,13 +128,13 @@ func NewDB(cfg *config.Config) (*gorm.DB, error) {
 	return DB, nil
 }
 
-func NewHttpContext(httpCfg *config.HttpConfig) *Context {
+func NewHttpContext(httpCfg *config.HTTPConfig) *Context {
 	return &Context{
-		HttpConfig: httpCfg,
+		HTTPConfig: httpCfg,
 	}
 }
 
-func HttpConfigsPreRunHandler(cmd *cobra.Command, home string) error {
+func HTTPConfigsPreRunHandler(cmd *cobra.Command, home string) error {
 	cfg, err := config.LoadConfig(home)
 	if err != nil {
 		return err

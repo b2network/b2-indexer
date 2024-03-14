@@ -81,7 +81,7 @@ func startHttpServer() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return server.HttpConfigsPreRunHandler(cmd, home)
+			return server.HTTPConfigsPreRunHandler(cmd, home)
 		},
 		Run: func(cmd *cobra.Command, _ []string) {
 			err := server.Run(GetServerContextFromCmd(cmd))

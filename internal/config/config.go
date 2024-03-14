@@ -102,10 +102,10 @@ type EpsConfig struct {
 	Authorization string `mapstructure:"authorization" env:"EPS_AUTHORIZATION"`
 }
 
-// HttpConfig defines the http server config
-type HttpConfig struct {
+// HTTPConfig defines the http server config
+type HTTPConfig struct {
 	// port defines the http server port
-	HttpPort string `mapstructure:"http-port" env:"HTTP_PORT"`
+	HTTPPort string `mapstructure:"http-port" env:"HTTP_PORT"`
 	// port defines the grpc server port
 	GrpcPort string `mapstructure:"grpc-port" env:"HTTP_GRPC_PORT"`
 }
@@ -217,8 +217,8 @@ func DefaultBitcoinConfig() *BitconConfig {
 	}
 }
 
-func LoadHttpConfig(homePath string) (*HttpConfig, error) {
-	config := HttpConfig{}
+func LoadHttpConfig(homePath string) (*HTTPConfig, error) {
+	config := HTTPConfig{}
 	configFile := path.Join(homePath, HttpConfigFileName)
 	v := viper.New()
 	v.SetConfigFile(configFile)
