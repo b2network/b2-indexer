@@ -242,7 +242,7 @@ func TestHTTPConfig(t *testing.T) {
 	os.Unsetenv("HTTP_PORT")
 	os.Unsetenv("HTTP_GRPC_PORT")
 
-	config, err := config.LoadHttpConfig("./testdata")
+	config, err := config.LoadHTTPConfig("./testdata")
 	require.NoError(t, err)
 	require.Equal(t, "8080", config.HTTPPort)
 	require.Equal(t, "8081", config.GrpcPort)
@@ -251,7 +251,7 @@ func TestHTTPConfig(t *testing.T) {
 func TestHTTPConfigEnv(t *testing.T) {
 	os.Setenv("HTTP_PORT", "8080")
 	os.Setenv("HTTP_GRPC_PORT", "8081")
-	config, err := config.LoadHttpConfig("./")
+	config, err := config.LoadHTTPConfig("./")
 	require.NoError(t, err)
 	require.Equal(t, "8080", config.HTTPPort)
 	require.Equal(t, "8081", config.GrpcPort)

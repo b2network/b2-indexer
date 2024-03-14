@@ -1,7 +1,7 @@
 package grpc
 
 import (
-	"crypto/md5"
+	"crypto/sha256"
 	"fmt"
 	"sync"
 
@@ -55,6 +55,6 @@ func GetClientConnection(serviceName string, options ...interface{}) (*grpc.Clie
 }
 
 func generateServiceUniqueName(serviceName string, servicePort uint32) string {
-	hashData := md5.Sum([]byte(fmt.Sprintf("%s:%d", serviceName, servicePort)))
+	hashData := sha256.Sum256([]byte(fmt.Sprintf("%s:%d", serviceName, servicePort)))
 	return fmt.Sprintf("%x", hashData)
 }

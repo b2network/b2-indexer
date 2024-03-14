@@ -113,10 +113,10 @@ type HTTPConfig struct {
 const (
 	BitcoinConfigFileName  = "bitcoin.toml"
 	AppConfigFileName      = "indexer.toml"
-	HttpConfigFileName     = "http.toml"
+	HTTPConfigFileName     = "http.toml"
 	BitcoinConfigEnvPrefix = "BITCOIN"
 	AppConfigEnvPrefix     = "APP"
-	HttpConfigEnvPrefix    = "HTTP"
+	HTTPConfigEnvPrefix    = "HTTP"
 )
 
 func LoadConfig(homePath string) (*Config, error) {
@@ -217,13 +217,13 @@ func DefaultBitcoinConfig() *BitconConfig {
 	}
 }
 
-func LoadHttpConfig(homePath string) (*HTTPConfig, error) {
+func LoadHTTPConfig(homePath string) (*HTTPConfig, error) {
 	config := HTTPConfig{}
-	configFile := path.Join(homePath, HttpConfigFileName)
+	configFile := path.Join(homePath, HTTPConfigFileName)
 	v := viper.New()
 	v.SetConfigFile(configFile)
 
-	v.SetEnvPrefix(HttpConfigEnvPrefix)
+	v.SetEnvPrefix(HTTPConfigEnvPrefix)
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
 	v.AutomaticEnv()
 

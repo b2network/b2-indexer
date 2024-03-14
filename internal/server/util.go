@@ -128,7 +128,7 @@ func NewDB(cfg *config.Config) (*gorm.DB, error) {
 	return DB, nil
 }
 
-func NewHttpContext(httpCfg *config.HTTPConfig) *Context {
+func NewHTTPContext(httpCfg *config.HTTPConfig) *Context {
 	return &Context{
 		HTTPConfig: httpCfg,
 	}
@@ -143,11 +143,11 @@ func HTTPConfigsPreRunHandler(cmd *cobra.Command, home string) error {
 		cfg.RootDir = home
 	}
 
-	httpCfg, err := config.LoadHttpConfig(home)
+	httpCfg, err := config.LoadHTTPConfig(home)
 	if err != nil {
 		return err
 	}
 
-	serverCtx := NewHttpContext(httpCfg)
+	serverCtx := NewHTTPContext(httpCfg)
 	return SetCmdServerContext(cmd, serverCtx)
 }

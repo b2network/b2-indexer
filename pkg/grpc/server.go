@@ -6,6 +6,9 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"time"
+
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/b2network/b2-indexer/internal/app/middleware"
 	"github.com/b2network/b2-indexer/internal/config"
@@ -18,14 +21,16 @@ import (
 const (
 	AuthHeaderKey          = "X-Auth-Payload"
 	AuthorizationHeaderKey = "Authorization"
+
+	TimeoutSecond = 60
 )
 
 type (
-	GrpcRegisterFn    func(*grpc.Server)
+	RegisterFn        func(*grpc.Server)
 	GatewayRegisterFn func(ctx context.Context, mux *runtime.ServeMux, endPoint string, option []grpc.DialOption) error
 )
 
-func Run(cfg *config.HTTPConfig, grpcFn GrpcRegisterFn, gatewayFn GatewayRegisterFn) error {
+func Run(cfg *config.HTTPConfig, grpcFn RegisterFn, gatewayFn GatewayRegisterFn) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mux := runtime.NewServeMux(
@@ -43,7 +48,7 @@ func Run(cfg *config.HTTPConfig, grpcFn GrpcRegisterFn, gatewayFn GatewayRegiste
 			return "", false
 		}),
 	)
-	opts := []grpc.DialOption{grpc.WithInsecure()}
+	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
 	if err := gatewayFn(ctx, mux, fmt.Sprintf(":%v", cfg.GrpcPort), opts); err != nil {
 		log.Println("register grpc gateway server failed")
 		return err
@@ -53,8 +58,13 @@ func Run(cfg *config.HTTPConfig, grpcFn GrpcRegisterFn, gatewayFn GatewayRegiste
 	grpcFn(grpcSvc)
 
 	go func() {
-		handler := middleware.Cors(mux)
-		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%v", cfg.HTTPPort), handler).Error())
+		server := &http.Server{
+			Addr:         fmt.Sprintf(":%v", cfg.HTTPPort),
+			Handler:      middleware.Cors(mux),
+			ReadTimeout:  TimeoutSecond * time.Second,
+			WriteTimeout: TimeoutSecond * time.Second,
+		}
+		log.Fatal(server.ListenAndServe().Error())
 	}()
 	go func() {
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%v", cfg.GrpcPort))

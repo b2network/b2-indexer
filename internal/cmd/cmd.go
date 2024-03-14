@@ -35,7 +35,7 @@ func rootCmd() *cobra.Command {
 	}
 
 	rootCmd.AddCommand(startCmd())
-	rootCmd.AddCommand(startHttpServer())
+	rootCmd.AddCommand(startHTTPServer())
 	return rootCmd
 }
 
@@ -72,7 +72,7 @@ func GetServerContextFromCmd(cmd *cobra.Command) *server.Context {
 	return server.NewDefaultContext()
 }
 
-func startHttpServer() *cobra.Command {
+func startHTTPServer() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "http",
 		Short: "start http service",
