@@ -20,6 +20,7 @@ const (
 	DepositB2TxStatusContextDeadlineExceeded           // deposit client context deadline exceeded, Chain transaction is stuck
 	DepositB2TxStatusFromAccountGasInsufficient        // deposit evm from account gas insufficient
 	DepositB2TxStatusWaitMined                         // deposit wait mined
+	DepositB2TxStatusAAAddressNotFound                 // aa address not found,  Start process processing separately
 )
 
 const (
@@ -33,16 +34,6 @@ const (
 	DepositB2EoaTxStatusContextDeadlineExceeded // eoa transfer client context deadline exceeded
 )
 
-const (
-	// b2 node status
-	DepositB2NodeTxStatusSuccess                  = iota // success
-	DepositB2NodeTxStatusPending                         // pending
-	DepositB2NodeTxStatusFailed                          // deposit invoke failed
-	DepositB2NodeTxStatusRollupPending                   // deposit success wait rollup invoke
-	DepositB2NodeTxStatusTxHashExist                     // tx hash exist, b2-node deposit have been called
-	DepositB2NodeTxStatusErrNotCallerGroupMembers        // b2 node not caller group members
-)
-
 type Deposit struct {
 	Base
 	BtcBlockNumber   int64     `json:"btc_block_number" gorm:"index;comment:bitcoin block number"`
@@ -51,7 +42,6 @@ type Deposit struct {
 	BtcTxType        int       `json:"btc_tx_type" gorm:"type:SMALLINT;default:0;comment:btc tx type"`
 	BtcFroms         string    `json:"btc_froms" gorm:"type:jsonb;comment:bitcoin transfer, from may be multiple"`
 	BtcFrom          string    `json:"btc_from" gorm:"type:varchar(64);not null;default:'';index"`
-	BtcFromPubKey    string    `json:"btc_from_pubkey" gorm:"type:varchar(128);not null;default:''"`
 	BtcTos           string    `json:"btc_tos" gorm:"type:jsonb;comment:bitcoin transfer, to may be multiple"`
 	BtcTo            string    `json:"btc_to" gorm:"type:varchar(64);not null;default:'';index"`
 	BtcFromAAAddress string    `json:"btc_from_aa_address" gorm:"type:varchar(42);default:'';comment:from aa address"`
@@ -62,8 +52,6 @@ type Deposit struct {
 	B2EoaTxHash      string    `json:"b2_eoa_tx_hash" gorm:"type:varchar(66);not null;default:'';comment:b2 network eoa tx hash"`
 	B2EoaTxStatus    int       `json:"b2_eoa_tx_status" gorm:"type:SMALLINT;default:1"`
 	BtcBlockTime     time.Time `json:"btc_block_time"`
-	B2NodeTxStatus   int       `json:"b2_node_tx_status" gorm:"type:SMALLINT;default:1"`
-	B2NodeTxRetry    int       `json:"b2_node_tx_retry" gorm:"type:SMALLINT;default:0"`
 }
 
 type DepositColumns struct {
@@ -73,7 +61,6 @@ type DepositColumns struct {
 	BtcTxType        string
 	BtcFroms         string
 	BtcFrom          string
-	BtcFromPubKey    string
 	BtcTos           string
 	BtcTo            string
 	BtcFromAAAddress string
@@ -84,8 +71,6 @@ type DepositColumns struct {
 	B2EoaTxHash      string
 	B2EoaTxStatus    string
 	BtcBlockTime     string
-	B2NodeTxStatus   string
-	B2NodeTxRetry    string
 }
 
 func (Deposit) TableName() string {
@@ -100,7 +85,6 @@ func (Deposit) Column() DepositColumns {
 		BtcTxType:        "btc_tx_type",
 		BtcFroms:         "btc_froms",
 		BtcFrom:          "btc_from",
-		BtcFromPubKey:    "btc_from_pubkey",
 		BtcTos:           "btc_tos",
 		BtcTo:            "btc_to",
 		BtcFromAAAddress: "btc_from_aa_address",
@@ -111,7 +95,5 @@ func (Deposit) Column() DepositColumns {
 		B2EoaTxStatus:    "b2_eoa_tx_status",
 		BtcBlockTime:     "btc_block_time",
 		B2TxRetry:        "b2_tx_retry",
-		B2NodeTxStatus:   "b2_node_tx_status",
-		B2NodeTxRetry:    "b2_node_tx_retry",
 	}
 }

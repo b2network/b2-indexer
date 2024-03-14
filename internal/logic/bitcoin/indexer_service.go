@@ -9,8 +9,8 @@ import (
 	"github.com/b2network/b2-indexer/internal/model"
 	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
+	"github.com/cometbft/cometbft/libs/service"
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/tendermint/tendermint/libs/service"
 	"gorm.io/gorm"
 )
 
@@ -210,7 +210,6 @@ func (bis *IndexerService) SaveParsedResult(
 			BtcTxIndex:     parseResult.Index,
 			BtcTxHash:      parseResult.TxID,
 			BtcFrom:        parseResult.From[0].Address,
-			BtcFromPubKey:  parseResult.From[0].PubKey,
 			BtcTos:         string(tos),
 			BtcTo:          parseResult.To,
 			BtcValue:       parseResult.Value,
@@ -218,7 +217,6 @@ func (bis *IndexerService) SaveParsedResult(
 			B2TxStatus:     b2TxStatus,
 			BtcBlockTime:   btcBlockTime,
 			B2TxRetry:      0,
-			B2NodeTxStatus: model.DepositB2NodeTxStatusPending,
 		}
 		err = tx.Save(&deposit).Error
 		if err != nil {

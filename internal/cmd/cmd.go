@@ -2,6 +2,11 @@ package cmd
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"encoding/hex"
 	"os"
 
 	"github.com/b2network/b2-indexer/internal/server"
@@ -35,6 +40,8 @@ func rootCmd() *cobra.Command {
 	}
 
 	rootCmd.AddCommand(startCmd())
+	rootCmd.AddCommand(generateECDSAPrivateKey())
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(startHTTPServer())
 	return rootCmd
 }
@@ -58,6 +65,31 @@ func startCmd() *cobra.Command {
 		},
 	}
 	cmd.Flags().String(FlagHome, "", "The application home directory")
+	return cmd
+}
+
+func generateECDSAPrivateKey() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "gen-ecdsa-key",
+		Short: "generate ECDSA PrivateKey",
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			if err != nil {
+				return err
+			}
+			pkcs8Bytes, err := x509.MarshalPKCS8PrivateKey(privateKey)
+			if err != nil {
+				return err
+			}
+			pubKeyBytes, err := x509.MarshalPKIXPublicKey(&privateKey.PublicKey)
+			if err != nil {
+				return err
+			}
+			cmd.Println("pubKey:", hex.EncodeToString(pubKeyBytes))
+			cmd.Println("privateKey:", hex.EncodeToString(pkcs8Bytes))
+			return nil
+		},
+	}
 	return cmd
 }
 

@@ -62,24 +62,39 @@ type BridgeConfig struct {
 	ABI string `mapstructure:"abi" env:"BITCOIN_BRIDGE_ABI"`
 	// GasLimit defines the  contract gas limit
 	GasLimit uint64 `mapstructure:"gas-limit" env:"BITCOIN_BRIDGE_GAS_LIMIT"`
+	// if deposit invoke b2 failed(status != 1), Whether to allow invoke eoa trnasfer
+	EnableEoaTransfer bool `mapstructure:"enable-eoa-transfer" env:"BITCOIN_BRIDGE_ENABLE_EOA_TRANSFER" envDefault:"true"`
+	// AAPubKeyAPI get pubkey by btc address
+	AAPubKeyAPI string `mapstructure:"aa-pubkey-api" env:"BITCOIN_BRIDGE_AA_PUBKEY_API"`
 	// AAParticleRPC defines the particle api
-	AAParticleRPC string `mapstructure:"aa-particle-api" env:"BITCOIN_BRIDGE_AA_PARTICLE_RPC"`
+	AAParticleRPC string `mapstructure:"aa-particle-rpc" env:"BITCOIN_BRIDGE_AA_PARTICLE_RPC"`
 	// AAParticleProjectID defines the particle project id
 	AAParticleProjectID string `mapstructure:"aa-particle-project-id" env:"BITCOIN_BRIDGE_AA_PARTICLE_PROJECT_ID"`
 	// AAParticleServerKey defines the particle server key
 	AAParticleServerKey string `mapstructure:"aa-particle-server-key" env:"BITCOIN_BRIDGE_AA_PARTICLE_SERVER_KEY"`
 	// AAParticleChainID defines the particle chain id
 	AAParticleChainID int `mapstructure:"aa-particle-chain-id" env:"BITCOIN_BRIDGE_AA_PARTICLE_CHAIN_ID"`
-	// B2NodeAPI defines the b2 node api
-	B2NodeAPI string `mapstructure:"b2-node-api" env:"BITCOIN_BRIDGE_B2_NODE_API"`
-	// B2NodePrivKey defines the b2 node private key
-	B2NodePrivKey string `mapstructure:"b2-node-priv-key" env:"BITCOIN_BRIDGE_B2_NODE_PRIV_KEY"`
-	// B2NodeGRPCHost defines the b2 node grpc host
-	B2NodeGRPCHost string `mapstructure:"b2-node-grpc-host" env:"BITCOIN_BRIDGE_B2_NODE_GRPC_HOST"`
-	// B2NodeGRPCPort defines the b2 node grpc port
-	B2NodeGRPCPort uint32 `mapstructure:"b2-node-grpc-port" env:"BITCOIN_BRIDGE_B2_NODE_GRPC_PORT"`
-	// B2NodeDenom defines the b2 node denom
-	B2NodeDenom string `mapstructure:"b2-node-denom" env:"BITCOIN_BRIDGE_B2_NODE_DENOM" envDefault:"aphoton"`
+	// GasPriceMultiple defines the gas price multiple, TODO: temp fix, base gas_price * n
+	GasPriceMultiple int64 `mapstructure:"gas-price-multiple" env:"BITCOIN_BRIDGE_GAS_PRICE_MULTIPLE" envDefault:"5"`
+	// B2ExplorerURL defines the b2 explorer url, TODO: temp use explorer gas prices
+	B2ExplorerURL string `mapstructure:"b2-explorer-url" env:"BITCOIN_BRIDGE_B2_EXPLORER_URL" envDefault:"https://blocksout-backend-role.bsquared.network"`
+	// EnableListener defines whether to enable the listener
+	EnableWithdrawListener bool `mapstructure:"enable-withdraw-listener" env:"BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER"`
+	// Deposit defines the deposit event hash
+	Deposit string `mapstructure:"deposit" env:"BITCOIN_BRIDGE_DEPOSIT"`
+	// Withdraw defines the withdraw event hash
+	Withdraw string `mapstructure:"withdraw" env:"BITCOIN_BRIDGE_WITHDRAW"`
+	// UnisatApiKey defines unisat api_key
+	UnisatAPIKey string `mapstructure:"unisat-api-key" env:"BITCOIN_BRIDGE_UNISAT_API_KEY"`
+	// PublicKeys defines signer publickey
+	PublicKeys []string `mapstructure:"publickeys" env:"BITCOIN_BRIDGE_PUBLICKEYS"`
+	// TimeInterval defines withdraw time interval
+	TimeInterval int64 `mapstructure:"time-interval" env:"BITCOIN_BRIDGE_TIME_INTERVAL"`
+	// MultisigNum defines withdraw multisig number
+	MultisigNum int `mapstructure:"multisig-num" env:"BITCOIN_BRIDGE_MULTISIG_NUM"`
+}
+
+type EvmConfig struct {
 	// EnableListener defines whether to enable the listener
 	EnableWithdrawListener bool `mapstructure:"enable-withdraw-listener" env:"BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER"`
 	// Deposit defines the deposit event hash

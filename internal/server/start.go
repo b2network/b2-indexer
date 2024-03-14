@@ -12,9 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
-	"github.com/b2network/b2-indexer/internal/client"
 	"github.com/b2network/b2-indexer/internal/config"
-	"github.com/b2network/b2-indexer/internal/logic/b2node"
 	"github.com/b2network/b2-indexer/internal/logic/bitcoin"
 	logger "github.com/b2network/b2-indexer/pkg/log"
 	"github.com/btcsuite/btcd/rpcclient"
@@ -77,56 +75,6 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}
 
-		// start b2node indexer service
-		b2nodeIndexerLogger := newLogger(ctx, "[b2node-indexer]")
-		b2nodeIndexBridge, err := b2NodeClient(ctx.BitcoinConfig, b2nodeIndexerLogger)
-		if err != nil {
-			logger.Errorw("failed to create b2node", "error", err.Error())
-			return err
-		}
-
-		b2nodeDB, err := GetDBContextFromCmd(cmd)
-		if err != nil {
-			logger.Errorw("failed to get db context", "error", err.Error())
-			return err
-		}
-
-		b2IndexerService := b2node.NewB2NodeIndexerService(b2nodeIndexBridge, b2nodeDB, b2nodeIndexerLogger)
-
-		b2IndexerErrCh := make(chan error)
-		go func() {
-			if err := b2IndexerService.Start(); err != nil {
-				b2IndexerErrCh <- err
-			}
-		}()
-
-		select {
-		case err := <-b2IndexerErrCh:
-			return err
-		case <-time.After(5 * time.Second): // assume server started successfully
-		}
-
-		// start l1->b2node
-		b2NodeCreaterDepositLogger := newLogger(ctx, "[b2node-create-deposit]")
-		b2NodeCreateDeposit, err := b2NodeClient(bitcoinCfg, b2NodeCreaterDepositLogger)
-		if err != nil {
-			return err
-		}
-
-		b2NodeCreaterDepositService := b2node.NewB2NodeCreateDepositService(b2NodeCreateDeposit, db, b2NodeCreaterDepositLogger)
-		b2NodeCreateDepositErrCh := make(chan error)
-		go func() {
-			if err := b2NodeCreaterDepositService.Start(); err != nil {
-				b2NodeCreateDepositErrCh <- err
-			}
-		}()
-
-		select {
-		case err := <-b2NodeCreateDepositErrCh:
-			return err
-		case <-time.After(5 * time.Second): // assume server started successfully
-		}
-
 		// start l1->l2 bridge service
 		bridgeLogger := newLogger(ctx, "[bridge-deposit]")
 		bridge, err := bitcoin.NewBridge(bitcoinCfg.Bridge, path.Join(home, "config"), bridgeLogger, bitcoinParam)
@@ -134,12 +82,8 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			logger.Errorw("failed to create bitcoin bridge", "error", err.Error())
 			return err
 		}
-		bridgeB2node, err := b2NodeClient(bitcoinCfg, bridgeLogger)
-		if err != nil {
-			return err
-		}
 
-		bridgeService := bitcoin.NewBridgeDepositService(bridge, bridgeB2node, db, bridgeLogger)
+		bridgeService := bitcoin.NewBridgeDepositService(bridge, db, bridgeLogger)
 		bridgeErrCh := make(chan error)
 		go func() {
 			if err := bridgeService.Start(); err != nil {
@@ -149,35 +93,6 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 
 		select {
 		case err := <-bridgeErrCh:
-			return err
-		case <-time.After(5 * time.Second): // assume server started successfully
-		}
-
-		// start b2node update deposit service
-		b2nodeUpdateDepositLogger := newLogger(ctx, "[b2node-update-deposit]")
-		b2nodeUpdateDepositBridge, err := b2NodeClient(ctx.BitcoinConfig, b2nodeUpdateDepositLogger)
-		if err != nil {
-			logger.Errorw("failed to create b2node", "error", err.Error())
-			return err
-		}
-
-		b2nodeUpdateDepositDB, err := GetDBContextFromCmd(cmd)
-		if err != nil {
-			logger.Errorw("failed to get db context", "error", err.Error())
-			return err
-		}
-
-		b2NodeUpdateDepositService := b2node.NewUpdateDepositService(b2nodeUpdateDepositBridge, b2nodeUpdateDepositDB, b2nodeUpdateDepositLogger)
-
-		b2NodeUpdateDepositErrCh := make(chan error)
-		go func() {
-			if err := b2NodeUpdateDepositService.Start(); err != nil {
-				b2NodeUpdateDepositErrCh <- err
-			}
-		}()
-
-		select {
-		case err := <-b2NodeUpdateDepositErrCh:
 			return err
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}
@@ -295,25 +210,6 @@ func WaitForQuitSignals() int {
 	signal.Notify(sigs, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGINT, syscall.SIGHUP)
 	sig := <-sigs
 	return int(sig.(syscall.Signal)) + 128
-}
-
-func b2NodeClient(cfg *config.BitconConfig, b2NodeLog logger.Logger) (*b2node.NodeClient, error) {
-	b2grpcConn, err := client.GetClientConnection(cfg.Bridge.B2NodeGRPCHost, client.WithClientPortOption(cfg.Bridge.B2NodeGRPCPort))
-	if err != nil {
-		return nil, err
-	}
-	bridgeB2node, err := b2node.NewNodeClient(
-		cfg.Bridge.B2NodePrivKey,
-		b2grpcConn,
-		cfg.Bridge.B2NodeAPI,
-		cfg.Bridge.B2NodeDenom,
-		b2NodeLog,
-	)
-	if err != nil {
-		logger.Errorw("failed to create b2node", "error", err.Error())
-		return nil, err
-	}
-	return bridgeB2node, nil
 }
 
 func newLogger(ctx *Context, name string) logger.Logger {

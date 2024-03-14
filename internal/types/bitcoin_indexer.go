@@ -29,7 +29,6 @@ type BitcoinTxParseResult struct {
 
 type BitcoinFrom struct {
 	Address string
-	PubKey  string
 }
 
 type BitcoinTo struct {

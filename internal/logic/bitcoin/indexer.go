@@ -1,7 +1,6 @@
 package bitcoin
 
 import (
-	"encoding/hex"
 	"errors"
 	"fmt"
 
@@ -121,7 +120,7 @@ func (b *Indexer) parseTx(txResult *wire.MsgTx, index int) (*types.BitcoinTxPars
 			if errors.Is(err, ErrParsePkScript) {
 				continue
 			}
-			// TODO: handle null data
+			// null data
 			if errors.Is(err, ErrParsePkScriptNullData) {
 				continue
 			}
@@ -189,21 +188,9 @@ func (b *Indexer) parseFromAddress(txResult *wire.MsgTx) (fromAddress []types.Bi
 			}
 			return nil, err
 		}
-		// parse sign pubkey
-		pubKey, err := b.parsePubKey(vin)
-		if err != nil {
-			if errors.Is(err, ErrParsePubKey) {
-				b.logger.Warnw(ErrParsePubKey.Error(),
-					"vin", vin,
-					"txId", txResult.TxHash().String(),
-				)
-				continue
-			}
-			return nil, err
-		}
+
 		fromAddress = append(fromAddress, types.BitcoinFrom{
 			Address: vinPkAddress,
-			PubKey:  pubKey,
 		})
 	}
 	return fromAddress, nil
@@ -255,15 +242,4 @@ func (b *Indexer) LatestBlock() (int64, error) {
 // BlockChainInfo get block chain info
 func (b *Indexer) BlockChainInfo() (*btcjson.GetBlockChainInfoResult, error) {
 	return b.client.GetBlockChainInfo()
-}
-
-func (b *Indexer) parsePubKey(txIn *wire.TxIn) (string, error) {
-	if txIn.Witness != nil {
-		// only P2WPKH support
-		if len(txIn.Witness) == 2 {
-			pubkey := txIn.Witness[1]
-			return hex.EncodeToString(pubkey), nil
-		}
-	}
-	return "", ErrParsePubKey
 }

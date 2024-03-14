@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+
 	pb "github.com/b2network/b2-indexer/api/protobuf"
 	"github.com/b2network/b2-indexer/api/protobuf/vo"
 )
