@@ -18,8 +18,7 @@ const (
 
 func version(mux *runtime.ServeMux, version int64) {
 	pattern := runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "doc", "version"}, ""))
-	mux.Handle("GET", pattern, func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-		log.Infow("request info", "request", r, "pathParams", pathParams)
+	mux.Handle("GET", pattern, func(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
 		w.Header().Set("Content-Type", "application/json")
 		_, err := w.Write([]byte(fmt.Sprintf(`{"version": "%d"}`, version)))
 		if err != nil {
@@ -30,14 +29,12 @@ func version(mux *runtime.ServeMux, version int64) {
 
 func registerDoc(mux *runtime.ServeMux, path string) {
 	pattern := runtime.MustPattern(runtime.NewPattern(1, []int{2, 0, 2, 1, 2, 2}, []string{"v1", "doc", "swagger"}, ""))
-	mux.Handle("GET", pattern, func(w http.ResponseWriter, r *http.Request, pathParams map[string]string) {
-		log.Infow("registerDoc request info", "request", r, "pathParams", pathParams)
+	mux.Handle("GET", pattern, func(w http.ResponseWriter, _ *http.Request, _ map[string]string) {
 		fileContent, err := os.ReadFile(path)
 		if err != nil {
 			w.Header().Set("Content-Type", "application/json")
 			_, err = w.Write([]byte(`{"code":1,"message":"Response read error"}`))
 			if err != nil {
-				log.Errorw("registerDoc error", "error", err)
 				http.Error(w, "Response write error", http.StatusInternalServerError)
 			}
 		} else {
