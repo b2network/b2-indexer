@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package api.protobuf;
+option go_package = "github.com/b2network/b2-indexer/api/protobuf/vo";
+
+message HelloRequest {
+}
+
+message HelloResponse  {
+  int64 code = 1; // 0: return code
+  string message = 2; // body message
+  Data data = 3; // data message
+  message Data {
+    string info = 1; // data info
+  }
+};

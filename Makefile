@@ -5,6 +5,7 @@ DOCKER_IMAGE := $(NAMESPACE)/$(PROJECT)
 COMMIT_HASH := $(shell git rev-parse --short=7 HEAD)
 DATE=$(shell date +%Y%m%d-%H%M%S)
 DOCKER_TAG := ${DATE}-$(COMMIT_HASH)
+MODULES := $(wildcard api/*)
 
 ###############################################################################
 ###                                  Build                                  ###
@@ -50,6 +51,37 @@ all: build
 build-all: tools build lint test vulncheck
 
 .PHONY: distclean clean build-all
+
+proto:
+	$(foreach module,$(MODULES),$(call protoc,$(module)))
+
+define protoc
+	echo "module: $(1)"
+    protoc --version
+	protoc -I.:${PROTO_INCLUDE}\
+			--go_out=. --go_opt=paths=source_relative \
+			--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+			--grpc-gateway_out=logtostderr=true:. \
+			--grpc-gateway_opt paths=source_relative \
+			--experimental_allow_proto3_optional \
+			$(1)/*/*.proto
+	# echo "end"
+    protoc -I.:${PROTO_INCLUDE}\
+		--go_out=. --go_opt=paths=source_relative \
+		--go-grpc_out=. --go-grpc_opt=paths=source_relative \
+		--grpc-gateway_out=logtostderr=true:. \
+		--grpc-gateway_opt paths=source_relative \
+		--experimental_allow_proto3_optional \
+		--swagger_out=logtostderr=true:. \
+		$(1)/*.proto
+	# echo "end"
+endef
+
+proto-clean:
+	rm -rvf api/protobuf/vo/*.pb.go
+	rm -rvf api/protobuf/*.pb.go
+	rm -rvf api/protobuf/*.pb.gw.go
+	rm -rvf api/protobuf/*.swagger.json
 
 ###############################################################################
 ###                                Linting                                  ###

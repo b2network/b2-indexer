@@ -42,6 +42,7 @@ func rootCmd() *cobra.Command {
 	rootCmd.AddCommand(startCmd())
 	rootCmd.AddCommand(generateECDSAPrivateKey())
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+	rootCmd.AddCommand(startHTTPServer())
 	return rootCmd
 }
 
@@ -101,4 +102,26 @@ func GetServerContextFromCmd(cmd *cobra.Command) *server.Context {
 	}
 
 	return server.NewDefaultContext()
+}
+
+func startHTTPServer() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "http",
+		Short: "start http service",
+		PreRunE: func(cmd *cobra.Command, _ []string) error {
+			home, err := cmd.Flags().GetString(FlagHome)
+			if err != nil {
+				return err
+			}
+			return server.HTTPConfigsPreRunHandler(cmd, home)
+		},
+		Run: func(cmd *cobra.Command, _ []string) {
+			err := server.Run(GetServerContextFromCmd(cmd))
+			if err != nil {
+				log.Error("start http service failed")
+			}
+		},
+	}
+	cmd.Flags().String(FlagHome, "", "The application home directory")
+	return cmd
 }

@@ -28,6 +28,7 @@ type Context struct {
 	// Viper         *viper.Viper
 	Config        *config.Config
 	BitcoinConfig *config.BitconConfig
+	HTTPConfig    *config.HTTPConfig
 	// Logger        logger.Logger
 	// Db *gorm.DB
 }
@@ -49,7 +50,10 @@ func NewDefaultContext() *Context {
 }
 
 func NewContext(cfg *config.Config, btccfg *config.BitconConfig) *Context {
-	return &Context{cfg, btccfg}
+	return &Context{
+		Config:        cfg,
+		BitcoinConfig: btccfg,
+	}
 }
 
 func InterceptConfigsPreRunHandler(cmd *cobra.Command, home string) error {
@@ -122,4 +126,28 @@ func NewDB(cfg *config.Config) (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(cfg.DatabaseMaxOpenConns)
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.DatabaseConnMaxLifetime) * time.Second)
 	return DB, nil
+}
+
+func NewHTTPContext(httpCfg *config.HTTPConfig) *Context {
+	return &Context{
+		HTTPConfig: httpCfg,
+	}
+}
+
+func HTTPConfigsPreRunHandler(cmd *cobra.Command, home string) error {
+	cfg, err := config.LoadConfig(home)
+	if err != nil {
+		return err
+	}
+	if home != "" {
+		cfg.RootDir = home
+	}
+
+	httpCfg, err := config.LoadHTTPConfig(home)
+	if err != nil {
+		return err
+	}
+
+	serverCtx := NewHTTPContext(httpCfg)
+	return SetCmdServerContext(cmd, serverCtx)
 }

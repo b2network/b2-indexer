@@ -2,15 +2,15 @@
 
 ## Indexer configuration
 
-| Variable | Type| Description | Compulsoriness | Default value | Example value |
-| --- | --- | --- | --- | --- | --- |
-| INDEXER_ROOT_DIR | `string` | Config file used dir  | - |  |  |
-| INDEXER_LOG_LEVEL | `string` | Log level | - | `info` | `info debug warn error panic fatal` |
-| INDEXER_LOG_FORMAT | `string` | Log format | - | `console` | `` |
-| INDEXER_DATABASE_SOURCE | `string` | database source | Required |  | `postgres://postgres:postgres@127.0.0.1:5432/b2-indexer` |
-| INDEXER_DATABASE_MAX_IDLE_CONNS | `number` | database max idle conns| - | `10` | `10` |
-| INDEXER_DATABASE_MAX_OPEN_CONNS | `number` | database max open conns| - | `20` | `20` |
-| INDEXER_DATABASE_CONN_MAX_LIFETIME | `number` | database max lifetime| - | `3600` | `3600` |
+| Variable                           | Type     | Description             | Compulsoriness | Default value | Example value                                            |
+|------------------------------------|----------|-------------------------|----------------|---------------|----------------------------------------------------------|
+| INDEXER_ROOT_DIR                   | `string` | Config file used dir    | -              |               |                                                          |
+| INDEXER_LOG_LEVEL                  | `string` | Log level               | -              | `info`        | `info debug warn error panic fatal`                      |
+| INDEXER_LOG_FORMAT                 | `string` | Log format              | -              | `console`     | ``                                                       |
+| INDEXER_DATABASE_SOURCE            | `string` | database source         | Required       |               | `postgres://postgres:postgres@127.0.0.1:5432/b2-indexer` |
+| INDEXER_DATABASE_MAX_IDLE_CONNS    | `number` | database max idle conns | -              | `10`          | `10`                                                     |
+| INDEXER_DATABASE_MAX_OPEN_CONNS    | `number` | database max open conns | -              | `20`          | `20`                                                     |
+| INDEXER_DATABASE_CONN_MAX_LIFETIME | `number` | database max lifetime   | -              | `3600`        | `3600`                                                   |
 
 ## Bitcoin configuration
 
@@ -40,3 +40,10 @@
 | BITCOIN_BRIDGE_PUBLICKEYS | `[]string` | bridge withdraw sign publickey | Required |  |  |
 | BITCOIN_BRIDGE_TIME_INTERVAL | `int64`    | bridge withdraw time interval | Required |  |  |
 | BITCOIN_BRIDGE_MULTISIG_NUM | `int`    | bridge withdraw multisig num | Required |  |  |
+
+## http configuration
+
+| Variable       | Type     | Description | Compulsoriness | Default value | Example value |
+|----------------|----------|-------------|----------------|---------------|---------------|
+| HTTP_PORT      | `string` | Http port   | -              | 8080          | -             |
+| HTTP_GRPC_PORT | `string` | grpc port   | -              | 8081          | -             |
