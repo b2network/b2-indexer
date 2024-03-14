@@ -89,12 +89,14 @@ func Run(cfg *config.HTTPConfig, grpcFn RegisterFn, gatewayFn GatewayRegisterFn)
 			log.Printf("Error occurred: %v, stopping servers", err)
 			if strings.Contains(err.Error(), "HTTP server") {
 				if err := server.Shutdown(context.Background()); err != nil {
-					log.Fatalf("HTTP server shutdown failed: %v", err)
+					log.Printf("HTTP server shutdown failed: %v", err)
+					return err
 				}
 			} else if strings.Contains(err.Error(), "gRPC server") {
 				grpcSvc.GracefulStop()
 			} else {
-				log.Fatalf("HTTP server error: %v", err)
+				log.Printf("HTTP server error: %v", err)
+				return err
 			}
 		}
 	}
