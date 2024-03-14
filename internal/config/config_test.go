@@ -237,3 +237,22 @@ func TestConfigEnv(t *testing.T) {
 	require.Equal(t, 22, config.DatabaseMaxOpenConns)
 	require.Equal(t, 2100, config.DatabaseConnMaxLifetime)
 }
+
+func TestHttpConfig(t *testing.T) {
+	os.Unsetenv("HTTP_PORT")
+	os.Unsetenv("HTTP_GRPC_PORT")
+
+	config, err := config.LoadHttpConfig("./testdata")
+	require.NoError(t, err)
+	require.Equal(t, "8080", config.HttpPort)
+	require.Equal(t, "8081", config.GrpcPort)
+}
+
+func TestHttpConfigEnv(t *testing.T) {
+	os.Setenv("HTTP_PORT", "8080")
+	os.Setenv("HTTP_GRPC_PORT", "8081")
+	config, err := config.LoadHttpConfig("./")
+	require.NoError(t, err)
+	require.Equal(t, "8080", config.HttpPort)
+	require.Equal(t, "8081", config.GrpcPort)
+}

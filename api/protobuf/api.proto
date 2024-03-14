@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package api.protobuf;
+
+option go_package = "github.com/b2network/b2-indexer/api/protobuf";
+
+import "api/protobuf/google/api/annotations.proto";
+import "api/protobuf/vo/hello.proto";
+
+service HelloService {
+  rpc GetHello (HelloRequest) returns (HelloResponse) {
+    option (google.api.http) = {
+      get: "/v1/hello"
+    };
+  }
+}

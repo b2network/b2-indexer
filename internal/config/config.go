@@ -102,11 +102,21 @@ type EpsConfig struct {
 	Authorization string `mapstructure:"authorization" env:"EPS_AUTHORIZATION"`
 }
 
+// HttpConfig defines the http server config
+type HttpConfig struct {
+	// port defines the http server port
+	HttpPort string `mapstructure:"http-port" env:"HTTP_PORT"`
+	// port defines the grpc server port
+	GrpcPort string `mapstructure:"grpc-port" env:"HTTP_GRPC_PORT"`
+}
+
 const (
 	BitcoinConfigFileName  = "bitcoin.toml"
 	AppConfigFileName      = "indexer.toml"
+	HttpConfigFileName     = "http.toml"
 	BitcoinConfigEnvPrefix = "BITCOIN"
 	AppConfigEnvPrefix     = "APP"
+	HttpConfigEnvPrefix    = "HTTP"
 )
 
 func LoadConfig(homePath string) (*Config, error) {
@@ -205,4 +215,35 @@ func DefaultBitcoinConfig() *BitconConfig {
 		RPCPass:       "",
 		RPCPort:       "8332",
 	}
+}
+
+func LoadHttpConfig(homePath string) (*HttpConfig, error) {
+	config := HttpConfig{}
+	configFile := path.Join(homePath, HttpConfigFileName)
+	v := viper.New()
+	v.SetConfigFile(configFile)
+
+	v.SetEnvPrefix(HttpConfigEnvPrefix)
+	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_", "-", "_"))
+	v.AutomaticEnv()
+
+	// try load config from file
+	err := v.ReadInConfig()
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return nil, err
+		}
+		// if err load config from env
+		if err := env.Parse(&config); err != nil {
+			return nil, err
+		}
+		return &config, nil
+	}
+
+	err = v.Unmarshal(&config)
+	if err != nil {
+		return nil, err
+	}
+
+	return &config, nil
 }
