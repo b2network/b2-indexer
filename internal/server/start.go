@@ -96,7 +96,6 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			return err
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}
-
 	}
 
 	if bitcoinCfg.Eps.EnableEps {
