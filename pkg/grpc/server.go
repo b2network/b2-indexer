@@ -83,23 +83,20 @@ func Run(cfg *config.HTTPConfig, grpcFn RegisterFn, gatewayFn GatewayRegisterFn)
 	reflection.Register(grpcSvc)
 	log.Println("http server started in port", cfg.HTTPPort)
 	log.Println("grpc server started in port", cfg.GrpcPort)
-	for {
-		select {
-		case err := <-errChan:
-			log.Printf("Error occurred: %v, stopping servers", err)
-			if strings.Contains(err.Error(), "HTTP server") {
-				if err := server.Shutdown(context.Background()); err != nil {
-					log.Printf("HTTP server shutdown failed: %v", err)
-					return err
-				}
-			} else if strings.Contains(err.Error(), "gRPC server") {
-				grpcSvc.GracefulStop()
-			} else {
-				log.Printf("HTTP server error: %v", err)
+	for err := range errChan {
+		log.Printf("Error occurred: %v, stopping servers", err)
+		switch {
+		case strings.Contains(err.Error(), "HTTP server"):
+			if err := server.Shutdown(context.Background()); err != nil {
+				log.Printf("HTTP server shutdown failed: %v", err)
 				return err
 			}
+		case strings.Contains(err.Error(), "gRPC server"):
+			grpcSvc.GracefulStop()
+		default:
+			log.Printf("HTTP server error: %v", err)
+			return err
 		}
 	}
-
 	return nil
 }
