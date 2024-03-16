@@ -11,6 +11,7 @@ import (
 
 	"github.com/b2network/b2-indexer/internal/server"
 	"github.com/b2network/b2-indexer/pkg/log"
+	sinohopeCmd "github.com/b2network/b2-indexer/pkg/sinohope/cmd"
 	"github.com/spf13/cobra"
 )
 
@@ -39,10 +40,11 @@ func rootCmd() *cobra.Command {
 		},
 	}
 
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(startCmd())
 	rootCmd.AddCommand(generateECDSAPrivateKey())
-	rootCmd.CompletionOptions.DisableDefaultCmd = true
 	rootCmd.AddCommand(startHTTPServer())
+	rootCmd.AddCommand(sinohopeCmd.Sinohope())
 	return rootCmd
 }
 

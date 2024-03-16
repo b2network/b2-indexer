@@ -21,6 +21,7 @@ require (
 	github.com/cometbft/cometbft v0.38.5
 	github.com/ethereum/go-ethereum v1.13.14
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
+	github.com/sinohope/sinohope-golang-sdk v0.0.0-00010101000000-000000000000
 )
 
 require (
@@ -34,6 +35,7 @@ require (
 	github.com/golang/protobuf v1.5.3 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
 	github.com/rs/cors v1.10.1 // indirect
+	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/status-im/keycard-go v0.3.2 // indirect
 	github.com/supranational/blst v0.3.11 // indirect
 	golang.org/x/mod v0.15.0 // indirect
@@ -54,7 +56,7 @@ require (
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.6.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/holiman/uint256 v1.2.4 // indirect
@@ -98,3 +100,5 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/sinohope/sinohope-golang-sdk => github.com/sinohope/golang-sdk v1.0.3
