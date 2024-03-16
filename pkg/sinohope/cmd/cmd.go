@@ -94,11 +94,10 @@ func listSupportedChainAndCoins() *cobra.Command {
 			var supportList []*common.WaasChainData
 			if supportList, err = c.GetSupportedChains(); err != nil {
 				return err
-			} else {
-				cmd.Printf("supported chains:\n")
-				for _, v := range supportList {
-					cmd.Printf("chainName: %v, chainSymbol: %v\n", v.ChainName, v.ChainSymbol)
-				}
+			}
+			cmd.Printf("supported chains:\n")
+			for _, v := range supportList {
+				cmd.Printf("chainName: %v, chainSymbol: %v\n", v.ChainName, v.ChainSymbol)
 			}
 			cmd.Println()
 			var supportCoins []*common.WaaSCoinDTOData
@@ -130,7 +129,7 @@ func createWallet() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			vaultId, err := cmd.Flags().GetString(FlagVaultID)
+			vaultID, err := cmd.Flags().GetString(FlagVaultID)
 			if err != nil {
 				return err
 			}
@@ -138,20 +137,20 @@ func createWallet() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if vaultId == "" || walletName == "" {
+			if vaultID == "" || walletName == "" {
 				return errors.New("vaultId or walletName is empty")
 			}
-			requestId := genRequestID()
+			requestID := genRequestID()
 
-			cmd.Println("VaultId:", vaultId)
+			cmd.Println("VaultId:", vaultID)
 			cmd.Println("WalletName:", walletName)
-			cmd.Println("RequestId:", requestId)
+			cmd.Println("RequestId:", requestID)
 			cmd.Println()
 
 			var walletInfo []*common.WaaSWalletInfoData
 			if walletInfo, err = m.CreateWallets(&common.WaaSCreateBatchWalletParam{
-				VaultId:   vaultId,
-				RequestId: requestId,
+				VaultId:   vaultID,
+				RequestId: requestID,
 				Count:     1,
 				WalletInfos: []common.WaaSCreateWalletInfo{
 					{
@@ -181,12 +180,12 @@ func genAddress() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			vaultId, err := cmd.Flags().GetString(FlagVaultID)
+			vaultID, err := cmd.Flags().GetString(FlagVaultID)
 			if err != nil {
 				return err
 			}
 
-			walletId, err := cmd.Flags().GetString(FlagWalletID)
+			walletID, err := cmd.Flags().GetString(FlagWalletID)
 			if err != nil {
 				return err
 			}
@@ -196,18 +195,18 @@ func genAddress() *cobra.Command {
 				return err
 			}
 
-			requestId := genRequestID()
+			requestID := genRequestID()
 
-			cmd.Println("VaultId:", vaultId)
-			cmd.Println("WalletId:", walletId)
-			cmd.Println("RequestId:", requestId)
+			cmd.Println("VaultId:", vaultID)
+			cmd.Println("WalletId:", walletID)
+			cmd.Println("RequestId:", requestID)
 			cmd.Println()
 
 			var walletInfo []*common.WaaSAddressInfoData
 			if walletInfo, err = m.GenerateChainAddresses(&common.WaaSGenerateChainAddressParam{
-				RequestId:   requestId,
-				VaultId:     vaultId,
-				WalletId:    walletId,
+				RequestId:   requestID,
+				VaultId:     vaultID,
+				WalletId:    walletID,
 				ChainSymbol: chainSymbol,
 			}); err != nil {
 				return err
