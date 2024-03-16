@@ -12,9 +12,9 @@ import (
 var (
 	FlagBaseURL          = "baseUrl"
 	FlagPrivateKey       = "privateKey"
-	FlagVaultId          = "vaultId"
+	FlagVaultID          = "vaultId"
 	FlagCreateWalletName = "createWalletName"
-	FlagWalletId         = "walletId"
+	FlagWalletID         = "walletId"
 	FlagChainSymbol      = "chainSymbol"
 )
 
@@ -50,8 +50,8 @@ func Sinohope() *cobra.Command {
 	)
 	cmd.PersistentFlags().String(FlagBaseURL, "https://api.sinohope.com", "sinohope base url")
 	cmd.PersistentFlags().String(FlagPrivateKey, "", "fakePrivateKey")
-	cmd.PersistentFlags().String(FlagVaultId, "", "Sinohope VaultId")
-	cmd.PersistentFlags().String(FlagWalletId, "", "Sinohope wallet id")
+	cmd.PersistentFlags().String(FlagVaultID, "", "Sinohope VaultId")
+	cmd.PersistentFlags().String(FlagWalletID, "", "Sinohope wallet id")
 	cmd.PersistentFlags().String(FlagChainSymbol, "BTC", "Sinohope ChainSymbol")
 	return cmd
 }
@@ -69,12 +69,11 @@ func listVault() *cobra.Command {
 			var vaults []*common.WaaSVaultInfoData
 			if vaults, err = c.GetVaults(); err != nil {
 				return err
-			} else {
-				for _, v := range vaults {
-					for _, v2 := range v.VaultInfoOfOpenApiList {
-						cmd.Printf("vaultId: %v, vaultName: %v, authorityType: %v, createTime: %v\n",
-							v2.VaultId, v2.VaultName, v2.AuthorityType, v2.CreateTime)
-					}
+			}
+			for _, v := range vaults {
+				for _, v2 := range v.VaultInfoOfOpenApiList {
+					cmd.Printf("vaultId: %v, vaultName: %v, authorityType: %v, createTime: %v\n",
+						v2.VaultId, v2.VaultName, v2.AuthorityType, v2.CreateTime)
 				}
 			}
 			return nil
@@ -109,12 +108,11 @@ func listSupportedChainAndCoins() *cobra.Command {
 				}
 				if supportCoins, err = c.GetSupportedCoins(param); err != nil {
 					return err
-				} else {
-					cmd.Printf("supported coins:\n")
-					for _, v := range supportCoins {
-						cmd.Printf("assetName: %v, assetId: %v, assetDecimal: %v\n",
-							v.AssetName, v.AssetId, v.AssetDecimal)
-					}
+				}
+				cmd.Printf("supported coins:\n")
+				for _, v := range supportCoins {
+					cmd.Printf("assetName: %v, assetId: %v, assetDecimal: %v\n",
+						v.AssetName, v.AssetId, v.AssetDecimal)
 				}
 			}
 			return nil
@@ -132,7 +130,7 @@ func createWallet() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			vaultId, err := cmd.Flags().GetString(FlagVaultId)
+			vaultId, err := cmd.Flags().GetString(FlagVaultID)
 			if err != nil {
 				return err
 			}
@@ -143,12 +141,11 @@ func createWallet() *cobra.Command {
 			if vaultId == "" || walletName == "" {
 				return errors.New("vaultId or walletName is empty")
 			}
-			requestId := genRequestId()
+			requestId := genRequestID()
 
 			cmd.Println("VaultId:", vaultId)
 			cmd.Println("WalletName:", walletName)
 			cmd.Println("RequestId:", requestId)
-
 			cmd.Println()
 
 			var walletInfo []*common.WaaSWalletInfoData
@@ -163,11 +160,10 @@ func createWallet() *cobra.Command {
 				},
 			}); err != nil {
 				return err
-			} else {
-				cmd.Println("create wallet success")
-				for _, v := range walletInfo {
-					cmd.Printf("walletId:%v, walletName:%v\n", v.WalletId, v.WalletName)
-				}
+			}
+			cmd.Println("create wallet success")
+			for _, v := range walletInfo {
+				cmd.Printf("walletId:%v, walletName:%v\n", v.WalletId, v.WalletName)
 			}
 			return nil
 		},
@@ -185,12 +181,12 @@ func genAddress() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			vaultId, err := cmd.Flags().GetString(FlagVaultId)
+			vaultId, err := cmd.Flags().GetString(FlagVaultID)
 			if err != nil {
 				return err
 			}
 
-			walletId, err := cmd.Flags().GetString(FlagWalletId)
+			walletId, err := cmd.Flags().GetString(FlagWalletID)
 			if err != nil {
 				return err
 			}
@@ -200,7 +196,7 @@ func genAddress() *cobra.Command {
 				return err
 			}
 
-			requestId := genRequestId()
+			requestId := genRequestID()
 
 			cmd.Println("VaultId:", vaultId)
 			cmd.Println("WalletId:", walletId)
@@ -215,10 +211,9 @@ func genAddress() *cobra.Command {
 				ChainSymbol: chainSymbol,
 			}); err != nil {
 				return err
-			} else {
-				for _, v := range walletInfo {
-					cmd.Printf("address:%v, encoding:%v, hdPath:%v, pubkey:%v\n", v.Address, v.Encoding, v.HdPath, v.Pubkey)
-				}
+			}
+			for _, v := range walletInfo {
+				cmd.Printf("address:%v, encoding:%v, hdPath:%v, pubkey:%v\n", v.Address, v.Encoding, v.HdPath, v.Pubkey)
 			}
 			return nil
 		},
@@ -227,6 +222,6 @@ func genAddress() *cobra.Command {
 	return cmd
 }
 
-func genRequestId() string {
+func genRequestID() string {
 	return uuid.New().String()
 }
