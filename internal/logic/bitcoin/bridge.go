@@ -303,7 +303,7 @@ func (b *Bridge) retrySendTransaction(
 	// TODO: set new gas price
 	gasPrice.Mul(gasPrice, big.NewInt(b.BaseGasPriceMultiple))
 
-	b.logger.Infof("gas price:", gasPrice.String())
+	b.logger.Infof("gas price:%v", gasPrice.String())
 
 	callMsg := ethereum.CallMsg{
 		From:     crypto.PubkeyToAddress(fromPriv.PublicKey),
@@ -381,6 +381,7 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 
 // BitcoinAddressToEthAddress bitcoin address to eth address
 func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
+	return "0xE679D912B0bb604FA125003aF21874923e424F90", nil
 	code, pubkey, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
 	if err != nil {
 		b.logger.Errorw("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)

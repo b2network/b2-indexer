@@ -6,5 +6,3 @@ RUN cd /src && \
 # =====
 FROM alpine:latest
 COPY --from=builder /src/build/main /usr/bin/main
-CMD ["/usr/bin/main","start"]
-

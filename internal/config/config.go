@@ -120,9 +120,9 @@ type EpsConfig struct {
 // HTTPConfig defines the http server config
 type HTTPConfig struct {
 	// port defines the http server port
-	HTTPPort string `mapstructure:"http-port" env:"HTTP_PORT" envDefault:"8080"`
+	HTTPPort string `mapstructure:"http-port" env:"HTTP_PORT" envDefault:"9090"`
 	// port defines the grpc server port
-	GrpcPort string `mapstructure:"grpc-port" env:"HTTP_GRPC_PORT" envDefault:"9090"`
+	GrpcPort string `mapstructure:"grpc-port" env:"HTTP_GRPC_PORT" envDefault:"9091"`
 }
 
 const (

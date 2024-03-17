@@ -63,7 +63,7 @@ func NewBitcoinIndexer(
 // ParseBlock parse block data by block height
 // NOTE: Currently, only transfer transactions are supported.
 func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxParseResult, *wire.BlockHeader, error) {
-	blockResult, _, err := b.getBlockByHeight(height)
+	blockResult, err := b.getBlockByHeight(height)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -89,20 +89,16 @@ func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxPar
 }
 
 // getBlockByHeight returns a raw block from the server given its height
-func (b *Indexer) getBlockByHeight(height int64) (*wire.MsgBlock, *btcjson.GetBlockVerboseResult, error) {
+func (b *Indexer) getBlockByHeight(height int64) (*wire.MsgBlock, error) {
 	blockhash, err := b.client.GetBlockHash(height)
 	if err != nil {
-		return nil, nil, err
-	}
-	blockVerbose, err := b.client.GetBlockVerbose(blockhash)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	msgBlock, err := b.client.GetBlock(blockhash)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return msgBlock, blockVerbose, nil
+	return msgBlock, nil
 }
 
 func (b *Indexer) CheckConfirmations(hash string) error {
@@ -114,6 +110,7 @@ func (b *Indexer) CheckConfirmations(hash string) error {
 	if err != nil {
 		return err
 	}
+
 	if txVerbose.Confirmations < b.targetConfirmations {
 		return fmt.Errorf("%w, current confirmations:%d target confirmations: %d",
 			ErrTargetConfirmations, txVerbose.Confirmations, b.targetConfirmations)

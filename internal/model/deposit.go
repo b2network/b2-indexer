@@ -40,8 +40,8 @@ const (
 )
 
 const (
-	ListenerStausSuccess = iota
-	ListenerStausPending = iota
+	ListenerStatusSuccess = iota
+	ListenerStatusPending = iota
 )
 
 type Deposit struct {
@@ -63,12 +63,11 @@ type Deposit struct {
 	B2EoaTxHash      string    `json:"b2_eoa_tx_hash" gorm:"type:varchar(66);not null;default:'';comment:b2 network eoa tx hash"`
 	B2EoaTxStatus    int       `json:"b2_eoa_tx_status" gorm:"type:SMALLINT;default:1"`
 	BtcBlockTime     time.Time `json:"btc_block_time"`
-	CallbackStatus   int       `json:"callback_status" gorm:"type:SMALLINT;default:1"`
-	ListenerStaus    int       `json:"listener_status" gorm:"type:SMALLINT;default:1"`
+	CallbackStatus   int       `json:"callback_status" gorm:"type:SMALLINT;default:0"`
+	ListenerStatus   int       `json:"listener_status" gorm:"type:SMALLINT;default:0"`
 }
 
 type DepositColumns struct {
-	ID               string
 	BtcBlockNumber   string
 	BtcTxIndex       string
 	BtcTxHash        string
@@ -87,7 +86,7 @@ type DepositColumns struct {
 	B2EoaTxStatus    string
 	BtcBlockTime     string
 	CallbackStatus   string
-	ListenerStaus    string
+	ListenerStatus   string
 }
 
 func (Deposit) TableName() string {
@@ -96,7 +95,6 @@ func (Deposit) TableName() string {
 
 func (Deposit) Column() DepositColumns {
 	return DepositColumns{
-		ID:               "id",
 		BtcBlockNumber:   "btc_block_number",
 		BtcTxIndex:       "btc_tx_index",
 		BtcTxHash:        "btc_tx_hash",
@@ -115,6 +113,6 @@ func (Deposit) Column() DepositColumns {
 		BtcBlockTime:     "btc_block_time",
 		B2TxRetry:        "b2_tx_retry",
 		CallbackStatus:   "callback_status",
-		ListenerStaus:    "listener_status",
+		ListenerStatus:   "listener_status",
 	}
 }
