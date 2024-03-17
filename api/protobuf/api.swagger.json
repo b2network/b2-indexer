@@ -11,6 +11,38 @@
     "application/json"
   ],
   "paths": {
+    "/v1/call_back/transaction/notify": {
+      "post": {
+        "operationId": "NotifyService_TransactionNotify",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protobufTransactionNotifyResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protobufTransactionNotifyRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NotifyService"
+        ]
+      }
+    },
     "/v1/hello": {
       "get": {
         "operationId": "HelloService_GetHello",
@@ -67,6 +99,39 @@
         },
         "data": {
           "$ref": "#/definitions/HelloResponseData"
+        }
+      }
+    },
+    "protobufTransactionNotifyRequest": {
+      "type": "object",
+      "properties": {
+        "requestType": {
+          "type": "string",
+          "format": "int64"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "requestDetail": {
+          "type": "string"
+        },
+        "extraInfo": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufTransactionNotifyResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "format": "int64"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
         }
       }
     },

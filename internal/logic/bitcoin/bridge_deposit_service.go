@@ -29,19 +29,25 @@ const (
 type BridgeDepositService struct {
 	service.BaseService
 
-	bridge types.BITCOINBridge
-
-	db  *gorm.DB
-	log log.Logger
+	bridge     types.BITCOINBridge
+	btcIndexer types.BITCOINTxIndexer
+	db         *gorm.DB
+	log        log.Logger
+	stopping   chan struct{}
 }
 
 // NewBridgeDepositService returns a new service instance.
 func NewBridgeDepositService(
 	bridge types.BITCOINBridge,
+	btcIndexer types.BITCOINTxIndexer,
 	db *gorm.DB,
 	logger log.Logger,
 ) *BridgeDepositService {
-	is := &BridgeDepositService{bridge: bridge, db: db, log: logger}
+	is := &BridgeDepositService{
+		bridge:     bridge,
+		btcIndexer: btcIndexer,
+		db:         db,
+		log:        logger}
 	is.BaseService = *service.NewBaseService(nil, BridgeDepositServiceName, is)
 	return is
 }
@@ -66,6 +72,8 @@ func (bis *BridgeDepositService) Deposit(wg *sync.WaitGroup) {
 		// 1. tx status is pending
 		// 2. contract insufficient balance
 		// 3. invoke contract from account insufficient balance
+		// 4. callback status is success
+		// 5. listener status is success
 		var deposits []model.Deposit
 		err := bis.db.
 			Where(
@@ -76,8 +84,19 @@ func (bis *BridgeDepositService) Deposit(wg *sync.WaitGroup) {
 					model.DepositB2TxStatusFromAccountGasInsufficient,
 				},
 			).
+			Where(
+				fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().CallbackStatus),
+				model.CallbackStatusSuccess,
+			).
+			Where(
+				fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().ListenerStaus),
+				model.ListenerStausSuccess,
+			).
 			Limit(BatchDepositLimit).
-			Find(&deposits).Error
+			Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().BtcBlockNumber)).
+			Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().ID)).
+			Find(&deposits).
+			Error
 		if err != nil {
 			bis.log.Errorw("failed find tx from db", "error", err)
 		}
@@ -166,6 +185,13 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 		bis.log.Warnw("handle old deposit", "old tx:", oldTx)
 	}
 
+	// check Confirmations
+	err := bis.btcIndexer.CheckConfirmations(deposit.B2TxHash)
+	if err != nil {
+		bis.log.Errorw("check btc tx confirmations err", "tx hash:", deposit.B2TxHash, "err:", err)
+		return err
+	}
+
 	// send deposit tx
 	// TODO: wait tx mined
 	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, types.BitcoinFrom{
@@ -212,6 +238,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 		deposit.B2TxStatus = model.DepositB2TxStatusWaitMined
 		deposit.B2TxHash = b2Tx.Hash().String()
 		deposit.BtcFromAAAddress = aaAddress
+		deposit.B2TxNonce = b2Tx.Nonce()
 
 		bis.log.Infow("invoke deposit send tx success, wait confirm",
 			"data", deposit)

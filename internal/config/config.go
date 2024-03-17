@@ -45,7 +45,7 @@ type BitconConfig struct {
 	// IndexerListenAddress defines the address to listen on
 	IndexerListenAddress string `mapstructure:"indexer-listen-address" env:"BITCOIN_INDEXER_LISTEN_ADDRESS"`
 	// IndexerListenTargetConfirmations defines the number of confirmations to listen on
-	IndexerListenTargetConfirmations int64 `mapstructure:"indexer-listen-target-confirmations" env:"BITCOIN_INDEXER_LISTEN_TARGET_CONFIRMATIONS" envDefault:"1"`
+	IndexerListenTargetConfirmations uint64 `mapstructure:"indexer-listen-target-confirmations" env:"BITCOIN_INDEXER_LISTEN_TARGET_CONFIRMATIONS" envDefault:"1"`
 	// Bridge defines the bridge config
 	Bridge BridgeConfig `mapstructure:"bridge"`
 	Eps    EpsConfig    `mapstructure:"eps"`
@@ -120,9 +120,9 @@ type EpsConfig struct {
 // HTTPConfig defines the http server config
 type HTTPConfig struct {
 	// port defines the http server port
-	HTTPPort string `mapstructure:"http-port" env:"HTTP_PORT"`
+	HTTPPort string `mapstructure:"http-port" env:"HTTP_PORT" envDefault:"8080"`
 	// port defines the grpc server port
-	GrpcPort string `mapstructure:"grpc-port" env:"HTTP_GRPC_PORT"`
+	GrpcPort string `mapstructure:"grpc-port" env:"HTTP_GRPC_PORT" envDefault:"9090"`
 }
 
 const (

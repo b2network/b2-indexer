@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/b2network/b2-indexer/internal/logic/rollup"
+	"github.com/b2network/b2-indexer/internal/types"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -83,7 +84,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			return err
 		}
 
-		bridgeService := bitcoin.NewBridgeDepositService(bridge, db, bridgeLogger)
+		bridgeService := bitcoin.NewBridgeDepositService(bridge, bidxer, db, bridgeLogger)
 		bridgeErrCh := make(chan error)
 		go func() {
 			if err := bridgeService.Start(); err != nil {
@@ -198,7 +199,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 }
 
 func GetDBContextFromCmd(cmd *cobra.Command) (*gorm.DB, error) {
-	if v := cmd.Context().Value(DBContextKey); v != nil {
+	if v := cmd.Context().Value(types.DBContextKey); v != nil {
 		db := v.(*gorm.DB)
 		return db, nil
 	}

@@ -10,6 +10,7 @@ import (
 	"os"
 
 	"github.com/b2network/b2-indexer/internal/server"
+	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
 	sinohopeCmd "github.com/b2network/b2-indexer/pkg/sinohope/cmd"
 	"github.com/spf13/cobra"
@@ -35,7 +36,7 @@ func rootCmd() *cobra.Command {
 		Long:  "b2-indexer is a application that index bitcoin tx",
 		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
 			ctx := context.Background()
-			ctx = context.WithValue(ctx, server.ServerContextKey, server.NewDefaultContext())
+			ctx = context.WithValue(ctx, types.ServerContextKey, server.NewDefaultContext())
 			cmd.SetContext(ctx)
 		},
 	}
@@ -98,7 +99,7 @@ func generateECDSAPrivateKey() *cobra.Command {
 // GetServerContextFromCmd returns a Context from a command or an empty Context
 // if it has not been set.
 func GetServerContextFromCmd(cmd *cobra.Command) *server.Context {
-	if v := cmd.Context().Value(server.ServerContextKey); v != nil {
+	if v := cmd.Context().Value(types.ServerContextKey); v != nil {
 		serverCtxPtr := v.(*server.Context)
 		return serverCtxPtr
 	}
@@ -118,7 +119,12 @@ func startHTTPServer() *cobra.Command {
 			return server.HTTPConfigsPreRunHandler(cmd, home)
 		},
 		Run: func(cmd *cobra.Command, _ []string) {
-			err := server.Run(GetServerContextFromCmd(cmd))
+			db, err := server.GetDBContextFromCmd(cmd)
+			if err != nil {
+				cmd.Println(err)
+				return
+			}
+			err = server.Run(cmd.Context(), GetServerContextFromCmd(cmd), db)
 			if err != nil {
 				log.Error("start http service failed")
 			}

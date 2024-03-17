@@ -1,6 +1,8 @@
 package types
 
-import "github.com/btcsuite/btcd/wire"
+import (
+	"github.com/btcsuite/btcd/wire"
+)
 
 // BITCOINTxIndexer defines the interface of custom bitcoin tx indexer.
 type BITCOINTxIndexer interface {
@@ -8,6 +10,8 @@ type BITCOINTxIndexer interface {
 	ParseBlock(int64, int64) ([]*BitcoinTxParseResult, *wire.BlockHeader, error)
 	// LatestBlock get latest block height in the longest block chain.
 	LatestBlock() (int64, error)
+	// CheckConfirmations get tx detail info
+	CheckConfirmations(txHash string) error
 }
 
 type BitcoinTxParseResult struct {

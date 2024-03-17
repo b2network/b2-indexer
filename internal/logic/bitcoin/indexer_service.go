@@ -197,6 +197,10 @@ func (bis *IndexerService) SaveParsedResult(
 			return fmt.Errorf("parse result from empty")
 		}
 
+		if len(parseResult.To) == 0 {
+			return fmt.Errorf("parse result to empty")
+		}
+
 		froms, err := json.Marshal(parseResult.From)
 		if err != nil {
 			return err
@@ -217,6 +221,7 @@ func (bis *IndexerService) SaveParsedResult(
 			B2TxStatus:     b2TxStatus,
 			BtcBlockTime:   btcBlockTime,
 			B2TxRetry:      0,
+			ListenerStaus:  model.ListenerStausSuccess,
 		}
 		err = tx.Save(&deposit).Error
 		if err != nil {
