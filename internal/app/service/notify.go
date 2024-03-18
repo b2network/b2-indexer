@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	pb "github.com/b2network/b2-indexer/api/protobuf"
 	"github.com/b2network/b2-indexer/api/protobuf/vo"
@@ -13,6 +14,7 @@ import (
 	"github.com/b2network/b2-indexer/internal/model"
 	"github.com/b2network/b2-indexer/pkg/log"
 	sinohopeType "github.com/b2network/b2-indexer/pkg/sinohope/types"
+	"github.com/b2network/b2-indexer/pkg/utils"
 	"gorm.io/gorm"
 )
 
@@ -45,6 +47,26 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 		return ErrorTransactionNotify(exceptions.SystemError, "system error"), nil
 	}
 	logger.Infof("listen address config:%v", listenAddress)
+	httpCfg, err := GetHttpConfig(ctx)
+	if err != nil {
+		logger.Errorf("GetHttpConfig err:%v", err.Error())
+		return ErrorTransactionNotify(exceptions.SystemError, "system error"), nil
+	}
+	// check white list
+	isWhiteList := false
+	whiteList := httpCfg.IpWhiteList
+	whiteListIP := strings.Split(whiteList, ",")
+	clientIP := utils.ClientIP(ctx, logger)
+	for _, ip := range whiteListIP {
+		if clientIP == strings.TrimSpace(ip) {
+			isWhiteList = true
+		}
+	}
+	logger.Infof("ip:%v  white list:%v", clientIP, whiteList)
+	if !isWhiteList {
+		logger.Errorf("ip:%v not in white list", clientIP)
+		return ErrorTransactionNotify(exceptions.IpWhiteList, "ip limit"), nil
+	}
 
 	if req.RequestType != sinohopeType.RequestTypeRecharge {
 		return ErrorTransactionNotify(exceptions.RequestTypeNonsupport, "request type nonsupport"), nil

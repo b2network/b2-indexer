@@ -229,18 +229,22 @@ func TestConfigEnv(t *testing.T) {
 func TestHTTPConfig(t *testing.T) {
 	os.Unsetenv("HTTP_PORT")
 	os.Unsetenv("HTTP_GRPC_PORT")
+	os.Unsetenv("HTTP_IP_WHITE_LIST")
 
 	config, err := config.LoadHTTPConfig("./testdata")
 	require.NoError(t, err)
 	require.Equal(t, "8080", config.HTTPPort)
 	require.Equal(t, "8081", config.GrpcPort)
+	require.Equal(t, "127.0.0.1", config.IpWhiteList)
 }
 
 func TestHTTPConfigEnv(t *testing.T) {
 	os.Setenv("HTTP_PORT", "8080")
 	os.Setenv("HTTP_GRPC_PORT", "8081")
+	os.Setenv("HTTP_IP_WHITE_LIST", "127.0.0.2")
 	config, err := config.LoadHTTPConfig("./")
 	require.NoError(t, err)
 	require.Equal(t, "8080", config.HTTPPort)
 	require.Equal(t, "8081", config.GrpcPort)
+	require.Equal(t, "127.0.0.2", config.IpWhiteList)
 }

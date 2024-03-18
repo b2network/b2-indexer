@@ -7,6 +7,7 @@ import (
 	"os"
 
 	pb "github.com/b2network/b2-indexer/api/protobuf"
+	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -82,4 +83,12 @@ func GetListenAddress(ctx context.Context) (string, error) {
 		return serverCtx, nil
 	}
 	return "", fmt.Errorf("address context not set")
+}
+
+func GetHttpConfig(ctx context.Context) (*config.HTTPConfig, error) {
+	if v := ctx.Value(types.HttpConfigContextKey); v != nil {
+		serverCtx := v.(*config.HTTPConfig)
+		return serverCtx, nil
+	}
+	return nil, fmt.Errorf("address context not set")
 }

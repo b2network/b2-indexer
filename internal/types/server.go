@@ -7,5 +7,6 @@ type serverContext string
 const (
 	ServerContextKey        = serverContext("server.context")
 	DBContextKey            = serverContext("db.context")
-	ListenAddressContextKey = serverContext("bitcoin.listenaddress")
+	ListenAddressContextKey = serverContext("listenaddress.context")
+	HttpConfigContextKey    = serverContext("http.context")
 )

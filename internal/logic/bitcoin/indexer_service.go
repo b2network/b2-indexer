@@ -36,7 +36,7 @@ type IndexerService struct {
 // NewIndexerService returns a new service instance.
 func NewIndexerService(
 	txIdxr types.BITCOINTxIndexer,
-// bridge types.BITCOINBridge,
+	// bridge types.BITCOINBridge,
 	db *gorm.DB,
 	logger log.Logger,
 ) *IndexerService {

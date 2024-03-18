@@ -72,6 +72,7 @@ func (bis *BridgeDepositService) OnStop() {
 	bis.wg.Wait()
 	return
 }
+
 func (bis *BridgeDepositService) Deposit() {
 	defer bis.wg.Done()
 	ticker := time.NewTicker(BatchDepositWaitTimeout)
