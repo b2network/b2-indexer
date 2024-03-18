@@ -13,6 +13,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"sync"
 
 	"github.com/b2network/b2-indexer/internal/config"
 	b2types "github.com/b2network/b2-indexer/internal/types"
@@ -56,9 +57,6 @@ type Bridge struct {
 	enableEoaTransfer bool
 	// aa server
 	AAPubKeyAPI string
-	// AA contract address
-	AASCARegistry   common.Address
-	AAKernelFactory common.Address
 }
 type B2ExplorerStatus struct {
 	GasPrices struct {
@@ -67,6 +65,8 @@ type B2ExplorerStatus struct {
 		Average float64 `json:"average"`
 	} `json:"gas_prices"`
 }
+
+var txLock sync.Mutex
 
 // NewBridge new bridge
 func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger, bitcoinParam *chaincfg.Params) (*Bridge, error) {
@@ -90,7 +90,7 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger,
 		ABI = string(abi)
 	}
 
-	particle, err := particle.NewParticle(
+	newParticle, err := particle.NewParticle(
 		bridgeCfg.AAParticleRPC,
 		bridgeCfg.AAParticleProjectID,
 		bridgeCfg.AAParticleServerKey,
@@ -106,7 +106,7 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger,
 		ABI:                  ABI,
 		GasLimit:             bridgeCfg.GasLimit,
 		logger:               log,
-		particle:             particle,
+		particle:             newParticle,
 		bitcoinParam:         bitcoinParam,
 		enableEoaTransfer:    bridgeCfg.EnableEoaTransfer,
 		AAPubKeyAPI:          bridgeCfg.AAPubKeyAPI,
@@ -121,6 +121,7 @@ func (b *Bridge) Deposit(
 	bitcoinAddress b2types.BitcoinFrom,
 	amount int64,
 	oldTx *types.Transaction,
+	nonce uint64,
 ) (*types.Transaction, []byte, string, error) {
 	if bitcoinAddress.Address == "" {
 		return nil, nil, "", fmt.Errorf("bitcoin address is empty")
@@ -150,7 +151,7 @@ func (b *Bridge) Deposit(
 		return tx, oldTx.Data(), oldTx.To().String(), nil
 	}
 
-	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, new(big.Int).SetInt64(0))
+	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, new(big.Int).SetInt64(0), nonce)
 	if err != nil {
 		return nil, nil, "", err
 	}
@@ -176,6 +177,7 @@ func (b *Bridge) Transfer(bitcoinAddress b2types.BitcoinFrom, amount int64) (*ty
 		common.HexToAddress(toAddress),
 		nil,
 		new(big.Int).Mul(new(big.Int).SetInt64(amount), new(big.Int).SetInt64(10000000000)),
+		0,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("eth call err:%w", err)
@@ -185,8 +187,10 @@ func (b *Bridge) Transfer(bitcoinAddress b2types.BitcoinFrom, amount int64) (*ty
 }
 
 func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey,
-	toAddress common.Address, data []byte, value *big.Int,
+	toAddress common.Address, data []byte, value *big.Int, oldNonce uint64,
 ) (*types.Transaction, error) {
+	txLock.Lock()
+	defer txLock.Unlock()
 	client, err := ethclient.Dial(b.EthRPCURL)
 	if err != nil {
 		return nil, err
@@ -194,6 +198,9 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 	nonce, err := client.PendingNonceAt(ctx, crypto.PubkeyToAddress(fromPriv.PublicKey))
 	if err != nil {
 		return nil, err
+	}
+	if oldNonce != 0 {
+		nonce = oldNonce
 	}
 	gasPrice, err := client.SuggestGasPrice(ctx)
 	if err != nil {
@@ -293,6 +300,8 @@ func (b *Bridge) retrySendTransaction(
 	oldTx *types.Transaction,
 	fromPriv *ecdsa.PrivateKey,
 ) (*types.Transaction, error) {
+	txLock.Lock()
+	defer txLock.Unlock()
 	client, err := ethclient.Dial(b.EthRPCURL)
 	if err != nil {
 		return nil, err
@@ -415,7 +424,6 @@ func (b *Bridge) WaitMined(ctx context.Context, tx *types.Transaction, _ []byte)
 	if err != nil {
 		return nil, err
 	}
-
 	if receipt.Status != 1 {
 		b.logger.Errorw("wait mined status err", "error", ErrBridgeWaitMinedStatus, "receipt", receipt)
 		return receipt, ErrBridgeWaitMinedStatus

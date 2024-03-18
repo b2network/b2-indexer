@@ -60,6 +60,7 @@ type Deposit struct {
 	B2TxNonce        uint64    `json:"b2_tx_nonce" gorm:"default:0"`
 	B2TxStatus       int       `json:"b2_tx_status" gorm:"type:SMALLINT;default:1"`
 	B2TxRetry        int       `json:"b2_tx_retry" gorm:"type:SMALLINT;default:0"`
+	B2EoaTxNonce     uint64    `json:"b2_eoa_tx_nonce" gorm:"default:0"`
 	B2EoaTxHash      string    `json:"b2_eoa_tx_hash" gorm:"type:varchar(66);not null;default:'';comment:b2 network eoa tx hash"`
 	B2EoaTxStatus    int       `json:"b2_eoa_tx_status" gorm:"type:SMALLINT;default:1"`
 	BtcBlockTime     time.Time `json:"btc_block_time"`
@@ -82,6 +83,7 @@ type DepositColumns struct {
 	B2TxNonce        string
 	B2TxStatus       string
 	B2TxRetry        string
+	B2EoaTxNonce     string
 	B2EoaTxHash      string
 	B2EoaTxStatus    string
 	BtcBlockTime     string
@@ -108,6 +110,7 @@ func (Deposit) Column() DepositColumns {
 		B2TxHash:         "b2_tx_hash",
 		B2TxNonce:        "b2_tx_nonce",
 		B2TxStatus:       "b2_tx_status",
+		B2EoaTxNonce:     "b2_eoa_tx_nonce",
 		B2EoaTxHash:      "b2_eoa_tx_hash",
 		B2EoaTxStatus:    "b2_eoa_tx_status",
 		BtcBlockTime:     "btc_block_time",
