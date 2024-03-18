@@ -77,7 +77,7 @@ type BridgeConfig struct {
 	// GasPriceMultiple defines the gas price multiple, TODO: temp fix, base gas_price * n
 	GasPriceMultiple int64 `mapstructure:"gas-price-multiple" env:"BITCOIN_BRIDGE_GAS_PRICE_MULTIPLE" envDefault:"5"`
 	// B2ExplorerURL defines the b2 explorer url, TODO: temp use explorer gas prices
-	B2ExplorerURL string `mapstructure:"b2-explorer-url" env:"BITCOIN_BRIDGE_B2_EXPLORER_URL" envDefault:"https://blocksout-backend-role.bsquared.network"`
+	B2ExplorerURL string `mapstructure:"b2-explorer-url" env:"BITCOIN_BRIDGE_B2_EXPLORER_URL"`
 	// EnableListener defines whether to enable the listener
 	EnableWithdrawListener bool `mapstructure:"enable-withdraw-listener" env:"BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER"`
 	// Deposit defines the deposit event hash

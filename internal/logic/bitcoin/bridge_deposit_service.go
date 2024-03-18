@@ -19,9 +19,9 @@ import (
 const (
 	BridgeDepositServiceName = "BitcoinBridgeDepositService"
 	BatchDepositWaitTimeout  = 10 * time.Second
-	DepositErrTimeout        = 10 * time.Minute
+	DepositErrTimeout        = 1 * time.Minute
 	BatchDepositLimit        = 100
-	WaitMinedTimeout         = 2 * time.Hour
+	WaitMinedTimeout         = 3 * time.Minute
 	HandleDepositTimeout     = 1 * time.Second
 	DepositRetry             = 10 // temp fix, Increase retry times
 )
@@ -88,6 +88,9 @@ func (bis *BridgeDepositService) Deposit() {
 			// TODO: close db, deadline handle
 			return
 		case <-ticker.C:
+
+			// Priority processing UnconfirmedDeposit
+
 			// Query condition
 			// 1. tx status is pending
 			// 2. contract insufficient balance
@@ -184,7 +187,6 @@ func (bis *BridgeDepositService) UnconfirmedDeposit() {
 		select {
 		case <-bis.stopChan:
 			bis.log.Warnf("unconfirmed deposit stopping...")
-			time.Sleep(10 * time.Second)
 			return
 		case <-ticker.C:
 			var deposits []model.Deposit
@@ -197,7 +199,6 @@ func (bis *BridgeDepositService) UnconfirmedDeposit() {
 						model.DepositB2TxStatusWaitMinedFailed,
 					},
 				).
-				Limit(BatchDepositLimit).
 				Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
 				Find(&deposits).Error
 			if err != nil {
@@ -254,6 +255,17 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 				"error", err.Error(),
 				"btcTxHash", deposit.BtcTxHash,
 				"data", deposit)
+			if deposit.B2TxHash != "" {
+				receipt, err := bis.bridge.TransactionReceipt(deposit.B2TxHash)
+				if err != nil {
+					return err
+				}
+				if receipt.Status == 1 {
+					deposit.B2TxStatus = model.DepositB2TxStatusSuccess
+				} else {
+					deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedStatusFailed
+				}
+			}
 		case errors.Is(err, ErrBrdigeDepositContractInsufficientBalance):
 			deposit.B2TxStatus = model.DepositB2TxStatusInsufficientBalance
 			bis.log.Errorw("invoke deposit send tx contract insufficient balance",
@@ -367,7 +379,6 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 				deposit.B2TxStatus = model.DepositB2TxStatusSuccess
 			}
 		}
-
 	}
 
 	updateFields := map[string]interface{}{
@@ -393,6 +404,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 // 2. tx not mined, isPending, need reset gasprice
 // 3. tx not mined, tx not mempool, need retry send tx
 func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit) error {
+
 	txReceipt, err := bis.bridge.TransactionReceipt(deposit.B2TxHash)
 	if err == nil {
 		// case 1
@@ -416,7 +428,7 @@ func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit)
 		return nil
 	}
 	if err != nil {
-		bis.log.Errorw("TransactionReceipt err", "error", err)
+		bis.log.Errorw("TransactionReceipt err", "error", err, "data", deposit)
 		if errors.Is(err, ethereum.NotFound) {
 			bis.log.Errorf("TransactionReceipt not found")
 			// tx in mempool, isPending

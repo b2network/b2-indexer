@@ -36,12 +36,12 @@ const (
 
 const (
 	CallbackStatusSuccess = iota
-	CallbackStatusPending = iota
+	CallbackStatusPending
 )
 
 const (
 	ListenerStatusSuccess = iota
-	ListenerStatusPending = iota
+	ListenerStatusPending
 )
 
 type Deposit struct {
