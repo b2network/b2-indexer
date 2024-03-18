@@ -10,4 +10,5 @@ const (
 	RequestDetailParameter  = 2003
 	RequestDetailToMismatch = 2004
 	IpWhiteList             = 2005
+	RequestDetailAmount     = 2006
 )

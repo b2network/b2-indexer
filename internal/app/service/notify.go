@@ -90,6 +90,10 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 		logger.Errorf("request detail to address not eq listen address")
 		return ErrorTransactionNotify(exceptions.RequestDetailToMismatch, "request detail to mismatch"), nil
 	}
+	amount, err := strconv.ParseInt(requestDetail.Amount, 10, 64)
+	if err != nil {
+		return ErrorTransactionNotify(exceptions.RequestDetailAmount, "request detail amount "), nil
+	}
 	var deposit model.Deposit
 	var sinohope model.Sinohope
 	err = db.Transaction(func(tx *gorm.DB) error {
@@ -125,16 +129,12 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 			First(&deposit).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				amount, err := strconv.Atoi(requestDetail.Amount)
-				if err != nil {
-					return err
-				}
 				deposit := model.Deposit{
 					BtcTxHash:      requestDetail.TxHash,
 					BtcFrom:        requestDetail.From,
 					BtcTos:         string("{}"),
 					BtcTo:          requestDetail.To,
-					BtcValue:       int64(amount),
+					BtcValue:       amount,
 					BtcFroms:       string("{}"),
 					B2TxStatus:     model.DepositB2TxStatusPending,
 					CallbackStatus: model.CallbackStatusSuccess,
@@ -150,6 +150,16 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 				return err
 			}
 		} else {
+			// update check fields
+			if deposit.BtcFrom != requestDetail.From {
+				return errors.New("from address not match")
+			}
+			if deposit.BtcTo != requestDetail.To {
+				return errors.New("to address not match")
+			}
+			if deposit.BtcValue != amount {
+				return errors.New("amount not match")
+			}
 			updateFields := map[string]interface{}{
 				model.Deposit{}.Column().CallbackStatus: model.CallbackStatusSuccess,
 			}
