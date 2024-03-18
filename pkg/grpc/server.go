@@ -8,14 +8,11 @@ import (
 	"net/http"
 	"time"
 
-	"google.golang.org/grpc/credentials/insecure"
-	"gorm.io/gorm"
-
 	"github.com/b2network/b2-indexer/internal/app/middleware"
 	"github.com/b2network/b2-indexer/internal/config"
-	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/encoding/protojson"
 )
@@ -32,7 +29,7 @@ type (
 	GatewayRegisterFn func(ctx context.Context, mux *runtime.ServeMux, endPoint string, option []grpc.DialOption) error
 )
 
-func Run(ctx context.Context, cfg *config.HTTPConfig, db *gorm.DB, grpcFn RegisterFn, gatewayFn GatewayRegisterFn) error {
+func Run(ctx context.Context, cfg *config.HTTPConfig, grpcOpts grpc.ServerOption, grpcFn RegisterFn, gatewayFn GatewayRegisterFn) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	mux := runtime.NewServeMux(
@@ -55,12 +52,7 @@ func Run(ctx context.Context, cfg *config.HTTPConfig, db *gorm.DB, grpcFn Regist
 		log.Println("register grpc gateway server failed")
 		return err
 	}
-	grpcOpt := grpc.UnaryInterceptor(grpc.UnaryServerInterceptor(
-		func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
-			ctx = context.WithValue(ctx, types.DBContextKey, db)
-			return handler(ctx, req)
-		}))
-	grpcSvc := grpc.NewServer(grpcOpt)
+	grpcSvc := grpc.NewServer(grpcOpts)
 	grpcFn(grpcSvc)
 	handler := middleware.Cors(mux)
 	go func() {

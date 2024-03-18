@@ -75,3 +75,11 @@ func GetDBContext(ctx context.Context) (*gorm.DB, error) {
 	}
 	return nil, fmt.Errorf("db context not set")
 }
+
+func GetListenAddress(ctx context.Context) (string, error) {
+	if v := ctx.Value(types.ListenAddressContextKey); v != nil {
+		serverCtx := v.(string)
+		return serverCtx, nil
+	}
+	return "", fmt.Errorf("address context not set")
+}

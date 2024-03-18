@@ -29,11 +29,14 @@ const (
 type BridgeDepositService struct {
 	service.BaseService
 
-	bridge     types.BITCOINBridge
-	btcIndexer types.BITCOINTxIndexer
-	db         *gorm.DB
-	log        log.Logger
-	stopping   chan struct{}
+	bridge          types.BITCOINBridge
+	btcIndexer      types.BITCOINTxIndexer
+	db              *gorm.DB
+	log             log.Logger
+	wg              sync.WaitGroup
+	stopChan        chan struct{}
+	deadlineCancel1 context.CancelFunc
+	deadlineCancel2 context.CancelFunc
 }
 
 // NewBridgeDepositService returns a new service instance.
@@ -55,123 +58,137 @@ func NewBridgeDepositService(
 
 // OnStart
 func (bis *BridgeDepositService) OnStart() error {
-	var depositWg sync.WaitGroup
-	depositWg.Add(2)
-	go bis.Deposit(&depositWg)
-	go bis.UnconfirmedDeposit(&depositWg)
+	bis.wg.Add(2)
+	go bis.Deposit()
+	go bis.UnconfirmedDeposit()
 	// TODO: retry max err
-	depositWg.Wait()
-	return nil
+	bis.stopChan = make(chan struct{})
+	select {}
 }
 
-func (bis *BridgeDepositService) Deposit(wg *sync.WaitGroup) {
-	defer wg.Done()
+func (bis *BridgeDepositService) OnStop() {
+	bis.log.Warnf("bridge deposit service stoping...")
+	close(bis.stopChan)
+	bis.wg.Wait()
+	return
+}
+func (bis *BridgeDepositService) Deposit() {
+	defer bis.wg.Done()
 	ticker := time.NewTicker(BatchDepositWaitTimeout)
 	for {
-		<-ticker.C
-		ticker.Reset(BatchDepositWaitTimeout)
-		// Query condition
-		// 1. tx status is pending
-		// 2. contract insufficient balance
-		// 3. invoke contract from account insufficient balance
-		// 4. callback status is success
-		// 5. listener status is success
-		var deposits []model.Deposit
-		err := bis.db.
-			Where(
-				fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
-				[]int{
-					model.DepositB2TxStatusPending,
-					model.DepositB2TxStatusInsufficientBalance,
-					model.DepositB2TxStatusFromAccountGasInsufficient,
-				},
-			).
-			Where(
-				fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().CallbackStatus),
-				model.CallbackStatusSuccess,
-			).
-			Where(
-				fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().ListenerStatus),
-				model.ListenerStatusSuccess,
-			).
-			Limit(BatchDepositLimit).
-			Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().BtcBlockNumber)).
-			Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), "id")).
-			Find(&deposits).
-			Error
-		if err != nil {
-			bis.log.Errorw("failed find tx from db", "error", err)
-		}
-
-		bis.log.Infow("start handle deposit", "deposit batch num", len(deposits))
-		for _, deposit := range deposits {
-			err = bis.HandleDeposit(deposit, nil)
+		select {
+		case <-bis.stopChan:
+			bis.log.Warnf("deposit stopping...")
+			// TODO: close db, deadline handle
+			return
+		case <-ticker.C:
+			// Query condition
+			// 1. tx status is pending
+			// 2. contract insufficient balance
+			// 3. invoke contract from account insufficient balance
+			// 4. callback status is success
+			// 5. listener status is success
+			var deposits []model.Deposit
+			err := bis.db.
+				Where(
+					fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
+					[]int{
+						model.DepositB2TxStatusPending,
+						model.DepositB2TxStatusInsufficientBalance,
+						model.DepositB2TxStatusFromAccountGasInsufficient,
+					},
+				).
+				Where(
+					fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().CallbackStatus),
+					model.CallbackStatusSuccess,
+				).
+				Where(
+					fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().ListenerStatus),
+					model.ListenerStatusSuccess,
+				).
+				Limit(BatchDepositLimit).
+				Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().BtcBlockNumber)).
+				Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), "id")).
+				Find(&deposits).
+				Error
 			if err != nil {
-				bis.log.Errorw("handle deposit failed", "error", err, "deposit", deposit)
+				bis.log.Errorw("failed find tx from db", "error", err)
 			}
 
-			time.Sleep(HandleDepositTimeout)
-		}
+			bis.log.Infow("start handle deposit", "deposit batch num", len(deposits))
+			for _, deposit := range deposits {
+				err = bis.HandleDeposit(deposit, nil)
+				if err != nil {
+					bis.log.Errorw("handle deposit failed", "error", err, "deposit", deposit)
+				}
 
-		// handle aa not found err
-		// If there is no binding between the registered address and pubkey
-		// an error will occur, which can be handled again next time
-		var aaNotFoundDeposits []model.Deposit
-		err = bis.db.
-			Where(
-				fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
-				[]int{
-					model.DepositB2TxStatusAAAddressNotFound,
-				},
-			).
-			Limit(BatchDepositLimit).
-			Find(&aaNotFoundDeposits).Error
-		if err != nil {
-			bis.log.Errorw("failed find tx from db", "error", err)
-		}
-
-		bis.log.Infow("start handle aa not found deposit", "aa not found deposit batch num", len(aaNotFoundDeposits))
-		for _, deposit := range aaNotFoundDeposits {
-			err = bis.HandleDeposit(deposit, nil)
-			if err != nil {
-				bis.log.Errorw("handle aa not found deposit failed", "error", err, "deposit", deposit)
+				time.Sleep(HandleDepositTimeout)
 			}
 
-			time.Sleep(HandleDepositTimeout)
+			// handle aa not found err
+			// If there is no binding between the registered address and pubkey
+			// an error will occur, which can be handled again next time
+			var aaNotFoundDeposits []model.Deposit
+			err = bis.db.
+				Where(
+					fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
+					[]int{
+						model.DepositB2TxStatusAAAddressNotFound,
+					},
+				).
+				Limit(BatchDepositLimit).
+				Find(&aaNotFoundDeposits).Error
+			if err != nil {
+				bis.log.Errorw("failed find tx from db", "error", err)
+			}
+
+			bis.log.Infow("start handle aa not found deposit", "aa not found deposit batch num", len(aaNotFoundDeposits))
+			for _, deposit := range aaNotFoundDeposits {
+				err = bis.HandleDeposit(deposit, nil)
+				if err != nil {
+					bis.log.Errorw("handle aa not found deposit failed", "error", err, "deposit", deposit)
+				}
+
+				time.Sleep(HandleDepositTimeout)
+			}
 		}
 	}
 }
 
-func (bis *BridgeDepositService) UnconfirmedDeposit(wg *sync.WaitGroup) {
-	wg.Done()
+func (bis *BridgeDepositService) UnconfirmedDeposit() {
+	defer bis.wg.Done()
 	ticker := time.NewTicker(BatchDepositWaitTimeout)
 	for {
-		<-ticker.C
-		ticker.Reset(BatchDepositWaitTimeout)
-		var deposits []model.Deposit
-		err := bis.db.
-			Where(
-				fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
-				[]int{
-					model.DepositB2TxStatusContextDeadlineExceeded,
-					model.DepositB2TxStatusWaitMined,
-				},
-			).
-			Limit(BatchDepositLimit).
-			Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
-			Find(&deposits).Error
-		if err != nil {
-			bis.log.Errorw("failed find tx from db", "error", err)
-		}
-
-		bis.log.Infow("start handle deadline deposit", "deposit batch num", len(deposits))
-		for _, deposit := range deposits {
-			err = bis.HandleUnconfirmedDeposit(deposit)
+		select {
+		case <-bis.stopChan:
+			bis.log.Warnf("unconfirmed deposit stopping...")
+			time.Sleep(10 * time.Second)
+			return
+		case <-ticker.C:
+			var deposits []model.Deposit
+			err := bis.db.
+				Where(
+					fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
+					[]int{
+						model.DepositB2TxStatusContextDeadlineExceeded,
+						model.DepositB2TxStatusWaitMined,
+					},
+				).
+				Limit(BatchDepositLimit).
+				Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
+				Find(&deposits).Error
 			if err != nil {
-				bis.log.Errorw("handle unconfirmed failed", "error", err, "deposit", deposit)
+				bis.log.Errorw("failed find tx from db", "error", err)
 			}
 
-			time.Sleep(HandleDepositTimeout)
+			bis.log.Infow("start handle unconfirmed deposit", "unconfirmed deposit batch num", len(deposits))
+			for _, deposit := range deposits {
+				err = bis.HandleUnconfirmedDeposit(deposit)
+				if err != nil {
+					bis.log.Errorw("handle unconfirmed failed", "error", err, "deposit", deposit)
+				}
+				time.Sleep(HandleDepositTimeout)
+			}
 		}
 	}
 }

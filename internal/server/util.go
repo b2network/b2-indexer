@@ -50,10 +50,10 @@ func NewDefaultContext() *Context {
 	)
 }
 
-func NewContext(cfg *config.Config, btccfg *config.BitconConfig) *Context {
+func NewContext(cfg *config.Config, btcCfg *config.BitconConfig) *Context {
 	return &Context{
 		Config:        cfg,
-		BitcoinConfig: btccfg,
+		BitcoinConfig: btcCfg,
 	}
 }
 
@@ -66,7 +66,7 @@ func InterceptConfigsPreRunHandler(cmd *cobra.Command, home string) error {
 		cfg.RootDir = home
 	}
 
-	bitcoincfg, err := config.LoadBitcoinConfig(home)
+	bitcoinCfg, err := config.LoadBitcoinConfig(home)
 	if err != nil {
 		return err
 	}
@@ -80,7 +80,7 @@ func InterceptConfigsPreRunHandler(cmd *cobra.Command, home string) error {
 	cmd.SetContext(ctx)
 
 	logger.Init(cfg.LogLevel, cfg.LogFormat)
-	serverCtx := NewContext(cfg, bitcoincfg)
+	serverCtx := NewContext(cfg, bitcoinCfg)
 	return SetCmdServerContext(cmd, serverCtx)
 }
 
@@ -129,9 +129,10 @@ func NewDB(cfg *config.Config) (*gorm.DB, error) {
 	return DB, nil
 }
 
-func NewHTTPContext(httpCfg *config.HTTPConfig) *Context {
+func NewHTTPContext(httpCfg *config.HTTPConfig, bitcoinCfg *config.BitconConfig) *Context {
 	return &Context{
-		HTTPConfig: httpCfg,
+		HTTPConfig:    httpCfg,
+		BitcoinConfig: bitcoinCfg,
 	}
 }
 
@@ -148,6 +149,11 @@ func HTTPConfigsPreRunHandler(cmd *cobra.Command, home string) error {
 	if err != nil {
 		return err
 	}
+
+	bitcoinCfg, err := config.LoadBitcoinConfig(home)
+	if err != nil {
+		return err
+	}
 	db, err := NewDB(cfg)
 	if err != nil {
 		return err
@@ -156,6 +162,6 @@ func HTTPConfigsPreRunHandler(cmd *cobra.Command, home string) error {
 	// set db to context
 	ctx := context.WithValue(cmd.Context(), types.DBContextKey, db)
 	cmd.SetContext(ctx)
-	serverCtx := NewHTTPContext(httpCfg)
+	serverCtx := NewHTTPContext(httpCfg, bitcoinCfg)
 	return SetCmdServerContext(cmd, serverCtx)
 }

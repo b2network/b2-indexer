@@ -97,6 +97,12 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			return err
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}
+
+		defer func() {
+			if err = bridgeService.Stop(); err != nil {
+				logger.Errorf("stop err:%v", err.Error())
+			}
+		}()
 	}
 
 	if bitcoinCfg.Eps.EnableEps {

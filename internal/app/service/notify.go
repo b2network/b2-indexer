@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -38,6 +39,12 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 		logger.Errorf("GetDBContext err:%v", err.Error())
 		return ErrorTransactionNotify(exceptions.SystemError, "system error"), nil
 	}
+	listenAddress, err := GetListenAddress(ctx)
+	if err != nil {
+		logger.Errorf("GetListenAddress err:%v", err.Error())
+		return ErrorTransactionNotify(exceptions.SystemError, "system error"), nil
+	}
+	logger.Infof("listen address config:%v", listenAddress)
 
 	if req.RequestType != sinohopeType.RequestTypeRecharge {
 		return ErrorTransactionNotify(exceptions.RequestTypeNonsupport, "request type nonsupport"), nil
@@ -47,6 +54,20 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 		return ErrorTransactionNotify(exceptions.SystemError, "system error"), nil
 	}
 	logger.Infof("request detail: %s", string(detail))
+	requestDetail := sinohopeType.RequestDetail{}
+	err = json.Unmarshal(detail, &requestDetail)
+	if err != nil {
+		logger.Errorf("request detail unmarshal err:%v", err.Error())
+		return ErrorTransactionNotify(exceptions.RequestDetailUnmarshal, "request detail unmarshal err"), nil
+	}
+	if requestDetail.From == "" || requestDetail.To == "" || requestDetail.TxHash == "" {
+		logger.Errorf("request detail empty")
+		return ErrorTransactionNotify(exceptions.RequestDetailParameter, "request detail check err"), nil
+	}
+	if requestDetail.To != listenAddress {
+		logger.Errorf("request detail to address not eq listen address")
+		return ErrorTransactionNotify(exceptions.RequestDetailToMismatch, "request detail to mismatch"), nil
+	}
 	var deposit model.Deposit
 	var sinohope model.Sinohope
 	err = db.Transaction(func(tx *gorm.DB) error {
@@ -77,20 +98,20 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 		err = tx.
 			Where(
 				fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().BtcTxHash),
-				req.RequestDetail.Fields["txHash"].GetStringValue(),
+				requestDetail.TxHash,
 			).
 			First(&deposit).Error
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
-				amount, err := strconv.Atoi(req.RequestDetail.Fields["amount"].GetStringValue())
+				amount, err := strconv.Atoi(requestDetail.Amount)
 				if err != nil {
 					return err
 				}
 				deposit := model.Deposit{
-					BtcTxHash:      req.RequestDetail.Fields["txHash"].GetStringValue(),
-					BtcFrom:        req.RequestDetail.Fields["from"].GetStringValue(),
+					BtcTxHash:      requestDetail.TxHash,
+					BtcFrom:        requestDetail.From,
 					BtcTos:         string("{}"),
-					BtcTo:          req.RequestDetail.Fields["to"].GetStringValue(),
+					BtcTo:          requestDetail.To,
 					BtcValue:       int64(amount),
 					BtcFroms:       string("{}"),
 					B2TxStatus:     model.DepositB2TxStatusPending,
@@ -119,7 +140,7 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 	})
 	if err != nil {
 		logger.Errorw("save tx result err", "err", err.Error())
-		return nil, err
+		return ErrorTransactionNotify(exceptions.SystemError, "system error"), nil
 	}
 	return &vo.TransactionNotifyResponse{
 		RequestId: req.RequestId,
