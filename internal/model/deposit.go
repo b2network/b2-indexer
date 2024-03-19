@@ -66,6 +66,7 @@ type Deposit struct {
 	BtcBlockTime     time.Time `json:"btc_block_time"`
 	CallbackStatus   int       `json:"callback_status" gorm:"type:SMALLINT;default:0"`
 	ListenerStatus   int       `json:"listener_status" gorm:"type:SMALLINT;default:0"`
+	B2TxCheck        int       `json:"b2_tx_check" gorm:"type:SMALLINT;default:0"`
 }
 
 type DepositColumns struct {
@@ -89,6 +90,7 @@ type DepositColumns struct {
 	BtcBlockTime     string
 	CallbackStatus   string
 	ListenerStatus   string
+	B2TxCheck        string
 }
 
 func (Deposit) TableName() string {
@@ -117,5 +119,6 @@ func (Deposit) Column() DepositColumns {
 		B2TxRetry:        "b2_tx_retry",
 		CallbackStatus:   "callback_status",
 		ListenerStatus:   "listener_status",
+		B2TxCheck:        "b2_tx_check",
 	}
 }

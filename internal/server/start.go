@@ -176,17 +176,17 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		}
 		rollupService := rollup.NewIndexerService(ethlient, bitcoinCfg, db, rollupLogger)
 
-		bridgeLogger := newLogger(ctx, "[bridge-withdraw]")
-		if err != nil {
-			return err
-		}
-		withdrawService := bitcoin.NewBridgeWithdrawService(btclient, ethlient, bitcoinCfg, db, bridgeLogger)
+		// bridgeLogger := newLogger(ctx, "[bridge-withdraw]")
+		// if err != nil {
+		// 	return err
+		// }
+		// withdrawService := bitcoin.NewBridgeWithdrawService(btclient, ethlient, bitcoinCfg, db, bridgeLogger)
 
 		epsErrCh := make(chan error)
 		go func() {
-			if err := withdrawService.OnStart(); err != nil {
-				epsErrCh <- err
-			}
+			// if err := withdrawService.OnStart(); err != nil {
+			// 	epsErrCh <- err
+			// }
 			if err := rollupService.OnStart(); err != nil {
 				epsErrCh <- err
 			}

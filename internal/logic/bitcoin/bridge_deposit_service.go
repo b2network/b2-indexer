@@ -21,14 +21,12 @@ const (
 	BatchDepositWaitTimeout  = 10 * time.Second
 	DepositErrTimeout        = 1 * time.Minute
 	BatchDepositLimit        = 100
-	WaitMinedTimeout         = 3 * time.Minute
+	WaitMinedTimeout         = 20 * time.Minute
 	HandleDepositTimeout     = 1 * time.Second
 	DepositRetry             = 10 // temp fix, Increase retry times
 )
 
-var (
-	serverStopErr = errors.New("server stop")
-)
+var serverStopErr = errors.New("server stop")
 
 // BridgeDepositService l1->l2
 type BridgeDepositService struct {
@@ -63,10 +61,9 @@ func NewBridgeDepositService(
 
 // OnStart
 func (bis *BridgeDepositService) OnStart() error {
-	bis.wg.Add(2)
+	bis.wg.Add(1)
 	go bis.Deposit()
-	go bis.UnconfirmedDeposit()
-	// TODO: retry max err
+	// TODO: check rollup indexer tx status
 	bis.stopChan = make(chan struct{})
 	select {}
 }
@@ -85,11 +82,28 @@ func (bis *BridgeDepositService) Deposit() {
 		select {
 		case <-bis.stopChan:
 			bis.log.Warnf("deposit stopping...")
-			// TODO: close db, deadline handle
 			return
 		case <-ticker.C:
-
 			// Priority processing UnconfirmedDeposit
+			err := bis.UnconfirmedDeposit()
+			if err != nil {
+				bis.log.Warnf("unconfirmed deposit err: %s", err)
+				if errors.Is(err, serverStopErr) {
+					return
+				}
+				continue
+			}
+
+			if bis.bridge.EnableEoaTransfer() {
+				err := bis.HandleEoaTransfer()
+				if err != nil {
+					bis.log.Warnf("HandleEoaTransfer err: %s", err)
+					if errors.Is(err, serverStopErr) {
+						return
+					}
+					continue
+				}
+			}
 
 			// Query condition
 			// 1. tx status is pending
@@ -98,7 +112,7 @@ func (bis *BridgeDepositService) Deposit() {
 			// 4. callback status is success
 			// 5. listener status is success
 			var deposits []model.Deposit
-			err := bis.db.
+			err = bis.db.
 				Where(
 					fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
 					[]int{
@@ -133,13 +147,13 @@ func (bis *BridgeDepositService) Deposit() {
 						return
 					}
 				}
+				timeoutTicker := time.NewTicker(HandleDepositTimeout)
 				select {
 				case <-bis.stopChan:
 					bis.log.Warnf("handle deposit stopping...")
 					return
-				default:
+				case <-timeoutTicker.C:
 				}
-				time.Sleep(HandleDepositTimeout)
 			}
 
 			// handle aa not found err
@@ -168,59 +182,51 @@ func (bis *BridgeDepositService) Deposit() {
 						return
 					}
 				}
+				timeoutTicker := time.NewTicker(HandleDepositTimeout)
 				select {
 				case <-bis.stopChan:
 					bis.log.Warnf("handle aa not found deposit stopping...")
 					return
-				default:
+				case <-timeoutTicker.C:
 				}
-				time.Sleep(HandleDepositTimeout)
 			}
 		}
 	}
 }
 
-func (bis *BridgeDepositService) UnconfirmedDeposit() {
-	defer bis.wg.Done()
-	ticker := time.NewTicker(BatchDepositWaitTimeout)
-	for {
+func (bis *BridgeDepositService) UnconfirmedDeposit() error {
+	var deposits []model.Deposit
+	err := bis.db.
+		Where(
+			fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
+			[]int{
+				model.DepositB2TxStatusContextDeadlineExceeded,
+				model.DepositB2TxStatusWaitMined,
+				model.DepositB2TxStatusWaitMinedFailed,
+			},
+		).
+		Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
+		Find(&deposits).Error
+	if err != nil {
+		bis.log.Errorw("failed find tx from db", "error", err)
+	}
+
+	bis.log.Infow("start handle unconfirmed deposit", "unconfirmed deposit batch num", len(deposits))
+	for _, deposit := range deposits {
+		err = bis.HandleUnconfirmedDeposit(deposit)
+		if err != nil {
+			bis.log.Errorw("handle unconfirmed failed", "error", err, "deposit", deposit)
+		}
+
+		timeoutTicker := time.NewTicker(HandleDepositTimeout)
 		select {
 		case <-bis.stopChan:
 			bis.log.Warnf("unconfirmed deposit stopping...")
-			return
-		case <-ticker.C:
-			var deposits []model.Deposit
-			err := bis.db.
-				Where(
-					fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
-					[]int{
-						model.DepositB2TxStatusContextDeadlineExceeded,
-						model.DepositB2TxStatusWaitMined,
-						model.DepositB2TxStatusWaitMinedFailed,
-					},
-				).
-				Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
-				Find(&deposits).Error
-			if err != nil {
-				bis.log.Errorw("failed find tx from db", "error", err)
-			}
-
-			bis.log.Infow("start handle unconfirmed deposit", "unconfirmed deposit batch num", len(deposits))
-			for _, deposit := range deposits {
-				err = bis.HandleUnconfirmedDeposit(deposit)
-				if err != nil {
-					bis.log.Errorw("handle unconfirmed failed", "error", err, "deposit", deposit)
-				}
-				select {
-				case <-bis.stopChan:
-					bis.log.Warnf("unconfirmed deposit stopping...")
-					return
-				default:
-				}
-				time.Sleep(HandleDepositTimeout)
-			}
+			return serverStopErr
+		case <-timeoutTicker.C:
 		}
 	}
+	return nil
 }
 
 func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *ethTypes.Transaction, nonce uint64) error {
@@ -284,9 +290,6 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 				"error", err.Error(),
 				"btcTxHash", deposit.BtcTxHash,
 				"data", deposit)
-		// case errors.Is(err, errors.New("nonce too low")):
-
-		// TODO: handle other err
 		default:
 			deposit.B2TxRetry++
 			deposit.B2TxStatus = model.DepositB2TxStatusPending
@@ -302,101 +305,68 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 			if err != nil {
 				return err
 			}
+			tryTicker := time.NewTicker(DepositErrTimeout)
 			select {
 			case <-bis.stopChan:
 				return serverStopErr
-			case <-time.After(DepositErrTimeout):
+			case <-tryTicker.C:
 				return fmt.Errorf("retry handle deposit")
 			}
 		}
-	} else {
-		deposit.B2TxStatus = model.DepositB2TxStatusWaitMined
-		deposit.B2TxHash = b2Tx.Hash().String()
-		deposit.BtcFromAAAddress = aaAddress
-		deposit.B2TxNonce = b2Tx.Nonce()
-		updateFields := map[string]interface{}{
-			model.Deposit{}.Column().B2TxHash:         deposit.B2TxHash,
-			model.Deposit{}.Column().BtcFromAAAddress: deposit.BtcFromAAAddress,
-			model.Deposit{}.Column().B2TxStatus:       deposit.B2TxStatus,
-			model.Deposit{}.Column().B2TxNonce:        deposit.B2TxNonce,
+		dbErr := bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
+			model.Deposit{}.Column().B2TxStatus: deposit.B2TxStatus,
+		}).Error
+		if dbErr != nil {
+			return dbErr
 		}
-		err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
-		if err != nil {
-			return err
-		}
-
-		bis.log.Infow("invoke deposit send tx success, wait confirm",
-			"data", deposit)
-
-		// wait tx mined, may be wait long time so set timeout ctx
-		ctx1, cancel1 := context.WithTimeout(context.Background(), WaitMinedTimeout)
-		defer cancel1()
-		select {
-		case <-bis.stopChan:
-			err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
-				model.Deposit{}.Column().B2TxStatus: model.DepositB2TxStatusContextDeadlineExceeded,
-			}).Error
-			if err != nil {
-				return err
-			}
-			return serverStopErr
-		default:
-			b2txReceipt, err := bis.bridge.WaitMined(ctx1, b2Tx, nil)
-			if err != nil {
-				switch {
-				case errors.Is(err, ErrBridgeWaitMinedStatus):
-					deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedStatusFailed
-					bis.log.Errorw("invoke deposit wait mined err, status != 1",
-						"btcTxHash", deposit.BtcTxHash,
-						"b2txReceipt", b2txReceipt,
-						"data", deposit)
-					if bis.bridge.EnableEoaTransfer() {
-						// try eoa transfer, only b2tx recepit status != 1
-						// NOTE: eoa tx is temp handle, It will be removed in the future
-						bis.log.Errorw("invoke deposit wait mined err try again by eoa transfer",
-							"btcTxHash", deposit.BtcTxHash,
-							"b2txReceipt", b2txReceipt,
-							"data", deposit)
-						deposit.B2EoaTxHash, deposit.B2EoaTxStatus, deposit.B2EoaTxNonce = bis.EoaTransfer(deposit)
-					}
-				case errors.Is(err, context.DeadlineExceeded):
-					// handle ctx deadline timeout
-					// Indicates that the chain is unavailable at this time
-					// This particular error needs to be recorded and handled manually
-					deposit.B2TxStatus = model.DepositB2TxStatusContextDeadlineExceeded
-					bis.log.Errorw("invoke deposit wait mined context deadline exceeded",
-						"error", err.Error(),
-						"btcTxHash", deposit.BtcTxHash,
-						"data", deposit)
-				default:
-					deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedFailed
-					bis.log.Errorw("invoke deposit wait mined unknown err",
-						"error", err.Error(),
-						"btcTxHash", deposit.BtcTxHash,
-						"data", deposit)
-				}
-			} else {
-				deposit.B2TxStatus = model.DepositB2TxStatusSuccess
-			}
-		}
+		return err
 	}
-
+	deposit.B2TxStatus = model.DepositB2TxStatusWaitMined
+	deposit.B2TxHash = b2Tx.Hash().String()
+	deposit.BtcFromAAAddress = aaAddress
+	deposit.B2TxNonce = b2Tx.Nonce()
 	updateFields := map[string]interface{}{
 		model.Deposit{}.Column().B2TxHash:         deposit.B2TxHash,
 		model.Deposit{}.Column().BtcFromAAAddress: deposit.BtcFromAAAddress,
 		model.Deposit{}.Column().B2TxStatus:       deposit.B2TxStatus,
-		model.Deposit{}.Column().B2TxRetry:        deposit.B2TxRetry,
-		model.Deposit{}.Column().B2EoaTxHash:      deposit.B2EoaTxHash,
-		model.Deposit{}.Column().B2EoaTxStatus:    deposit.B2EoaTxStatus,
-		model.Deposit{}.Column().B2EoaTxNonce:     deposit.B2EoaTxNonce,
 		model.Deposit{}.Column().B2TxNonce:        deposit.B2TxNonce,
 	}
 	err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
 	if err != nil {
 		return err
 	}
-	bis.log.Infow("handle deposit success", "btcTxHash", deposit.BtcTxHash, "deposit", deposit)
-	return nil
+
+	bis.log.Infow("invoke deposit send tx success, wait confirm",
+		"data", deposit)
+
+	// wait tx mined, may be wait long time so set timeout ctx
+	ctx1, cancel1 := context.WithTimeout(context.Background(), WaitMinedTimeout)
+	defer cancel1()
+	errCh := make(chan error)
+	go func(ctx1 context.Context, b2Tx *ethTypes.Transaction, deposit model.Deposit) {
+		err := bis.WaitMined(ctx1, b2Tx, deposit)
+		if err != nil {
+			errCh <- err
+		}
+		errCh <- nil
+	}(ctx1, b2Tx, deposit)
+	waitMinedTicker := time.NewTicker(WaitMinedTimeout + (10 * time.Second))
+	for {
+		bis.log.Warn("wait mined")
+		select {
+		case err = <-errCh:
+			if err != nil {
+				bis.log.Errorw("wait tx mined err", "error", err)
+			}
+			return err
+		case <-bis.stopChan:
+			bis.log.Errorw("wait tx mined stop chan", "error", err)
+			cancel1()
+			return serverStopErr
+		case <-waitMinedTicker.C:
+			bis.log.Errorw("wait tx mined timeout", "error", err)
+		}
+	}
 }
 
 // HandleUnconfirmedDeposit
@@ -404,7 +374,6 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 // 2. tx not mined, isPending, need reset gasprice
 // 3. tx not mined, tx not mempool, need retry send tx
 func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit) error {
-
 	txReceipt, err := bis.bridge.TransactionReceipt(deposit.B2TxHash)
 	if err == nil {
 		// case 1
@@ -413,12 +382,6 @@ func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit)
 			updateFields[model.Deposit{}.Column().B2TxStatus] = model.DepositB2TxStatusSuccess
 		} else {
 			updateFields[model.Deposit{}.Column().B2TxStatus] = model.DepositB2TxStatusWaitMinedStatusFailed
-			if bis.bridge.EnableEoaTransfer() {
-				b2EoaTxHash, b2EoaTxStatus, b2EoaTxNonce := bis.EoaTransfer(deposit)
-				updateFields[model.Deposit{}.Column().B2EoaTxHash] = b2EoaTxHash
-				updateFields[model.Deposit{}.Column().B2EoaTxStatus] = b2EoaTxStatus
-				updateFields[model.Deposit{}.Column().B2EoaTxNonce] = b2EoaTxNonce
-			}
 		}
 
 		err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
@@ -451,40 +414,140 @@ func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit)
 	return nil
 }
 
-func (bis *BridgeDepositService) EoaTransfer(deposit model.Deposit) (string, int, uint64) {
+func (bis *BridgeDepositService) HandleEoaTransfer() error {
+	var deposits []model.Deposit
+	err := bis.db.
+		Where(
+			fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxStatus),
+			model.DepositB2TxStatusWaitMinedStatusFailed,
+		).
+		Where(
+			fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().B2EoaTxStatus),
+			model.DepositB2EoaTxStatusPending,
+		).
+		Where(
+			fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().B2EoaTxNonce),
+			0,
+		).
+		Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
+		Find(&deposits).Error
+	if err != nil {
+		bis.log.Errorw("failed find tx from db", "error", err)
+	}
+
+	bis.log.Infow("start handle eoaTransfer deposit", "eoaTransfer deposit batch num", len(deposits))
+	for _, deposit := range deposits {
+		err = bis.EoaTransfer(deposit)
+		if err != nil {
+			bis.log.Errorw("handle eoaTransfer failed", "error", err, "deposit", deposit)
+		}
+
+		timeoutTicker := time.NewTicker(HandleDepositTimeout)
+		select {
+		case <-bis.stopChan:
+			bis.log.Warnf("eoaTransfer deposit stopping...")
+			return serverStopErr
+		case <-timeoutTicker.C:
+		}
+	}
+	return nil
+}
+
+func (bis *BridgeDepositService) EoaTransfer(deposit model.Deposit) error {
 	b2EoaTx, err := bis.bridge.Transfer(types.BitcoinFrom{
 		Address: deposit.BtcFrom,
 	}, deposit.BtcValue)
 	if err != nil {
-		deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusFailed
 		bis.log.Errorw("invoke eoa transfer tx unknown err",
 			"error", err.Error(),
 			"btcTxHash", deposit.BtcTxHash,
 			"data", deposit)
-	} else {
-		deposit.B2EoaTxHash = b2EoaTx.Hash().String()
-		deposit.B2EoaTxNonce = b2EoaTx.Nonce()
-		// eoa wait mined
-		ctx2, cancel2 := context.WithTimeout(context.Background(), WaitMinedTimeout)
-		defer cancel2()
-		_, err := bis.bridge.WaitMined(ctx2, b2EoaTx, nil)
+
+		err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
+			model.Deposit{}.Column().B2EoaTxStatus: model.DepositB2EoaTxStatusFailed,
+		}).Error
 		if err != nil {
-			deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusWaitMinedFailed
-			bis.log.Errorw("invoke eoa transfer wait mined err",
+			return err
+		}
+		return nil
+	}
+	err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
+		model.Deposit{}.Column().B2EoaTxHash:   b2EoaTx.Hash().String(),
+		model.Deposit{}.Column().B2EoaTxNonce:  b2EoaTx.Nonce(),
+		model.Deposit{}.Column().B2EoaTxStatus: model.DepositB2EoaTxStatusWaitMinedFailed,
+	}).Error
+	if err != nil {
+		return err
+	}
+	// eoa wait mined
+	ctx2, cancel2 := context.WithTimeout(context.Background(), WaitMinedTimeout)
+	defer cancel2()
+	_, err = bis.bridge.WaitMined(ctx2, b2EoaTx, nil)
+	if err != nil {
+		deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusWaitMinedFailed
+		bis.log.Errorw("invoke eoa transfer wait mined err",
+			"error", err.Error(),
+			"btcTxHash", deposit.BtcTxHash,
+			"data", deposit)
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusContextDeadlineExceeded
+			bis.log.Error("invoke eoa transfer wait mined context deadline exceeded")
+		}
+	} else {
+		deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusSuccess
+		bis.log.Infow("invoke eoa transfer success",
+			"btcTxHash", deposit.BtcTxHash,
+			"data", deposit)
+	}
+	err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
+		model.Deposit{}.Column().B2EoaTxStatus: deposit.B2EoaTxStatus,
+	}).Error
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (bis *BridgeDepositService) WaitMined(ctx1 context.Context, b2Tx *ethTypes.Transaction, deposit model.Deposit) error {
+	b2txReceipt, err := bis.bridge.WaitMined(ctx1, b2Tx, nil)
+	if err != nil {
+		switch {
+		case errors.Is(err, ErrBridgeWaitMinedStatus):
+			deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedStatusFailed
+			bis.log.Errorw("invoke deposit wait mined err, status != 1",
+				"btcTxHash", deposit.BtcTxHash,
+				"b2txReceipt", b2txReceipt,
+				"data", deposit)
+		case errors.Is(err, context.DeadlineExceeded):
+			// handle ctx deadline timeout
+			// Indicates that the chain is unavailable at this time
+			// This particular error needs to be recorded and handled manually
+			deposit.B2TxStatus = model.DepositB2TxStatusContextDeadlineExceeded
+			bis.log.Errorw("invoke deposit wait mined context deadline exceeded",
 				"error", err.Error(),
 				"btcTxHash", deposit.BtcTxHash,
 				"data", deposit)
-
-			if errors.Is(err, context.DeadlineExceeded) {
-				deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusContextDeadlineExceeded
-				bis.log.Error("invoke eoa transfer wait mined context deadline exceeded")
-			}
-		} else {
-			deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusSuccess
-			bis.log.Infow("invoke eoa transfer success",
+		default:
+			deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedFailed
+			bis.log.Errorw("invoke deposit wait mined unknown err",
+				"error", err.Error(),
 				"btcTxHash", deposit.BtcTxHash,
 				"data", deposit)
 		}
+	} else {
+		deposit.B2TxStatus = model.DepositB2TxStatusSuccess
 	}
-	return deposit.B2EoaTxHash, deposit.B2EoaTxStatus, deposit.B2EoaTxNonce
+	err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
+		model.Deposit{}.Column().B2TxStatus: deposit.B2TxStatus,
+	}).Error
+	if err != nil {
+		return err
+	}
+	if deposit.B2TxStatus == model.DepositB2TxStatusSuccess {
+		bis.log.Infow("handle deposit success", "btcTxHash", deposit.BtcTxHash, "deposit", deposit)
+	} else {
+		bis.log.Errorw("handle deposit failed", "btcTxHash", deposit.BtcTxHash, "deposit", deposit)
+	}
+	return nil
 }

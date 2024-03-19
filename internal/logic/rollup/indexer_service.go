@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	IndexerServiceName = "IndexerService"
+	IndexerServiceName = "RollupIndexerService"
 
 	WaitHandleTime = 10
 )
@@ -136,6 +136,14 @@ func (bis *IndexerService) OnStart() error {
 							continue
 						}
 					}
+					if eventHash == common.HexToHash(bis.config.Bridge.Deposit) {
+						bis.log.Warnw("vlog", "vlog", vlog)
+						err = handelDepositEvent(vlog, bis.db)
+						if err != nil {
+							bis.log.Errorw("IndexerService handelDepositEvent err: ", "error", err)
+							continue
+						}
+					}
 					currentTxIndex = vlog.TxIndex
 					currentLogIndex = vlog.Index
 				}
@@ -147,6 +155,7 @@ func (bis *IndexerService) OnStart() error {
 					bis.log.Errorw("failed to save b2 index block", "error", err, "currentBlock", i,
 						"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
 				}
+				time.Sleep(1 * time.Second)
 			}
 		}
 	}
@@ -164,6 +173,26 @@ func handelWithdrawEvent(vlog ethtypes.Log, db *gorm.DB, listenAddress string) e
 		B2TxHash:      vlog.TxHash.String(),
 		B2TxIndex:     vlog.TxIndex,
 		B2LogIndex:    vlog.Index,
+	}
+	if err := db.Create(&withdrawData).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func handelDepositEvent(vlog ethtypes.Log, db *gorm.DB) error {
+	destAddrStr := DataToString(vlog, 0)
+	amount := DataToBigInt(vlog, 1)
+	// TODO: btc tx hash
+
+	withdrawData := model.RollupDeposit{
+		BtcFromAAAddress: destAddrStr,
+		BtcValue:         amount.Int64(),
+		B2BlockNumber:    vlog.BlockNumber,
+		B2BlockHash:      vlog.BlockHash.String(),
+		B2TxHash:         vlog.TxHash.String(),
+		B2TxIndex:        vlog.TxIndex,
+		B2LogIndex:       vlog.Index,
 	}
 	if err := db.Create(&withdrawData).Error; err != nil {
 		return err

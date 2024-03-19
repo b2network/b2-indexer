@@ -81,6 +81,14 @@ func (bis *IndexerService) OnStart() error {
 		}
 	}
 
+	if !bis.db.Migrator().HasTable(&model.RollupDeposit{}) {
+		err = bis.db.AutoMigrate(&model.RollupDeposit{})
+		if err != nil {
+			bis.log.Errorw("bitcoin indexer create table", "error", err.Error())
+			return err
+		}
+	}
+
 	var btcIndex model.BtcIndex
 	if err := bis.db.First(&btcIndex, 1).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
