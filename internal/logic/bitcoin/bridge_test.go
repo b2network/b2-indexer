@@ -221,13 +221,13 @@ func TestLocalDepositWaitMined(t *testing.T) {
 	// uuid check
 	_, _, _, err = bridge.Deposit(uuid, address, int64(value), nil, 0)
 	if err != nil {
-		assert.EqualError(t, bitcoin.ErrBrdigeDepositTxHashExist, err.Error())
+		assert.EqualError(t, bitcoin.ErrBridgeDepositTxHashExist, err.Error())
 	}
 
 	// insufficient balance
 	_, _, _, err = bridge.Deposit(randHash(t), address, int64(bigValue), nil, 0)
 	if err != nil {
-		assert.EqualError(t, bitcoin.ErrBrdigeDepositContractInsufficientBalance, err.Error())
+		assert.EqualError(t, bitcoin.ErrBridgeDepositContractInsufficientBalance, err.Error())
 	} else {
 		t.Fatal("insufficient balance check failed")
 	}

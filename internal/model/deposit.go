@@ -44,6 +44,12 @@ const (
 	ListenerStatusPending
 )
 
+const (
+	B2CheckStatusSuccess = iota
+	B2CheckStatusPending
+	B2CheckStatusFailed
+)
+
 type Deposit struct {
 	Base
 	BtcBlockNumber   int64     `json:"btc_block_number" gorm:"index;comment:bitcoin block number"`
@@ -66,7 +72,7 @@ type Deposit struct {
 	BtcBlockTime     time.Time `json:"btc_block_time"`
 	CallbackStatus   int       `json:"callback_status" gorm:"type:SMALLINT;default:0"`
 	ListenerStatus   int       `json:"listener_status" gorm:"type:SMALLINT;default:0"`
-	B2TxCheck        int       `json:"b2_tx_check" gorm:"type:SMALLINT;default:0"`
+	B2TxCheck        int       `json:"b2_tx_check" gorm:"type:SMALLINT;default:1"`
 }
 
 type DepositColumns struct {

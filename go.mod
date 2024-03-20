@@ -21,6 +21,7 @@ require (
 	github.com/cometbft/cometbft v0.38.5
 	github.com/ethereum/go-ethereum v1.13.14
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.19.1
+	github.com/shopspring/decimal v1.3.1
 	github.com/sinohope/sinohope-golang-sdk v0.0.0-00010101000000-000000000000
 )
 

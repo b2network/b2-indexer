@@ -32,8 +32,8 @@ import (
 )
 
 var (
-	ErrBrdigeDepositTxHashExist                 = errors.New("non-repeatable processing")
-	ErrBrdigeDepositContractInsufficientBalance = errors.New("insufficient balance")
+	ErrBridgeDepositTxHashExist                 = errors.New("non-repeatable processing")
+	ErrBridgeDepositContractInsufficientBalance = errors.New("insufficient balance")
 	ErrBridgeWaitMinedStatus                    = errors.New("tx wait mined status failed")
 	ErrBridgeFromGasInsufficient                = errors.New("gas required exceeds allowanc")
 	ErrAAAddressNotFound                        = errors.New("address not found")
@@ -138,7 +138,7 @@ func (b *Bridge) Deposit(
 		return nil, nil, "", fmt.Errorf("btc address to eth address err:%w", err)
 	}
 
-	data, err := b.ABIPack(b.ABI, "depositV2", common.HexToHash(hash), common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
+	data, err := b.ABIPack(b.ABI, "depositV3", common.HexToHash(hash), common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
 	}
@@ -246,12 +246,12 @@ func (b *Bridge) sendTransaction(ctx context.Context, fromPriv *ecdsa.PrivateKey
 		// Other errors may occur that need to be handled
 		// The estimated gas cannot block the sending of a transaction
 		b.logger.Errorw("estimate gas err", "error", err.Error())
-		if strings.Contains(err.Error(), ErrBrdigeDepositTxHashExist.Error()) {
-			return nil, ErrBrdigeDepositTxHashExist
+		if strings.Contains(err.Error(), ErrBridgeDepositTxHashExist.Error()) {
+			return nil, ErrBridgeDepositTxHashExist
 		}
 
-		if strings.Contains(err.Error(), ErrBrdigeDepositContractInsufficientBalance.Error()) {
-			return nil, ErrBrdigeDepositContractInsufficientBalance
+		if strings.Contains(err.Error(), ErrBridgeDepositContractInsufficientBalance.Error()) {
+			return nil, ErrBridgeDepositContractInsufficientBalance
 		}
 
 		if strings.Contains(err.Error(), ErrBridgeFromGasInsufficient.Error()) {
@@ -310,9 +310,12 @@ func (b *Bridge) retrySendTransaction(
 	gasPrice := oldTx.GasPrice()
 
 	// TODO: set new gas price
-	gasPrice.Mul(gasPrice, big.NewInt(b.BaseGasPriceMultiple))
+	gasPrice.Mul(gasPrice, big.NewInt(5))
 
-	b.logger.Infof("gas price:%v", gasPrice.String())
+	log.Infof("new gas price:%v", new(big.Float).Quo(new(big.Float).SetInt(gasPrice), big.NewFloat(1e9)).String())
+	log.Infof("new gas price:%v", gasPrice.String())
+	log.Infof("nonce:%v", nonce)
+	log.Infof("from address:%v", crypto.PubkeyToAddress(fromPriv.PublicKey))
 
 	callMsg := ethereum.CallMsg{
 		From:     crypto.PubkeyToAddress(fromPriv.PublicKey),
@@ -330,12 +333,12 @@ func (b *Bridge) retrySendTransaction(
 		// Other errors may occur that need to be handled
 		// The estimated gas cannot block the sending of a transaction
 		b.logger.Errorw("estimate gas err", "error", err.Error())
-		if strings.Contains(err.Error(), ErrBrdigeDepositTxHashExist.Error()) {
-			return nil, ErrBrdigeDepositTxHashExist
+		if strings.Contains(err.Error(), ErrBridgeDepositTxHashExist.Error()) {
+			return nil, ErrBridgeDepositTxHashExist
 		}
 
-		if strings.Contains(err.Error(), ErrBrdigeDepositContractInsufficientBalance.Error()) {
-			return nil, ErrBrdigeDepositContractInsufficientBalance
+		if strings.Contains(err.Error(), ErrBridgeDepositContractInsufficientBalance.Error()) {
+			return nil, ErrBridgeDepositContractInsufficientBalance
 		}
 
 		if strings.Contains(err.Error(), ErrBridgeFromGasInsufficient.Error()) {
@@ -369,7 +372,7 @@ func (b *Bridge) retrySendTransaction(
 	if err != nil {
 		return nil, err
 	}
-
+	log.Infow("new tx", "tx", signedTx)
 	// send tx
 	err = client.SendTransaction(ctx, signedTx)
 	if err != nil {
