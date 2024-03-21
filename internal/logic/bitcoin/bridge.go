@@ -310,7 +310,7 @@ func (b *Bridge) retrySendTransaction(
 	gasPrice := oldTx.GasPrice()
 
 	// TODO: set new gas price
-	gasPrice.Mul(gasPrice, big.NewInt(5))
+	// gasPrice.Mul(gasPrice, big.NewInt(5))
 
 	log.Infof("new gas price:%v", new(big.Float).Quo(new(big.Float).SetInt(gasPrice), big.NewFloat(1e9)).String())
 	log.Infof("new gas price:%v", gasPrice.String())
