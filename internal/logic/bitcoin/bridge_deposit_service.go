@@ -20,9 +20,9 @@ import (
 const (
 	BridgeDepositServiceName = "BitcoinBridgeDepositService"
 	BatchDepositWaitTimeout  = 10 * time.Second
-	DepositErrTimeout        = 1 * time.Minute
+	DepositErrTimeout        = 30 * time.Second
 	BatchDepositLimit        = 100
-	WaitMinedTimeout         = 5 * time.Minute
+	WaitMinedTimeout         = 2 * time.Minute
 	HandleDepositTimeout     = 1 * time.Second
 	DepositRetry             = 10 // temp fix, Increase retry times
 )
@@ -603,6 +603,13 @@ func (bis *BridgeDepositService) CheckDeposit() {
 			}
 
 			for _, deposit := range deposits {
+				timeoutTicker := time.NewTicker(2 * time.Minute)
+				select {
+				case <-bis.stopChan:
+					bis.log.Warnf("handle deposit stopping...")
+					return
+				case <-timeoutTicker.C:
+				}
 				var rollupDeposit model.RollupDeposit
 				if deposit.B2TxStatus == model.DepositB2TxStatusSuccess {
 					err = bis.db.
@@ -630,13 +637,7 @@ func (bis *BridgeDepositService) CheckDeposit() {
 						}
 					}
 				}
-				timeoutTicker := time.NewTicker(10 * time.Second)
-				select {
-				case <-bis.stopChan:
-					bis.log.Warnf("handle deposit stopping...")
-					return
-				case <-timeoutTicker.C:
-				}
+
 			}
 		}
 	}
