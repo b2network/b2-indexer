@@ -140,20 +140,20 @@ func (b *Bridge) Deposit(
 
 	data, err := b.ABIPack(b.ABI, "depositV3", common.HexToHash(hash), common.HexToAddress(toAddress), new(big.Int).SetInt64(amount))
 	if err != nil {
-		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
+		return nil, nil, toAddress, fmt.Errorf("abi pack err:%w", err)
 	}
 
 	if oldTx != nil {
 		tx, err := b.retrySendTransaction(ctx, oldTx, b.EthPrivKey)
 		if err != nil {
-			return nil, nil, "", err
+			return nil, nil, toAddress, err
 		}
-		return tx, oldTx.Data(), oldTx.To().String(), nil
+		return tx, oldTx.Data(), toAddress, nil
 	}
 
 	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, new(big.Int).SetInt64(0), nonce)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, nil, toAddress, err
 	}
 
 	return tx, data, toAddress, nil
@@ -394,7 +394,7 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 // BitcoinAddressToEthAddress bitcoin address to eth address
 func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
 	// TODO: debug handle
-	return "0xE679D912B0bb604FA125003aF21874923e424F90", nil
+	return "0xad94474EF16b44767F14c12Ee92Df563306C00e4", nil
 	code, pubkey, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
 	if err != nil {
 		b.logger.Errorw("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)

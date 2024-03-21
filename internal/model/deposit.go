@@ -21,6 +21,7 @@ const (
 	DepositB2TxStatusFromAccountGasInsufficient        // deposit evm from account gas insufficient
 	DepositB2TxStatusWaitMined                         // deposit wait mined
 	DepositB2TxStatusAAAddressNotFound                 // aa address not found,  Start process processing separately
+	DepositB2TxStatusIsPending
 )
 
 const (

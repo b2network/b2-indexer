@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -209,6 +210,7 @@ func (bis *BridgeDepositService) UnconfirmedDeposit() error {
 				model.DepositB2TxStatusContextDeadlineExceeded,
 				model.DepositB2TxStatusWaitMined,
 				model.DepositB2TxStatusWaitMinedFailed,
+				model.DepositB2TxStatusIsPending,
 			},
 		).
 		Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
@@ -293,6 +295,12 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 		case errors.Is(err, ErrAAAddressNotFound):
 			deposit.B2TxStatus = model.DepositB2TxStatusAAAddressNotFound
 			bis.log.Errorw("invoke deposit send tx aa address not found",
+				"error", err.Error(),
+				"btcTxHash", deposit.BtcTxHash,
+				"data", deposit)
+		case errors.Is(err, errors.New("already known")):
+			deposit.B2TxStatus = model.DepositB2TxStatusIsPending
+			bis.log.Errorw("invoke deposit send tx already known",
 				"error", err.Error(),
 				"btcTxHash", deposit.BtcTxHash,
 				"data", deposit)
@@ -413,6 +421,7 @@ func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit)
 			}
 			if isPending {
 				// case 2
+				bis.log.Warnw("tx is pending retry", "old", tx, "deposit", deposit)
 				return bis.HandleDeposit(deposit, tx, 0)
 			}
 		}
@@ -606,7 +615,7 @@ func (bis *BridgeDepositService) CheckDeposit() {
 						bis.log.Errorw("find rollup deposit error", "err", err, "deposit", deposit)
 						continue
 					} else {
-						if deposit.BtcFromAAAddress == rollupDeposit.BtcFromAAAddress &&
+						if strings.ToLower(deposit.BtcFromAAAddress) == strings.ToLower(rollupDeposit.BtcFromAAAddress) &&
 							deposit.BtcValue == rollupDeposit.BtcValue {
 							deposit.B2TxCheck = model.B2CheckStatusSuccess
 						} else {
