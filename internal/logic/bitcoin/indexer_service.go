@@ -255,23 +255,21 @@ func (bis *IndexerService) SaveParsedResult(
 				bis.log.Errorw("failed to save tx parsed result", "error", err)
 				return err
 			}
-		} else {
-			if deposit.CallbackStatus == model.CallbackStatusSuccess &&
-				deposit.ListenerStatus == model.ListenerStatusPending {
-				// if existed, update deposit record
-				updateFields := map[string]interface{}{
-					model.Deposit{}.Column().BtcBlockNumber: btcBlockNumber,
-					model.Deposit{}.Column().BtcTxIndex:     parseResult.Index,
-					model.Deposit{}.Column().BtcFroms:       string(froms),
-					model.Deposit{}.Column().BtcTos:         string(tos),
-					model.Deposit{}.Column().BtcBlockTime:   btcBlockTime,
-					model.Deposit{}.Column().ListenerStatus: model.ListenerStatusSuccess,
-				}
-				err = tx.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
-				if err != nil {
-					bis.log.Errorw("failed to update tx parsed result", "error", err)
-					return err
-				}
+		} else if deposit.CallbackStatus == model.CallbackStatusSuccess &&
+			deposit.ListenerStatus == model.ListenerStatusPending {
+			// if existed, update deposit record
+			updateFields := map[string]interface{}{
+				model.Deposit{}.Column().BtcBlockNumber: btcBlockNumber,
+				model.Deposit{}.Column().BtcTxIndex:     parseResult.Index,
+				model.Deposit{}.Column().BtcFroms:       string(froms),
+				model.Deposit{}.Column().BtcTos:         string(tos),
+				model.Deposit{}.Column().BtcBlockTime:   btcBlockTime,
+				model.Deposit{}.Column().ListenerStatus: model.ListenerStatusSuccess,
+			}
+			err = tx.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
+			if err != nil {
+				bis.log.Errorw("failed to update tx parsed result", "error", err)
+				return err
 			}
 		}
 

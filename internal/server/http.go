@@ -24,12 +24,12 @@ func Run(ctx context.Context, serverCtx *Context, db *gorm.DB) (err error) {
 	return nil
 }
 
-func GrpcOpts(listenAddress string, HTTPConfig *config.HTTPConfig, db *gorm.DB) googleGrpc.ServerOption {
+func GrpcOpts(listenAddress string, httpConfig *config.HTTPConfig, db *gorm.DB) googleGrpc.ServerOption {
 	grpcOpt := googleGrpc.UnaryInterceptor(googleGrpc.UnaryServerInterceptor(
-		func(ctx context.Context, req interface{}, info *googleGrpc.UnaryServerInfo, handler googleGrpc.UnaryHandler) (resp interface{}, err error) {
+		func(ctx context.Context, req interface{}, _ *googleGrpc.UnaryServerInfo, handler googleGrpc.UnaryHandler) (resp interface{}, err error) {
 			ctx = context.WithValue(ctx, types.DBContextKey, db)
 			ctx = context.WithValue(ctx, types.ListenAddressContextKey, listenAddress)
-			ctx = context.WithValue(ctx, types.HTTPConfigContextKey, HTTPConfig)
+			ctx = context.WithValue(ctx, types.HTTPConfigContextKey, httpConfig)
 			return handler(ctx, req)
 		}))
 	return grpcOpt

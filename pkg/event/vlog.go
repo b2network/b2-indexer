@@ -134,17 +134,17 @@ func TopicToArrayOffsetAndLength(vLog types.Log, index int64) (int64, int64) {
 	return offset, length
 }
 
-func StartAndEndTokenIDToString(startTokenId, endTokenId int64) (string, int64) {
+func StartAndEndTokenIDToString(startTokenID, endTokenID int64) (string, int64) {
 	str := ""
 	var count int64
-	for startTokenId <= endTokenId {
+	for startTokenID <= endTokenID {
 		if str == "" {
 			str = fmt.Sprintf("%s%d", str, 0)
 		} else {
 			str = fmt.Sprintf("%s,%d", str, 0)
 		}
 		count++
-		startTokenId++
+		startTokenID++
 	}
 	return str, count
 }
