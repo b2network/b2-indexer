@@ -27,7 +27,7 @@ const (
 	DepositRetry             = 10 // temp fix, Increase retry times
 )
 
-var serverStopErr = errors.New("server stop")
+var ErrServerStop = errors.New("server stop")
 
 // BridgeDepositService l1->l2
 type BridgeDepositService struct {
@@ -88,7 +88,7 @@ func (bis *BridgeDepositService) Deposit() {
 			err := bis.UnconfirmedDeposit()
 			if err != nil {
 				bis.log.Warnf("unconfirmed deposit err: %s", err)
-				if errors.Is(err, serverStopErr) {
+				if errors.Is(err, ErrServerStop) {
 					return
 				}
 				continue
@@ -98,7 +98,7 @@ func (bis *BridgeDepositService) Deposit() {
 				err := bis.HandleEoaTransfer()
 				if err != nil {
 					bis.log.Warnf("HandleEoaTransfer err: %s", err)
-					if errors.Is(err, serverStopErr) {
+					if errors.Is(err, ErrServerStop) {
 						return
 					}
 					continue
@@ -143,7 +143,7 @@ func (bis *BridgeDepositService) Deposit() {
 				err = bis.HandleDeposit(deposit, nil, deposit.B2TxNonce)
 				if err != nil {
 					bis.log.Errorw("handle deposit failed", "error", err, "deposit", deposit)
-					if errors.Is(err, serverStopErr) {
+					if errors.Is(err, ErrServerStop) {
 						return
 					}
 					break DEPOSIT
@@ -179,7 +179,7 @@ func (bis *BridgeDepositService) Deposit() {
 				err = bis.HandleDeposit(deposit, nil, deposit.B2TxNonce)
 				if err != nil {
 					bis.log.Errorw("handle aa not found deposit failed", "error", err, "deposit", deposit)
-					if errors.Is(err, serverStopErr) {
+					if errors.Is(err, ErrServerStop) {
 						return
 					}
 					break DEPOSIT
@@ -227,7 +227,7 @@ func (bis *BridgeDepositService) UnconfirmedDeposit() error {
 		select {
 		case <-bis.stopChan:
 			bis.log.Warnf("unconfirmed deposit stopping...")
-			return serverStopErr
+			return ErrServerStop
 		case <-timeoutTicker.C:
 		}
 	}
@@ -321,7 +321,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 			tryTicker := time.NewTicker(DepositErrTimeout)
 			select {
 			case <-bis.stopChan:
-				return serverStopErr
+				return ErrServerStop
 			case <-tryTicker.C:
 				return fmt.Errorf("retry handle deposit")
 			}
@@ -376,7 +376,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 		case <-bis.stopChan:
 			bis.log.Errorw("wait tx mined stop chan", "error", err)
 			cancel1()
-			return serverStopErr
+			return ErrServerStop
 		case <-waitMinedTicker.C:
 			bis.log.Errorw("wait tx mined timeout", "error", err)
 		}
@@ -463,7 +463,7 @@ func (bis *BridgeDepositService) HandleEoaTransfer() error {
 		select {
 		case <-bis.stopChan:
 			bis.log.Warnf("eoaTransfer deposit stopping...")
-			return serverStopErr
+			return ErrServerStop
 		case <-timeoutTicker.C:
 		}
 	}
@@ -620,20 +620,18 @@ func (bis *BridgeDepositService) CheckDeposit() {
 					if err != nil {
 						bis.log.Errorw("find rollup deposit error", "err", err, "deposit", deposit)
 						continue
+					}
+					if strings.EqualFold(deposit.BtcFromAAAddress, rollupDeposit.BtcFromAAAddress) &&
+						deposit.BtcValue == rollupDeposit.BtcValue {
+						deposit.B2TxCheck = model.B2CheckStatusSuccess
 					} else {
-						if strings.EqualFold(deposit.BtcFromAAAddress, rollupDeposit.BtcFromAAAddress) &&
-							deposit.BtcValue == rollupDeposit.BtcValue {
-							deposit.B2TxCheck = model.B2CheckStatusSuccess
-						} else {
-							deposit.B2TxCheck = model.B2CheckStatusFailed
-						}
-						err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
-							model.Deposit{}.Column().B2TxCheck: deposit.B2TxCheck,
-						}).Error
-						if err != nil {
-							bis.log.Errorw("update deposit error", "err", err)
-							continue
-						}
+						deposit.B2TxCheck = model.B2CheckStatusFailed
+					}
+					err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
+						model.Deposit{}.Column().B2TxCheck: deposit.B2TxCheck,
+					}).Error
+					if err != nil {
+						bis.log.Errorw("update deposit error", "err", err)
 					}
 				}
 			}
