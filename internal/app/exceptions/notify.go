@@ -9,6 +9,6 @@ const (
 	RequestDetailUnmarshal  = 2002
 	RequestDetailParameter  = 2003
 	RequestDetailToMismatch = 2004
-	IpWhiteList             = 2005
+	IPWhiteList             = 2005
 	RequestDetailAmount     = 2006
 )

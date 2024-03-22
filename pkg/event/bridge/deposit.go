@@ -45,7 +45,7 @@ func (*Deposit) Data(log types.Log) (string, error) {
 		Amount:    event.DataToDecimal(log, 0, 0),
 		TxHash:    event.DataToHash(log, 1),
 	}
-	data, err := event.ToJson(transfer)
+	data, err := event.ToJSON(transfer)
 	if err != nil {
 		return "", err
 	}

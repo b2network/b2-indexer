@@ -85,8 +85,8 @@ func GetListenAddress(ctx context.Context) (string, error) {
 	return "", fmt.Errorf("address context not set")
 }
 
-func GetHttpConfig(ctx context.Context) (*config.HTTPConfig, error) {
-	if v := ctx.Value(types.HttpConfigContextKey); v != nil {
+func GetHTTPConfig(ctx context.Context) (*config.HTTPConfig, error) {
+	if v := ctx.Value(types.HTTPConfigContextKey); v != nil {
 		serverCtx := v.(*config.HTTPConfig)
 		return serverCtx, nil
 	}

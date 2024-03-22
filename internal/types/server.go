@@ -8,5 +8,5 @@ const (
 	ServerContextKey        = serverContext("server.context")
 	DBContextKey            = serverContext("db.context")
 	ListenAddressContextKey = serverContext("listenaddress.context")
-	HttpConfigContextKey    = serverContext("http.context")
+	HTTPConfigContextKey    = serverContext("http.context")
 )

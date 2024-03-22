@@ -124,7 +124,7 @@ type HTTPConfig struct {
 	// port defines the grpc server port
 	GrpcPort string `mapstructure:"grpc-port" env:"HTTP_GRPC_PORT" envDefault:"9091"`
 	// ipWhiteList defines the ip white list, Only those in the whitelist can be called
-	IpWhiteList string `mapstructure:"ip-white-list" env:"HTTP_IP_WHITE_LIST"`
+	IPWhiteList string `mapstructure:"ip-white-list" env:"HTTP_IP_WHITE_LIST"`
 }
 
 const (

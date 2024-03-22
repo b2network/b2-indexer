@@ -54,7 +54,7 @@ func TestBitcoinConfig(t *testing.T) {
 	require.Equal(t, "b2node", config.WalletName)
 	require.Equal(t, true, config.EnableIndexer)
 	require.Equal(t, "tb1qfhhxljfajcppfhwa09uxwty5dz4xwfptnqmvtv", config.IndexerListenAddress)
-	require.Equal(t, int64(1), config.IndexerListenTargetConfirmations)
+	require.Equal(t, uint64(1), config.IndexerListenTargetConfirmations)
 	require.Equal(t, "localhost:8545", config.Bridge.EthRPCURL)
 	require.Equal(t, "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DFF2", config.Bridge.ContractAddress)
 	require.Equal(t, "", config.Bridge.EthPrivKey)
@@ -123,7 +123,7 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	require.Equal(t, "b2node", config.WalletName)
 	require.Equal(t, false, config.EnableIndexer)
 	require.Equal(t, "tb1qgm39cu009lyvq93afx47pp4h9wxq5x92lxxgnz", config.IndexerListenAddress)
-	require.Equal(t, int64(2), config.IndexerListenTargetConfirmations)
+	require.Equal(t, uint64(2), config.IndexerListenTargetConfirmations)
 	require.Equal(t, "127.0.0.1:8545", config.Bridge.EthRPCURL)
 	require.Equal(t, "0xB457BF68D71a17Fa5030269Fb895e29e6cD2DF22", config.Bridge.ContractAddress)
 	require.Equal(t, "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", config.Bridge.EthPrivKey)
@@ -235,7 +235,7 @@ func TestHTTPConfig(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "8080", config.HTTPPort)
 	require.Equal(t, "8081", config.GrpcPort)
-	require.Equal(t, "127.0.0.1", config.IpWhiteList)
+	require.Equal(t, "127.0.0.1", config.IPWhiteList)
 }
 
 func TestHTTPConfigEnv(t *testing.T) {
@@ -246,5 +246,5 @@ func TestHTTPConfigEnv(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "8080", config.HTTPPort)
 	require.Equal(t, "8081", config.GrpcPort)
-	require.Equal(t, "127.0.0.2", config.IpWhiteList)
+	require.Equal(t, "127.0.0.2", config.IPWhiteList)
 }

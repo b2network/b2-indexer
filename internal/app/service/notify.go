@@ -47,14 +47,14 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 		return ErrorTransactionNotify(exceptions.SystemError, "system error"), nil
 	}
 	logger.Infof("listen address config:%v", listenAddress)
-	httpCfg, err := GetHttpConfig(ctx)
+	httpCfg, err := GetHTTPConfig(ctx)
 	if err != nil {
 		logger.Errorf("GetHttpConfig err:%v", err.Error())
 		return ErrorTransactionNotify(exceptions.SystemError, "system error"), nil
 	}
 	// check white list
 	isWhiteList := false
-	whiteList := httpCfg.IpWhiteList
+	whiteList := httpCfg.IPWhiteList
 	whiteListIP := strings.Split(whiteList, ",")
 	clientIP := utils.ClientIP(ctx, logger)
 	for _, ip := range whiteListIP {
@@ -65,7 +65,7 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 	logger.Infof("ip:%v  white list:%v", clientIP, whiteList)
 	if !isWhiteList {
 		logger.Errorf("ip:%v not in white list", clientIP)
-		return ErrorTransactionNotify(exceptions.IpWhiteList, "ip limit"), nil
+		return ErrorTransactionNotify(exceptions.IPWhiteList, "ip limit"), nil
 	}
 
 	if req.RequestType != sinohopeType.RequestTypeRecharge {
@@ -151,10 +151,10 @@ func (s *notifyServer) TransactionNotify(ctx context.Context, req *vo.Transactio
 			}
 		} else {
 			// update check fields
-			if deposit.BtcFrom != requestDetail.From {
+			if !strings.EqualFold(deposit.BtcFrom, requestDetail.From) {
 				return errors.New("from address not match")
 			}
-			if deposit.BtcTo != requestDetail.To {
+			if !strings.EqualFold(deposit.BtcTo, requestDetail.To) {
 				return errors.New("to address not match")
 			}
 			if deposit.BtcValue != amount {

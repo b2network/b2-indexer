@@ -33,14 +33,12 @@ var serverStopErr = errors.New("server stop")
 type BridgeDepositService struct {
 	service.BaseService
 
-	bridge          types.BITCOINBridge
-	btcIndexer      types.BITCOINTxIndexer
-	db              *gorm.DB
-	log             log.Logger
-	wg              sync.WaitGroup
-	stopChan        chan struct{}
-	deadlineCancel1 context.CancelFunc
-	deadlineCancel2 context.CancelFunc
+	bridge     types.BITCOINBridge
+	btcIndexer types.BITCOINTxIndexer
+	db         *gorm.DB
+	log        log.Logger
+	wg         sync.WaitGroup
+	stopChan   chan struct{}
 }
 
 // NewBridgeDepositService returns a new service instance.
@@ -74,7 +72,6 @@ func (bis *BridgeDepositService) OnStop() {
 	bis.log.Warnf("bridge deposit service stoping...")
 	close(bis.stopChan)
 	bis.wg.Wait()
-	return
 }
 
 func (bis *BridgeDepositService) Deposit() {
@@ -148,9 +145,8 @@ func (bis *BridgeDepositService) Deposit() {
 					bis.log.Errorw("handle deposit failed", "error", err, "deposit", deposit)
 					if errors.Is(err, serverStopErr) {
 						return
-					} else {
-						break DEPOSIT
 					}
+					break DEPOSIT
 				}
 				timeoutTicker := time.NewTicker(HandleDepositTimeout)
 				select {
@@ -185,9 +181,8 @@ func (bis *BridgeDepositService) Deposit() {
 					bis.log.Errorw("handle aa not found deposit failed", "error", err, "deposit", deposit)
 					if errors.Is(err, serverStopErr) {
 						return
-					} else {
-						break DEPOSIT
 					}
+					break DEPOSIT
 				}
 				timeoutTicker := time.NewTicker(HandleDepositTimeout)
 				select {
@@ -626,7 +621,7 @@ func (bis *BridgeDepositService) CheckDeposit() {
 						bis.log.Errorw("find rollup deposit error", "err", err, "deposit", deposit)
 						continue
 					} else {
-						if strings.ToLower(deposit.BtcFromAAAddress) == strings.ToLower(rollupDeposit.BtcFromAAAddress) &&
+						if strings.EqualFold(deposit.BtcFromAAAddress, rollupDeposit.BtcFromAAAddress) &&
 							deposit.BtcValue == rollupDeposit.BtcValue {
 							deposit.B2TxCheck = model.B2CheckStatusSuccess
 						} else {
@@ -641,7 +636,6 @@ func (bis *BridgeDepositService) CheckDeposit() {
 						}
 					}
 				}
-
 			}
 		}
 	}

@@ -29,7 +29,7 @@ func GrpcOpts(listenAddress string, HTTPConfig *config.HTTPConfig, db *gorm.DB) 
 		func(ctx context.Context, req interface{}, info *googleGrpc.UnaryServerInfo, handler googleGrpc.UnaryHandler) (resp interface{}, err error) {
 			ctx = context.WithValue(ctx, types.DBContextKey, db)
 			ctx = context.WithValue(ctx, types.ListenAddressContextKey, listenAddress)
-			ctx = context.WithValue(ctx, types.HttpConfigContextKey, HTTPConfig)
+			ctx = context.WithValue(ctx, types.HTTPConfigContextKey, HTTPConfig)
 			return handler(ctx, req)
 		}))
 	return grpcOpt

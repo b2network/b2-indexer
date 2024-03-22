@@ -134,7 +134,7 @@ func TopicToArrayOffsetAndLength(vLog types.Log, index int64) (int64, int64) {
 	return offset, length
 }
 
-func StartAndEndTokenIdToString(startTokenId, endTokenId int64) (string, int64) {
+func StartAndEndTokenIDToString(startTokenId, endTokenId int64) (string, int64) {
 	str := ""
 	var count int64
 	for startTokenId <= endTokenId {
@@ -149,13 +149,13 @@ func StartAndEndTokenIdToString(startTokenId, endTokenId int64) (string, int64) 
 	return str, count
 }
 
-func TokenIdsToString(tokenIds []int64) string {
+func TokenIDsToString(tokenIDs []int64) string {
 	str := ""
-	for _, tokenId := range tokenIds {
+	for _, tokenID := range tokenIDs {
 		if str == "" {
-			str = fmt.Sprintf("%s%d", str, tokenId)
+			str = fmt.Sprintf("%s%d", str, tokenID)
 		} else {
-			str = fmt.Sprintf("%s,%d", str, tokenId)
+			str = fmt.Sprintf("%s,%d", str, tokenID)
 		}
 	}
 	return str
@@ -181,7 +181,7 @@ func GetSender(rpc *ethclient.Client, blockHash, txHash common.Hash, txIndex uin
 	return &sender, nil
 }
 
-func ToJson(obj interface{}) (string, error) {
+func ToJSON(obj interface{}) (string, error) {
 	jsonValue, err := json.Marshal(obj)
 	if err != nil {
 		return "", err
