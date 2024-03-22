@@ -16,11 +16,11 @@ import (
 const (
 	BridgeDepositServiceName = "BitcoinBridgeDepositService"
 	BatchDepositWaitTimeout  = 10 * time.Second
-	DepositErrTimeout        = 10 * time.Minute
+	DepositErrTimeout        = 1 * time.Minute
 	BatchDepositLimit        = 100
 	WaitMinedTimeout         = 2 * time.Hour
 	HandleDepositTimeout     = 1 * time.Second
-	DepositRetry             = 10 // temp fix, Increase retry times
+	DepositRetry             = 100 // temp fix, Increase retry times
 )
 
 // BridgeDepositService l1->l2

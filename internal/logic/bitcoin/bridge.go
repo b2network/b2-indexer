@@ -114,7 +114,7 @@ func (b *Bridge) Deposit(hash string, bitcoinAddress string, amount int64) (*typ
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("abi pack err:%w", err)
 	}
-
+	b.logger.Infow("deposit", "txId", hash, "bitcoinAddress", bitcoinAddress, "amount", amount, "aaAddress", toAddress)
 	tx, err := b.sendTransaction(ctx, b.EthPrivKey, b.ContractAddress, data, new(big.Int).SetInt64(0))
 	if err != nil {
 		return nil, nil, "", err
