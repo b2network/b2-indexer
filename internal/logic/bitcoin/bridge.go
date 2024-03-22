@@ -309,8 +309,8 @@ func (b *Bridge) retrySendTransaction(
 	nonce := oldTx.Nonce()
 	gasPrice := oldTx.GasPrice()
 
-	// TODO: set new gas price
-	// gasPrice.Mul(gasPrice, big.NewInt(5))
+	// set new gas price: newGasPrice = oldGasPrice * 2
+	gasPrice.Mul(gasPrice, big.NewInt(2))
 
 	log.Infof("new gas price:%v", new(big.Float).Quo(new(big.Float).SetInt(gasPrice), big.NewFloat(1e9)).String())
 	log.Infof("new gas price:%v", gasPrice.String())
@@ -393,6 +393,8 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 
 // BitcoinAddressToEthAddress bitcoin address to eth address
 func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
+	//TODO: debug
+	return "0xad94474EF16b44767F14c12Ee92Df563306C00e4", nil
 	code, pubkey, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
 	if err != nil {
 		b.logger.Errorw("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)

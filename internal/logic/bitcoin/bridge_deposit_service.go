@@ -293,16 +293,15 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 				"error", err.Error(),
 				"btcTxHash", deposit.BtcTxHash,
 				"data", deposit)
-		case errors.Is(err, errors.New("already known")):
-
+		case strings.Contains(err.Error(), "already known"):
+			bis.log.Errorw("invoke deposit send tx already known",
+				"error", err.Error(),
+				"btcTxHash", deposit.BtcTxHash,
+				"data", deposit)
 			if deposit.B2TxHash != "" {
 				deposit.B2TxStatus = model.DepositB2TxStatusIsPending
-				bis.log.Errorw("invoke deposit send tx already known",
-					"error", err.Error(),
-					"btcTxHash", deposit.BtcTxHash,
-					"data", deposit)
+				bis.log.Infof("b2 tx hash not empty, set status to ispending")
 			}
-
 		default:
 			deposit.B2TxRetry++
 			deposit.B2TxStatus = model.DepositB2TxStatusPending
