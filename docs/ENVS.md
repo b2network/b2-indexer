@@ -47,6 +47,8 @@
 | BITCOIN_BRIDGE_PUBLICKEYS                   | `[]string` | bridge withdraw sign publickey                        | Required       |               |                                      |
 | BITCOIN_BRIDGE_TIME_INTERVAL                | `int64`    | bridge withdraw time interval                         | Required       |               |                                      |
 | BITCOIN_BRIDGE_MULTISIG_NUM                 | `int`      | bridge withdraw multisig num                          | Required       |               |                                      |
+| BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER     | `bool`     | enable bridge withdraw service                        | Required       |               | false true                           |
+| ENABLE-ROLLUP-LISTENER                      | `bool`     | enable rollup indexer service                         | Required       |               | false true                           |
 
 ## http configuration
 
@@ -87,6 +89,7 @@ INDEXER_DATABASE_MAX_OPEN_CONNS
 INDEXER_DATABASE_CONN_MAX_LIFETIME
 BITCOIN_BRIDGE_DEPOSIT
 BITCOIN_BRIDGE_WITHDRAW
+ENABLE-ROLLUP-LISTENER
 ```
 
 ## b2-indexer-http

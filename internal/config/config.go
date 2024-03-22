@@ -92,6 +92,8 @@ type BridgeConfig struct {
 	TimeInterval int64 `mapstructure:"time-interval" env:"BITCOIN_BRIDGE_TIME_INTERVAL"`
 	// MultisigNum defines withdraw multisig number
 	MultisigNum int `mapstructure:"multisig-num" env:"BITCOIN_BRIDGE_MULTISIG_NUM"`
+	// EnableRollupListener defines rollup index server
+	EnableRollupListener bool `mapstructure:"enable-rollup-listener" env:"BITCOIN_ROLLUP_ENABLE_LISTENER"`
 }
 
 type EvmConfig struct {
