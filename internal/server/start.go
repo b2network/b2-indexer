@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/b2network/b2-indexer/internal/logic/rollup"
+	"github.com/b2network/b2-indexer/internal/types"
 
 	"github.com/ethereum/go-ethereum/ethclient"
 
@@ -83,7 +84,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			return err
 		}
 
-		bridgeService := bitcoin.NewBridgeDepositService(bridge, db, bridgeLogger)
+		bridgeService := bitcoin.NewBridgeDepositService(bridge, bidxer, db, bridgeLogger)
 		bridgeErrCh := make(chan error)
 		go func() {
 			if err := bridgeService.Start(); err != nil {
@@ -96,6 +97,12 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 			return err
 		case <-time.After(5 * time.Second): // assume server started successfully
 		}
+
+		defer func() {
+			if err = bridgeService.Stop(); err != nil {
+				logger.Errorf("stop err:%v", err.Error())
+			}
+		}()
 	}
 
 	if bitcoinCfg.Eps.EnableEps {
@@ -169,17 +176,17 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 		}
 		rollupService := rollup.NewIndexerService(ethlient, bitcoinCfg, db, rollupLogger)
 
-		bridgeLogger := newLogger(ctx, "[bridge-withdraw]")
-		if err != nil {
-			return err
-		}
-		withdrawService := bitcoin.NewBridgeWithdrawService(btclient, ethlient, bitcoinCfg, db, bridgeLogger)
+		// bridgeLogger := newLogger(ctx, "[bridge-withdraw]")
+		// if err != nil {
+		// 	return err
+		// }
+		// withdrawService := bitcoin.NewBridgeWithdrawService(btclient, ethlient, bitcoinCfg, db, bridgeLogger)
 
 		epsErrCh := make(chan error)
 		go func() {
-			if err := withdrawService.OnStart(); err != nil {
-				epsErrCh <- err
-			}
+			// if err := withdrawService.OnStart(); err != nil {
+			// 	epsErrCh <- err
+			// }
 			if err := rollupService.OnStart(); err != nil {
 				epsErrCh <- err
 			}
@@ -198,7 +205,7 @@ func Start(ctx *Context, cmd *cobra.Command) (err error) {
 }
 
 func GetDBContextFromCmd(cmd *cobra.Command) (*gorm.DB, error) {
-	if v := cmd.Context().Value(DBContextKey); v != nil {
+	if v := cmd.Context().Value(types.DBContextKey); v != nil {
 		db := v.(*gorm.DB)
 		return db, nil
 	}

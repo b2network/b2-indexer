@@ -9,6 +9,7 @@ import (
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/btcutil"
 	"github.com/btcsuite/btcd/chaincfg"
+	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/txscript"
 	"github.com/btcsuite/btcd/wire"
@@ -33,7 +34,7 @@ type Indexer struct {
 	client              *rpcclient.Client // call bitcoin rpc client
 	chainParams         *chaincfg.Params  // bitcoin network params, e.g. mainnet, testnet, etc.
 	listenAddress       btcutil.Address   // need listened bitcoin address
-	TargetConfirmations int64
+	targetConfirmations uint64
 	logger              log.Logger
 }
 
@@ -43,7 +44,7 @@ func NewBitcoinIndexer(
 	client *rpcclient.Client,
 	chainParams *chaincfg.Params,
 	listenAddress string,
-	targetConfirmations int64,
+	targetConfirmations uint64,
 ) (*Indexer, error) {
 	// check listenAddress
 	address, err := btcutil.DecodeAddress(listenAddress, chainParams)
@@ -55,21 +56,16 @@ func NewBitcoinIndexer(
 		client:              client,
 		chainParams:         chainParams,
 		listenAddress:       address,
-		TargetConfirmations: targetConfirmations,
+		targetConfirmations: targetConfirmations,
 	}, nil
 }
 
 // ParseBlock parse block data by block height
 // NOTE: Currently, only transfer transactions are supported.
 func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxParseResult, *wire.BlockHeader, error) {
-	blockResult, blockVerboseResult, err := b.getBlockByHeight(height)
+	blockResult, err := b.getBlockByHeight(height)
 	if err != nil {
 		return nil, nil, err
-	}
-
-	if blockVerboseResult.Confirmations < b.TargetConfirmations {
-		return nil, nil, fmt.Errorf("%w, current confirmations:%d target confirmations: %d",
-			ErrTargetConfirmations, blockVerboseResult.Confirmations, b.TargetConfirmations)
 	}
 
 	blockParsedResult := make([]*types.BitcoinTxParseResult, 0)
@@ -93,20 +89,33 @@ func (b *Indexer) ParseBlock(height int64, txIndex int64) ([]*types.BitcoinTxPar
 }
 
 // getBlockByHeight returns a raw block from the server given its height
-func (b *Indexer) getBlockByHeight(height int64) (*wire.MsgBlock, *btcjson.GetBlockVerboseResult, error) {
+func (b *Indexer) getBlockByHeight(height int64) (*wire.MsgBlock, error) {
 	blockhash, err := b.client.GetBlockHash(height)
 	if err != nil {
-		return nil, nil, err
-	}
-	blockVerbose, err := b.client.GetBlockVerbose(blockhash)
-	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	msgBlock, err := b.client.GetBlock(blockhash)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	return msgBlock, blockVerbose, nil
+	return msgBlock, nil
+}
+
+func (b *Indexer) CheckConfirmations(hash string) error {
+	txHash, err := chainhash.NewHashFromStr(hash)
+	if err != nil {
+		return err
+	}
+	txVerbose, err := b.client.GetRawTransactionVerbose(txHash)
+	if err != nil {
+		return err
+	}
+
+	if txVerbose.Confirmations < b.targetConfirmations {
+		return fmt.Errorf("%w, current confirmations:%d target confirmations: %d",
+			ErrTargetConfirmations, txVerbose.Confirmations, b.targetConfirmations)
+	}
+	return nil
 }
 
 // parseTx parse transaction data

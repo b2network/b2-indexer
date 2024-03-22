@@ -59,6 +59,37 @@
     "anonymous": false,
     "inputs": [
       {
+        "indexed": true,
+        "internalType": "address",
+        "name": "caller",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to_address",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "deposit_uuid",
+        "type": "bytes32"
+      }
+    ],
+    "name": "DepositEventV1",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
         "indexed": false,
         "internalType": "uint64",
         "name": "version",
@@ -169,6 +200,37 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "from_address",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "btc_address",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "withdraw_uuid",
+        "type": "bytes32"
+      }
+    ],
+    "name": "WithdrawEventV1",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "ADMIN_ROLE",
     "outputs": [
@@ -233,6 +295,42 @@
     "name": "depositV2",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "deposit_uuid",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "address",
+        "name": "b2_to_address",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "btc_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "depositV3",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getMinB2Amount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -304,6 +402,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "min_b2_amount",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "bytes32",
@@ -335,6 +446,19 @@
       }
     ],
     "name": "revokeRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_min_b2_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "setMinB2Amount",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -398,6 +522,42 @@
       }
     ],
     "name": "withdrawV2",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "withdraw_uuid",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "btc_address",
+        "type": "string"
+      }
+    ],
+    "name": "withdrawV3",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "withdraw_uuid",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "string",
+        "name": "btc_address",
+        "type": "string"
+      }
+    ],
+    "name": "withdrawV4",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"

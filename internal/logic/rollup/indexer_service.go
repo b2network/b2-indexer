@@ -6,8 +6,10 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/b2network/b2-indexer/pkg/event"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/shopspring/decimal"
 
 	"github.com/b2network/b2-indexer/internal/config"
 	"github.com/b2network/b2-indexer/internal/model"
@@ -20,7 +22,7 @@ import (
 )
 
 const (
-	IndexerServiceName = "IndexerService"
+	IndexerServiceName = "RollupIndexerService"
 
 	WaitHandleTime = 10
 )
@@ -136,6 +138,14 @@ func (bis *IndexerService) OnStart() error {
 							continue
 						}
 					}
+					if eventHash == common.HexToHash(bis.config.Bridge.Deposit) {
+						bis.log.Warnw("vlog", "vlog", vlog)
+						err = handelDepositEvent(vlog, bis.db)
+						if err != nil {
+							bis.log.Errorw("IndexerService handelDepositEvent err: ", "error", err)
+							continue
+						}
+					}
 					currentTxIndex = vlog.TxIndex
 					currentLogIndex = vlog.Index
 				}
@@ -147,6 +157,7 @@ func (bis *IndexerService) OnStart() error {
 					bis.log.Errorw("failed to save b2 index block", "error", err, "currentBlock", i,
 						"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
 				}
+				time.Sleep(100 * time.Millisecond)
 			}
 		}
 	}
@@ -169,4 +180,35 @@ func handelWithdrawEvent(vlog ethtypes.Log, db *gorm.DB, listenAddress string) e
 		return err
 	}
 	return nil
+}
+
+func handelDepositEvent(vlog ethtypes.Log, db *gorm.DB) error {
+	Caller := event.TopicToAddress(vlog, 1).Hex()
+	ToAddress := event.TopicToAddress(vlog, 2).Hex()
+	Amount := event.DataToDecimal(vlog, 0, 0)
+	TxHash := event.DataToHash(vlog, 1)
+
+	log.Errorw("deposit event ", "Caller", Caller, "ToAddress", ToAddress, "Amount", Amount.String(), "TxHash", TxHash.String())
+
+	depositData := model.RollupDeposit{
+		BtcTxHash:        remove0xPrefix(TxHash.String()),
+		BtcFromAAAddress: ToAddress,
+		BtcValue:         Amount.Div(decimal.NewFromInt(10000000000)).BigInt().Int64(),
+		B2BlockNumber:    vlog.BlockNumber,
+		B2BlockHash:      vlog.BlockHash.String(),
+		B2TxHash:         vlog.TxHash.String(),
+		B2TxIndex:        vlog.TxIndex,
+		B2LogIndex:       vlog.Index,
+	}
+	if err := db.Create(&depositData).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func remove0xPrefix(input string) string {
+	if len(input) > 2 && input[:2] == "0x" {
+		return input[2:]
+	}
+	return input
 }

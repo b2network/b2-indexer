@@ -199,17 +199,17 @@ func TestLocalDepositWaitMined(t *testing.T) {
 	bigValue := 11111111111111111
 
 	// params check
-	_, _, _, err := bridge.Deposit("", address, int64(value), nil)
+	_, _, _, err := bridge.Deposit("", address, int64(value), nil, 0)
 	if err != nil {
 		assert.EqualError(t, errors.New("tx id is empty"), err.Error())
 	}
-	_, _, _, err = bridge.Deposit(uuid, b2types.BitcoinFrom{}, int64(value), nil)
+	_, _, _, err = bridge.Deposit(uuid, b2types.BitcoinFrom{}, int64(value), nil, 0)
 	if err != nil {
 		assert.EqualError(t, errors.New("bitcoin address is empty"), err.Error())
 	}
 
 	// normal
-	b2Tx, _, _, err := bridge.Deposit(uuid, address, int64(value), nil)
+	b2Tx, _, _, err := bridge.Deposit(uuid, address, int64(value), nil, 0)
 	if err != nil {
 		assert.NoError(t, err)
 	}
@@ -219,21 +219,21 @@ func TestLocalDepositWaitMined(t *testing.T) {
 	}
 
 	// uuid check
-	_, _, _, err = bridge.Deposit(uuid, address, int64(value), nil)
+	_, _, _, err = bridge.Deposit(uuid, address, int64(value), nil, 0)
 	if err != nil {
-		assert.EqualError(t, bitcoin.ErrBrdigeDepositTxHashExist, err.Error())
+		assert.EqualError(t, bitcoin.ErrBridgeDepositTxHashExist, err.Error())
 	}
 
 	// insufficient balance
-	_, _, _, err = bridge.Deposit(randHash(t), address, int64(bigValue), nil)
+	_, _, _, err = bridge.Deposit(randHash(t), address, int64(bigValue), nil, 0)
 	if err != nil {
-		assert.EqualError(t, bitcoin.ErrBrdigeDepositContractInsufficientBalance, err.Error())
+		assert.EqualError(t, bitcoin.ErrBridgeDepositContractInsufficientBalance, err.Error())
 	} else {
 		t.Fatal("insufficient balance check failed")
 	}
 
 	// context timeout
-	b2Tx2, _, _, err := bridge.Deposit(randHash(t), address, int64(value), nil)
+	b2Tx2, _, _, err := bridge.Deposit(randHash(t), address, int64(value), nil, 0)
 	if err != nil {
 		assert.NoError(t, err)
 	}

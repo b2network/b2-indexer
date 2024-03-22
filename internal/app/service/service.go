@@ -7,9 +7,12 @@ import (
 	"os"
 
 	pb "github.com/b2network/b2-indexer/api/protobuf"
+	"github.com/b2network/b2-indexer/internal/config"
+	"github.com/b2network/b2-indexer/internal/types"
 	"github.com/b2network/b2-indexer/pkg/log"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"google.golang.org/grpc"
+	"gorm.io/gorm"
 )
 
 const (
@@ -53,11 +56,39 @@ func RegisterGateway(ctx context.Context, mux *runtime.ServeMux, endPoint string
 	if err := pb.RegisterHelloServiceHandlerFromEndpoint(ctx, mux, endPoint, option); err != nil {
 		log.Fatalf("RegisterHelloServiceHandlerFromEndpoint failed: %v", err)
 	}
+	if err := pb.RegisterNotifyServiceHandlerFromEndpoint(ctx, mux, endPoint, option); err != nil {
+		log.Fatalf("RegisterNotifyServiceHandlerFromEndpoint failed: %v", err)
+	}
 	return nil
 }
 
 func RegisterGrpcFunc() func(server *grpc.Server) {
 	return func(svc *grpc.Server) {
 		pb.RegisterHelloServiceServer(svc, newHelloServer())
+		pb.RegisterNotifyServiceServer(svc, newNotifyServer())
 	}
+}
+
+func GetDBContext(ctx context.Context) (*gorm.DB, error) {
+	if v := ctx.Value(types.DBContextKey); v != nil {
+		db := v.(*gorm.DB)
+		return db, nil
+	}
+	return nil, fmt.Errorf("db context not set")
+}
+
+func GetListenAddress(ctx context.Context) (string, error) {
+	if v := ctx.Value(types.ListenAddressContextKey); v != nil {
+		serverCtx := v.(string)
+		return serverCtx, nil
+	}
+	return "", fmt.Errorf("address context not set")
+}
+
+func GetHTTPConfig(ctx context.Context) (*config.HTTPConfig, error) {
+	if v := ctx.Value(types.HTTPConfigContextKey); v != nil {
+		serverCtx := v.(*config.HTTPConfig)
+		return serverCtx, nil
+	}
+	return nil, fmt.Errorf("address context not set")
 }

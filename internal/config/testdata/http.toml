@@ -1,2 +1,3 @@
 http-port = 8080
 grpc-port = 8081
+ip-white-list = "127.0.0.1"

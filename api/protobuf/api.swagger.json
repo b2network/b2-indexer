@@ -11,6 +11,38 @@
     "application/json"
   ],
   "paths": {
+    "/v1/call_back/transaction/notify": {
+      "post": {
+        "operationId": "NotifyService_TransactionNotify",
+        "responses": {
+          "200": {
+            "description": "A successful response.",
+            "schema": {
+              "$ref": "#/definitions/protobufTransactionNotifyResponse"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "#/definitions/runtimeError"
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/protobufTransactionNotifyRequest"
+            }
+          }
+        ],
+        "tags": [
+          "NotifyService"
+        ]
+      }
+    },
     "/v1/hello": {
       "get": {
         "operationId": "HelloService_GetHello",
@@ -67,6 +99,47 @@
         },
         "data": {
           "$ref": "#/definitions/HelloResponseData"
+        }
+      }
+    },
+    "protobufNullValue": {
+      "type": "string",
+      "enum": [
+        "NULL_VALUE"
+      ],
+      "default": "NULL_VALUE",
+      "description": "`NullValue` is a singleton enumeration to represent the null value for the\n`Value` type union.\n\nThe JSON representation for `NullValue` is JSON `null`.\n\n - NULL_VALUE: Null value."
+    },
+    "protobufTransactionNotifyRequest": {
+      "type": "object",
+      "properties": {
+        "requestType": {
+          "type": "string",
+          "format": "int64"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "requestDetail": {
+          "type": "object"
+        },
+        "extraInfo": {
+          "type": "string"
+        }
+      }
+    },
+    "protobufTransactionNotifyResponse": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "format": "int64"
+        },
+        "requestId": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
         }
       }
     },

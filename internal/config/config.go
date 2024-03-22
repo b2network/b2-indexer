@@ -45,7 +45,7 @@ type BitconConfig struct {
 	// IndexerListenAddress defines the address to listen on
 	IndexerListenAddress string `mapstructure:"indexer-listen-address" env:"BITCOIN_INDEXER_LISTEN_ADDRESS"`
 	// IndexerListenTargetConfirmations defines the number of confirmations to listen on
-	IndexerListenTargetConfirmations int64 `mapstructure:"indexer-listen-target-confirmations" env:"BITCOIN_INDEXER_LISTEN_TARGET_CONFIRMATIONS" envDefault:"1"`
+	IndexerListenTargetConfirmations uint64 `mapstructure:"indexer-listen-target-confirmations" env:"BITCOIN_INDEXER_LISTEN_TARGET_CONFIRMATIONS" envDefault:"1"`
 	// Bridge defines the bridge config
 	Bridge BridgeConfig `mapstructure:"bridge"`
 	Eps    EpsConfig    `mapstructure:"eps"`
@@ -77,7 +77,7 @@ type BridgeConfig struct {
 	// GasPriceMultiple defines the gas price multiple, TODO: temp fix, base gas_price * n
 	GasPriceMultiple int64 `mapstructure:"gas-price-multiple" env:"BITCOIN_BRIDGE_GAS_PRICE_MULTIPLE" envDefault:"5"`
 	// B2ExplorerURL defines the b2 explorer url, TODO: temp use explorer gas prices
-	B2ExplorerURL string `mapstructure:"b2-explorer-url" env:"BITCOIN_BRIDGE_B2_EXPLORER_URL" envDefault:"https://blocksout-backend-role.bsquared.network"`
+	B2ExplorerURL string `mapstructure:"b2-explorer-url" env:"BITCOIN_BRIDGE_B2_EXPLORER_URL"`
 	// EnableListener defines whether to enable the listener
 	EnableWithdrawListener bool `mapstructure:"enable-withdraw-listener" env:"BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER"`
 	// Deposit defines the deposit event hash
@@ -120,9 +120,11 @@ type EpsConfig struct {
 // HTTPConfig defines the http server config
 type HTTPConfig struct {
 	// port defines the http server port
-	HTTPPort string `mapstructure:"http-port" env:"HTTP_PORT"`
+	HTTPPort string `mapstructure:"http-port" env:"HTTP_PORT" envDefault:"9090"`
 	// port defines the grpc server port
-	GrpcPort string `mapstructure:"grpc-port" env:"HTTP_GRPC_PORT"`
+	GrpcPort string `mapstructure:"grpc-port" env:"HTTP_GRPC_PORT" envDefault:"9091"`
+	// ipWhiteList defines the ip white list, Only those in the whitelist can be called
+	IPWhiteList string `mapstructure:"ip-white-list" env:"HTTP_IP_WHITE_LIST"`
 }
 
 const (

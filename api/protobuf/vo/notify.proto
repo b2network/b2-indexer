@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package api.protobuf;
+option go_package = "github.com/b2network/b2-indexer/api/protobuf/vo";
+
+import "google/protobuf/struct.proto";
+
+message TransactionNotifyRequest {
+  int64 requestType = 1;
+  string requestId = 2;
+  google.protobuf.Struct requestDetail = 3;
+  string extraInfo = 4;
+}
+
+
+message TransactionNotifyResponse  {
+  int64 code = 1; 
+  string requestId = 2;
+  string message = 3; 
+};
