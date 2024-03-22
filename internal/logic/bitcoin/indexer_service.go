@@ -228,9 +228,10 @@ func (bis *IndexerService) SaveParsedResult(
 
 		// if existed, update deposit record
 		var deposit model.Deposit
-		if err := tx.First(
-			&deposit,
-			fmt.Sprintf("%s = ?", model.Deposit{}.Column().BtcTxHash), parseResult.TxID).Error; err != nil {
+		err = tx.First(&deposit,
+			fmt.Sprintf("%s = ?", model.Deposit{}.Column().BtcTxHash),
+			parseResult.TxID).Error
+		if err != nil {
 			if !errors.Is(err, gorm.ErrRecordNotFound) {
 				return err
 			}

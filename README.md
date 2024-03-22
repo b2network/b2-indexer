@@ -1,6 +1,5 @@
 ## b2-indexer
 
-
 ## Usage
 
 build
@@ -20,7 +19,6 @@ b2-indexer-http
 ```
 ./build/b2-indexer http
 ```
-
 
 ## Resources
 
