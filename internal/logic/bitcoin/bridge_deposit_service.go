@@ -16,7 +16,7 @@ import (
 const (
 	BridgeDepositServiceName = "BitcoinBridgeDepositService"
 	BatchDepositWaitTimeout  = 10 * time.Second
-	DepositErrTimeout        = 1 * time.Minute
+	DepositErrTimeout        = 10 * time.Second
 	BatchDepositLimit        = 100
 	WaitMinedTimeout         = 2 * time.Hour
 	HandleDepositTimeout     = 1 * time.Second
@@ -54,6 +54,7 @@ func (bis *BridgeDepositService) OnStart() error {
 		// 1. tx status is pending
 		// 2. contract insufficient balance
 		// 3. invoke contract from account insufficient balance
+		// TODO: 4. max retry,temp handle
 		var deposits []model.Deposit
 		err := bis.db.
 			Where(
@@ -62,6 +63,7 @@ func (bis *BridgeDepositService) OnStart() error {
 					model.DepositB2TxStatusPending,
 					model.DepositB2TxStatusInsufficientBalance,
 					model.DepositB2TxStatusFromAccountGasInsufficient,
+					model.DepositB2TxStatusFailed,
 				},
 			).
 			Limit(BatchDepositLimit).
