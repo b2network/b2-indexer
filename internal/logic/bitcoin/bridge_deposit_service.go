@@ -20,7 +20,7 @@ import (
 const (
 	BridgeDepositServiceName = "BitcoinBridgeDepositService"
 	BatchDepositWaitTimeout  = 10 * time.Second
-	DepositErrTimeout        = 30 * time.Second
+	DepositErrTimeout        = 10 * time.Second
 	BatchDepositLimit        = 100
 	WaitMinedTimeout         = 2 * time.Minute
 	HandleDepositTimeout     = 1 * time.Second
@@ -628,6 +628,24 @@ func (bis *BridgeDepositService) CheckDeposit() {
 					}
 					err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
 						model.Deposit{}.Column().B2TxCheck: deposit.B2TxCheck,
+					}).Error
+					if err != nil {
+						bis.log.Errorw("update deposit error", "err", err)
+					}
+				} else if (deposit.B2TxStatus == model.DepositB2TxStatusTxHashExist) &&
+					(deposit.B2TxHash == "") {
+					tx, _, err := bis.bridge.TransactionByHash(rollupDeposit.B2TxHash)
+					if err != nil {
+						bis.log.Errorw("get tx receipt error", "err", err)
+						continue
+					}
+					// update tx info from rollup event
+					err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
+						model.Deposit{}.Column().B2TxCheck:        model.B2CheckStatusSuccess,
+						model.Deposit{}.Column().B2TxHash:         rollupDeposit.B2TxHash,
+						model.Deposit{}.Column().BtcFromAAAddress: rollupDeposit.BtcFromAAAddress,
+						model.Deposit{}.Column().B2TxNonce:        tx.Nonce(),
+						model.Deposit{}.Column().B2TxStatus:       model.DepositB2TxStatusSuccess,
 					}).Error
 					if err != nil {
 						bis.log.Errorw("update deposit error", "err", err)
