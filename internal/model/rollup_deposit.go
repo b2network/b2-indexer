@@ -7,6 +7,7 @@ type RollupDeposit struct {
 	BtcValue         int64  `json:"btc_value" gorm:"type:bigint;default:0;comment:bitcoin transfer value"`
 	B2BlockNumber    uint64 `json:"b2_block_number" gorm:"type:bigint;comment:b2 block number"`
 	B2BlockHash      string `json:"b2_block_hash" gorm:"type:varchar(256);comment:b2 block hash"`
+	B2TxFrom         string `json:"b2_tx_from" gorm:"type:varchar(42);default:'';comment:from address"`
 	B2TxHash         string `json:"b2_tx_hash" gorm:"type:varchar(256);default:'';uniqueIndex;comment:b2 network tx hash"`
 	B2TxIndex        uint   `json:"b2_tx_index" gorm:"type:bigint;comment:b2 tx index"`
 	B2LogIndex       uint   `json:"b2_log_index" gorm:"type:int;comment:b2 log index"`
@@ -21,6 +22,7 @@ type RollupDepositColumns struct {
 	BtcTxHash        string
 	BtcFromAAAddress string
 	BtcValue         string
+	B2TxFrom         string
 	B2BlockNumber    string
 	B2BlockHash      string
 	B2TxHash         string
@@ -34,6 +36,7 @@ func (RollupDeposit) Column() RollupDepositColumns {
 		BtcTxHash:        "btc_tx_hash",
 		BtcFromAAAddress: "btc_from_aa_address",
 		BtcValue:         "btc_value",
+		B2TxFrom:         "2_tx_from",
 		B2TxHash:         "b2_tx_hash",
 		B2BlockNumber:    "b2_block_number",
 		B2BlockHash:      "b2_block_hash",

@@ -194,6 +194,7 @@ func handelDepositEvent(vlog ethtypes.Log, db *gorm.DB) error {
 		BtcTxHash:        remove0xPrefix(TxHash.String()),
 		BtcFromAAAddress: ToAddress,
 		BtcValue:         Amount.Div(decimal.NewFromInt(10000000000)).BigInt().Int64(),
+		B2TxFrom:         Caller,
 		B2BlockNumber:    vlog.BlockNumber,
 		B2BlockHash:      vlog.BlockHash.String(),
 		B2TxHash:         vlog.TxHash.String(),

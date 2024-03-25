@@ -9,9 +9,9 @@ import (
 // BITCOINBridge defines the interface of custom bitcoin bridge.
 type BITCOINBridge interface {
 	// Deposit transfers amout to address
-	Deposit(string, BitcoinFrom, int64, *types.Transaction, uint64) (*types.Transaction, []byte, string, error)
+	Deposit(string, BitcoinFrom, int64, *types.Transaction, uint64, bool) (*types.Transaction, []byte, string, string, error)
 	// Transfer amount to address
-	Transfer(BitcoinFrom, int64) (*types.Transaction, error)
+	Transfer(BitcoinFrom, int64, *types.Transaction, uint64, bool) (*types.Transaction, string, error)
 	// WaitMined wait mined
 	WaitMined(context.Context, *types.Transaction, []byte) (*types.Receipt, error)
 	// TransactionReceipt
@@ -20,4 +20,5 @@ type BITCOINBridge interface {
 	TransactionByHash(hash string) (*types.Transaction, bool, error)
 	//  EnableEoaTransfer
 	EnableEoaTransfer() bool
+	FromAddress() string
 }

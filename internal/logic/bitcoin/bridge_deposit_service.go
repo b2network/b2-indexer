@@ -84,15 +84,6 @@ func (bis *BridgeDepositService) Deposit() {
 			bis.log.Warnf("deposit stopping...")
 			return
 		case <-ticker.C:
-			// Priority processing UnconfirmedDeposit
-			err := bis.UnconfirmedDeposit()
-			if err != nil {
-				bis.log.Warnf("unconfirmed deposit err: %s", err)
-				if errors.Is(err, ErrServerStop) {
-					return
-				}
-				continue
-			}
 
 			if bis.bridge.EnableEoaTransfer() {
 				err := bis.HandleEoaTransfer()
@@ -103,6 +94,25 @@ func (bis *BridgeDepositService) Deposit() {
 					}
 					continue
 				}
+				// handle eoa failed, tx is pending...
+				err = bis.UnconfirmedEoa()
+				if err != nil {
+					bis.log.Warnf("HandleEoaUnconfirmed err: %s", err)
+					if errors.Is(err, ErrServerStop) {
+						return
+					}
+					continue
+				}
+			}
+
+			// Priority processing UnconfirmedDeposit
+			err := bis.UnconfirmedDeposit()
+			if err != nil {
+				bis.log.Warnf("unconfirmed deposit err: %s", err)
+				if errors.Is(err, ErrServerStop) {
+					return
+				}
+				continue
 			}
 
 			// Query condition
@@ -140,7 +150,7 @@ func (bis *BridgeDepositService) Deposit() {
 
 			bis.log.Infow("start handle deposit", "deposit batch num", len(deposits))
 			for _, deposit := range deposits {
-				err = bis.HandleDeposit(deposit, nil, deposit.B2TxNonce)
+				err = bis.HandleDeposit(deposit, nil, deposit.B2TxNonce, false)
 				if err != nil {
 					bis.log.Errorw("handle deposit failed", "error", err, "deposit", deposit)
 					if errors.Is(err, ErrServerStop) {
@@ -176,7 +186,7 @@ func (bis *BridgeDepositService) Deposit() {
 
 			bis.log.Infow("start handle aa not found deposit", "aa not found deposit batch num", len(aaNotFoundDeposits))
 			for _, deposit := range aaNotFoundDeposits {
-				err = bis.HandleDeposit(deposit, nil, deposit.B2TxNonce)
+				err = bis.HandleDeposit(deposit, nil, deposit.B2TxNonce, false)
 				if err != nil {
 					bis.log.Errorw("handle aa not found deposit failed", "error", err, "deposit", deposit)
 					if errors.Is(err, ErrServerStop) {
@@ -206,6 +216,7 @@ func (bis *BridgeDepositService) UnconfirmedDeposit() error {
 				model.DepositB2TxStatusWaitMined,
 				model.DepositB2TxStatusWaitMinedFailed,
 				model.DepositB2TxStatusIsPending,
+				model.DepositB2EoaTxStatusNonceToLow,
 			},
 		).
 		Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
@@ -234,7 +245,7 @@ func (bis *BridgeDepositService) UnconfirmedDeposit() error {
 	return nil
 }
 
-func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *ethTypes.Transaction, nonce uint64) error {
+func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *ethTypes.Transaction, nonce uint64, resetNonce bool) error {
 	defer func() {
 		if err := recover(); err != nil {
 			bis.log.Errorw("panic err", err)
@@ -253,9 +264,9 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 	}
 
 	// send deposit tx
-	b2Tx, _, aaAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, types.BitcoinFrom{
+	b2Tx, _, aaAddress, fromAddress, err := bis.bridge.Deposit(deposit.BtcTxHash, types.BitcoinFrom{
 		Address: deposit.BtcFrom,
-	}, deposit.BtcValue, oldTx, nonce)
+	}, deposit.BtcValue, oldTx, nonce, resetNonce)
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrBridgeDepositTxHashExist):
@@ -266,13 +277,14 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 				"data", deposit)
 			if deposit.B2TxHash != "" {
 				receipt, err := bis.bridge.TransactionReceipt(deposit.B2TxHash)
-				if err != nil {
-					return err
-				}
-				if receipt.Status == 1 {
-					deposit.B2TxStatus = model.DepositB2TxStatusSuccess
+				if err == nil {
+					if receipt.Status == 1 {
+						deposit.B2TxStatus = model.DepositB2TxStatusSuccess
+					} else {
+						deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedStatusFailed
+					}
 				} else {
-					deposit.B2TxStatus = model.DepositB2TxStatusWaitMinedStatusFailed
+					bis.log.Errorw("transaction receipt err", "error", err.Error())
 				}
 			}
 		case errors.Is(err, ErrBridgeDepositContractInsufficientBalance):
@@ -302,6 +314,12 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 				deposit.B2TxStatus = model.DepositB2TxStatusIsPending
 				bis.log.Infof("b2 tx hash not empty, set status to ispending")
 			}
+		case strings.Contains(err.Error(), "nonce too low"):
+			deposit.B2TxStatus = model.DepositB2TxStatusNonceToLow
+			bis.log.Errorw("invoke deposit send tx nonce to low",
+				"error", err.Error(),
+				"btcTxHash", deposit.BtcTxHash,
+				"data", deposit)
 		default:
 			deposit.B2TxRetry++
 			deposit.B2TxStatus = model.DepositB2TxStatusPending
@@ -342,6 +360,7 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 		model.Deposit{}.Column().BtcFromAAAddress: deposit.BtcFromAAAddress,
 		model.Deposit{}.Column().B2TxStatus:       deposit.B2TxStatus,
 		model.Deposit{}.Column().B2TxNonce:        deposit.B2TxNonce,
+		model.Deposit{}.Column().B2TxFrom:         fromAddress,
 	}
 	err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
 	if err != nil {
@@ -387,6 +406,13 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 // 2. tx not mined, isPending, need reset gasprice
 // 3. tx not mined, tx not mempool, need retry send tx
 func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit) error {
+	resetNonce := false
+	// 1. nonce to low, need reset nonce
+	// 2. change from priv
+	if deposit.B2TxStatus == model.DepositB2TxStatusNonceToLow ||
+		strings.EqualFold(deposit.B2TxFrom, bis.bridge.FromAddress()) {
+		resetNonce = true
+	}
 	txReceipt, err := bis.bridge.TransactionReceipt(deposit.B2TxHash)
 	if err == nil {
 		// case 1
@@ -398,34 +424,31 @@ func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit)
 		}
 
 		dbErr := bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
-		if err != nil {
+		if dbErr != nil {
 			return dbErr
 		}
 		return err
 	}
-	if err != nil {
-		bis.log.Errorw("TransactionReceipt err", "error", err, "data", deposit)
-		if errors.Is(err, ethereum.NotFound) {
-			bis.log.Errorf("TransactionReceipt not found")
-			// tx in mempool, isPending
-			tx, isPending, err := bis.bridge.TransactionByHash(deposit.B2TxHash)
-			if err != nil {
-				if errors.Is(err, ethereum.NotFound) {
-					// case 3
-					bis.log.Errorf("TransactionByHash not found, try send tx by nonce")
-					return bis.HandleDeposit(deposit, nil, deposit.B2TxNonce)
-				}
-				return err
+	bis.log.Errorw("TransactionReceipt err", "error", err, "data", deposit)
+	if errors.Is(err, ethereum.NotFound) {
+		bis.log.Errorf("TransactionReceipt not found")
+		// tx in mempool, isPending
+		tx, isPending, err := bis.bridge.TransactionByHash(deposit.B2TxHash)
+		if err != nil {
+			if errors.Is(err, ethereum.NotFound) {
+				// case 3
+				bis.log.Errorf("TransactionByHash not found, try send tx by nonce")
+				return bis.HandleDeposit(deposit, nil, deposit.B2TxNonce, resetNonce)
 			}
-			if isPending {
-				// case 2
-				bis.log.Warnw("tx is pending retry", "old", tx, "deposit", deposit)
-				return bis.HandleDeposit(deposit, tx, 0)
-			}
+			return err
 		}
-		return err
+		if isPending {
+			// case 2
+			bis.log.Warnw("tx is pending retry", "old", tx, "deposit", deposit)
+			return bis.HandleDeposit(deposit, tx, 0, resetNonce)
+		}
 	}
-	return nil
+	return err
 }
 
 func (bis *BridgeDepositService) HandleEoaTransfer() error {
@@ -452,7 +475,7 @@ func (bis *BridgeDepositService) HandleEoaTransfer() error {
 
 	bis.log.Infow("start handle eoaTransfer deposit", "eoaTransfer deposit batch num", len(deposits))
 	for _, deposit := range deposits {
-		err = bis.EoaTransfer(deposit)
+		err = bis.EoaTransfer(deposit, nil, 0, false)
 		if err != nil {
 			bis.log.Errorw("handle eoaTransfer failed", "error", err, "deposit", deposit)
 			return err
@@ -469,18 +492,24 @@ func (bis *BridgeDepositService) HandleEoaTransfer() error {
 	return nil
 }
 
-func (bis *BridgeDepositService) EoaTransfer(deposit model.Deposit) error {
-	b2EoaTx, err := bis.bridge.Transfer(types.BitcoinFrom{
+func (bis *BridgeDepositService) EoaTransfer(deposit model.Deposit, oldTx *ethTypes.Transaction, nonce uint64, resetNonce bool) error {
+	b2EoaTx, fromAddress, err := bis.bridge.Transfer(types.BitcoinFrom{
 		Address: deposit.BtcFrom,
-	}, deposit.BtcValue)
+	}, deposit.BtcValue, oldTx, nonce, resetNonce)
 	if err != nil {
-		bis.log.Errorw("invoke eoa transfer tx unknown err",
+		bis.log.Errorw("invoke eoa transfer tx err",
 			"error", err.Error(),
 			"btcTxHash", deposit.BtcTxHash,
 			"data", deposit)
+		switch {
+		case strings.Contains(err.Error(), "nonce too low"):
+			deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusNonceToLow
+		default:
+			deposit.B2EoaTxStatus = model.DepositB2EoaTxStatusFailed
+		}
 
 		dbErr := bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
-			model.Deposit{}.Column().B2EoaTxStatus: model.DepositB2EoaTxStatusFailed,
+			model.Deposit{}.Column().B2EoaTxStatus: deposit.B2EoaTxStatus,
 		}).Error
 		if dbErr != nil {
 			return dbErr
@@ -490,7 +519,8 @@ func (bis *BridgeDepositService) EoaTransfer(deposit model.Deposit) error {
 	err = bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(map[string]interface{}{
 		model.Deposit{}.Column().B2EoaTxHash:   b2EoaTx.Hash().String(),
 		model.Deposit{}.Column().B2EoaTxNonce:  b2EoaTx.Nonce(),
-		model.Deposit{}.Column().B2EoaTxStatus: model.DepositB2EoaTxStatusWaitMinedFailed,
+		model.Deposit{}.Column().B2EoaTxStatus: model.DepositB2EoaTxStatusWaitMined,
+		model.Deposit{}.Column().B2EoaTxFrom:   fromAddress,
 	}).Error
 	if err != nil {
 		return err
@@ -633,7 +663,7 @@ func (bis *BridgeDepositService) CheckDeposit() {
 						bis.log.Errorw("update deposit error", "err", err)
 					}
 				} else if (deposit.B2TxStatus == model.DepositB2TxStatusTxHashExist) &&
-					(deposit.B2TxHash == "") {
+					((deposit.B2TxHash == "") || (deposit.B2TxHash != rollupDeposit.B2TxHash)) {
 					tx, _, err := bis.bridge.TransactionByHash(rollupDeposit.B2TxHash)
 					if err != nil {
 						bis.log.Errorw("get tx receipt error", "err", err)
@@ -646,6 +676,7 @@ func (bis *BridgeDepositService) CheckDeposit() {
 						model.Deposit{}.Column().BtcFromAAAddress: rollupDeposit.BtcFromAAAddress,
 						model.Deposit{}.Column().B2TxNonce:        tx.Nonce(),
 						model.Deposit{}.Column().B2TxStatus:       model.DepositB2TxStatusSuccess,
+						model.Deposit{}.Column().B2TxFrom:         rollupDeposit.B2TxFrom,
 					}).Error
 					if err != nil {
 						bis.log.Errorw("update deposit error", "err", err)
@@ -654,4 +685,86 @@ func (bis *BridgeDepositService) CheckDeposit() {
 			}
 		}
 	}
+}
+
+func (bis *BridgeDepositService) UnconfirmedEoa() error {
+	var deposits []model.Deposit
+	err := bis.db.
+		Where(
+			fmt.Sprintf("%s.%s IN (?)", model.Deposit{}.TableName(), model.Deposit{}.Column().B2EoaTxStatus),
+			[]int{
+				model.DepositB2EoaTxStatusContextDeadlineExceeded,
+				model.DepositB2EoaTxStatusFailed,
+				// model.DepositB2EoaTxStatusWaitMinedFailed,
+				model.DepositB2EoaTxStatusNonceToLow,
+				model.DepositB2EoaTxStatusWaitMined,
+			},
+		).
+		Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
+		Find(&deposits).Error
+	if err != nil {
+		bis.log.Errorw("failed find tx from db", "error", err)
+		return err
+	}
+
+	bis.log.Infow("start handle unconfirmed eoa transfer", "unconfirmed eoa transfer batch num", len(deposits))
+	for _, deposit := range deposits {
+		err = bis.HandleUnconfirmedEoa(deposit)
+		if err != nil {
+			bis.log.Errorw("handle eoa unconfirmed failed", "error", err, "deposit", deposit)
+			return err
+		}
+
+		timeoutTicker := time.NewTicker(HandleDepositTimeout)
+		select {
+		case <-bis.stopChan:
+			bis.log.Warnf("unconfirmed eoa deposit stopping...")
+			return ErrServerStop
+		case <-timeoutTicker.C:
+		}
+	}
+	return nil
+}
+func (bis *BridgeDepositService) HandleUnconfirmedEoa(deposit model.Deposit) error {
+	resetNonce := false
+	if deposit.B2EoaTxStatus == model.DepositB2EoaTxStatusNonceToLow ||
+		strings.EqualFold(deposit.B2EoaTxFrom, bis.bridge.FromAddress()) {
+		resetNonce = true
+	}
+	txReceipt, err := bis.bridge.TransactionReceipt(deposit.B2EoaTxHash)
+	if err == nil {
+		// case 1
+		updateFields := map[string]interface{}{}
+		if txReceipt.Status == 1 {
+			updateFields[model.Deposit{}.Column().B2EoaTxStatus] = model.DepositB2EoaTxStatusSuccess
+		} else {
+			updateFields[model.Deposit{}.Column().B2EoaTxStatus] = model.DepositB2EoaTxStatusUnknown
+		}
+
+		dbErr := bis.db.Model(&model.Deposit{}).Where("id = ?", deposit.ID).Updates(updateFields).Error
+		if dbErr != nil {
+			return dbErr
+		}
+		return err
+	}
+	bis.log.Errorw("eoa TransactionReceipt err", "error", err, "data", deposit)
+	if errors.Is(err, ethereum.NotFound) {
+		bis.log.Errorf("eoa TransactionReceipt not found")
+		// tx in mempool, isPending
+		tx, isPending, err := bis.bridge.TransactionByHash(deposit.B2EoaTxHash)
+		if err != nil {
+			if errors.Is(err, ethereum.NotFound) || strings.Contains(err.Error(), "not found") {
+				// case 3
+				bis.log.Errorf("eoa TransactionByHash not found, try send tx by nonce")
+				return bis.EoaTransfer(deposit, nil, deposit.B2EoaTxNonce, resetNonce)
+			}
+			return err
+		}
+		if isPending {
+			// case 2
+			bis.log.Warnw("eoa tx is pending retry", "old", tx, "deposit", deposit)
+			return bis.EoaTransfer(deposit, tx, 0, resetNonce)
+		}
+	}
+	return err
 }
