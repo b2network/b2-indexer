@@ -216,7 +216,7 @@ func (bis *BridgeDepositService) UnconfirmedDeposit() error {
 				model.DepositB2TxStatusWaitMined,
 				model.DepositB2TxStatusWaitMinedFailed,
 				model.DepositB2TxStatusIsPending,
-				model.DepositB2EoaTxStatusNonceToLow,
+				model.DepositB2TxStatusNonceToLow,
 			},
 		).
 		Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
@@ -410,7 +410,7 @@ func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit)
 	// 1. nonce to low, need reset nonce
 	// 2. change from priv
 	if deposit.B2TxStatus == model.DepositB2TxStatusNonceToLow ||
-		strings.EqualFold(deposit.B2TxFrom, bis.bridge.FromAddress()) {
+		!strings.EqualFold(deposit.B2TxFrom, bis.bridge.FromAddress()) {
 		resetNonce = true
 	}
 	txReceipt, err := bis.bridge.TransactionReceipt(deposit.B2TxHash)
@@ -466,7 +466,7 @@ func (bis *BridgeDepositService) HandleEoaTransfer() error {
 			fmt.Sprintf("%s.%s = ?", model.Deposit{}.TableName(), model.Deposit{}.Column().B2EoaTxNonce),
 			0,
 		).
-		Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2TxNonce)).
+		Order(fmt.Sprintf("%s.%s ASC", model.Deposit{}.TableName(), model.Deposit{}.Column().B2EoaTxNonce)).
 		Find(&deposits).Error
 	if err != nil {
 		bis.log.Errorw("failed find tx from db", "error", err)
@@ -639,17 +639,17 @@ func (bis *BridgeDepositService) CheckDeposit() {
 				case <-timeoutTicker.C:
 				}
 				var rollupDeposit model.RollupDeposit
+				err = bis.db.
+					Where(
+						fmt.Sprintf("%s.%s = ?", model.RollupDeposit{}.TableName(), model.Deposit{}.Column().BtcTxHash),
+						deposit.BtcTxHash,
+					).
+					First(&rollupDeposit).Error
+				if err != nil {
+					bis.log.Errorw("find rollup deposit error", "err", err, "deposit", deposit)
+					continue
+				}
 				if deposit.B2TxStatus == model.DepositB2TxStatusSuccess {
-					err = bis.db.
-						Where(
-							fmt.Sprintf("%s.%s = ?", model.RollupDeposit{}.TableName(), model.Deposit{}.Column().BtcTxHash),
-							deposit.BtcTxHash,
-						).
-						First(&rollupDeposit).Error
-					if err != nil {
-						bis.log.Errorw("find rollup deposit error", "err", err, "deposit", deposit)
-						continue
-					}
 					if strings.EqualFold(deposit.BtcFromAAAddress, rollupDeposit.BtcFromAAAddress) &&
 						deposit.BtcValue == rollupDeposit.BtcValue {
 						deposit.B2TxCheck = model.B2CheckStatusSuccess
@@ -695,7 +695,6 @@ func (bis *BridgeDepositService) UnconfirmedEoa() error {
 			[]int{
 				model.DepositB2EoaTxStatusContextDeadlineExceeded,
 				model.DepositB2EoaTxStatusFailed,
-				// model.DepositB2EoaTxStatusWaitMinedFailed,
 				model.DepositB2EoaTxStatusNonceToLow,
 				model.DepositB2EoaTxStatusWaitMined,
 			},
@@ -728,7 +727,7 @@ func (bis *BridgeDepositService) UnconfirmedEoa() error {
 func (bis *BridgeDepositService) HandleUnconfirmedEoa(deposit model.Deposit) error {
 	resetNonce := false
 	if deposit.B2EoaTxStatus == model.DepositB2EoaTxStatusNonceToLow ||
-		strings.EqualFold(deposit.B2EoaTxFrom, bis.bridge.FromAddress()) {
+		!strings.EqualFold(deposit.B2EoaTxFrom, bis.bridge.FromAddress()) {
 		resetNonce = true
 	}
 	txReceipt, err := bis.bridge.TransactionReceipt(deposit.B2EoaTxHash)
