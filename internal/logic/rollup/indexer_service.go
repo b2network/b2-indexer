@@ -75,7 +75,7 @@ func (bis *IndexerService) OnStart() error {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				latestBlock, err := bis.ethCli.BlockNumber(context.Background())
 				if err != nil {
-					bis.log.Errorw("IndexerService HeaderByNumber is failed:", "error", err)
+					bis.log.Errorw("IndexerService headerByNumber is failed:", "error", err)
 					continue
 				}
 				rollupIndex = model.RollupIndex{
@@ -87,10 +87,12 @@ func (bis *IndexerService) OnStart() error {
 					B2LogIndex:   0,
 				}
 				if err := bis.db.Create(&rollupIndex).Error; err != nil {
-					return err
+					bis.log.Errorw("IndexerService create rollupIndex is failed:", "error", err)
+					continue
 				}
 			} else {
-				return err
+				bis.log.Errorw("IndexerService get first rollupIndex is failed:", "error", err)
+				continue
 			}
 		}
 		currentBlock = rollupIndex.B2IndexBlock
@@ -126,7 +128,7 @@ func (bis *IndexerService) OnStart() error {
 			logs, err := bis.ethCli.FilterLogs(context.Background(), query)
 			if err != nil {
 				bis.log.Errorw("IndexerService failed to fetch block", "height", i, "error", err)
-				return err
+				continue
 			}
 
 			for _, vlog := range logs {
@@ -134,12 +136,11 @@ func (bis *IndexerService) OnStart() error {
 					continue
 				}
 				eventHash := common.BytesToHash(vlog.Topics[0].Bytes())
-				// TODO: withdraw event disable, wait withdraw flow finished
 				// if eventHash == common.HexToHash(bis.config.Bridge.Withdraw) {
 				// 	err = handelWithdrawEvent(vlog, bis.db, bis.config.IndexerListenAddress)
 				// 	if err != nil {
 				// 		bis.log.Errorw("IndexerService handelWithdrawEvent err: ", "error", err)
-				// 		return err
+				// 		continue
 				// 	}
 				// }
 				if eventHash == common.HexToHash(bis.config.Bridge.Deposit) {
@@ -147,7 +148,7 @@ func (bis *IndexerService) OnStart() error {
 					err = handelDepositEvent(vlog, bis.db)
 					if err != nil {
 						bis.log.Errorw("IndexerService handelDepositEvent err: ", "error", err)
-						return err
+						continue
 					}
 				}
 				currentTxIndex = vlog.TxIndex
@@ -160,7 +161,7 @@ func (bis *IndexerService) OnStart() error {
 			if err := bis.db.Save(&rollupIndex).Error; err != nil {
 				bis.log.Errorw("failed to save b2 index block", "error", err, "currentBlock", i,
 					"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
-				return err
+				continue
 			}
 		}
 	}
