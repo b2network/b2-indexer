@@ -48,7 +48,6 @@ type Bridge struct {
 	EthPrivKey           *ecdsa.PrivateKey
 	ContractAddress      common.Address
 	ABI                  string
-	GasLimit             uint64
 	BaseGasPriceMultiple int64
 	B2ExplorerURL        string
 	logger               log.Logger
@@ -106,12 +105,11 @@ func NewBridge(bridgeCfg config.BridgeConfig, abiFileDir string, log log.Logger,
 		ContractAddress:      common.HexToAddress(bridgeCfg.ContractAddress),
 		EthPrivKey:           privateKey,
 		ABI:                  ABI,
-		GasLimit:             bridgeCfg.GasLimit,
 		logger:               log,
 		particle:             newParticle,
 		bitcoinParam:         bitcoinParam,
 		enableEoaTransfer:    bridgeCfg.EnableEoaTransfer,
-		AAPubKeyAPI:          bridgeCfg.AAPubKeyAPI,
+		AAPubKeyAPI:          bridgeCfg.AAB2PI,
 		BaseGasPriceMultiple: bridgeCfg.GasPriceMultiple,
 		B2ExplorerURL:        bridgeCfg.B2ExplorerURL,
 	}, nil
@@ -442,13 +440,14 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 
 // BitcoinAddressToEthAddress bitcoin address to eth address
 func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
-	// TODO: debug
-	return "0xECaf3a0D6d3249840491C911292b026a2BdC4596", nil
 	code, pubkey, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
 	if err != nil {
 		b.logger.Errorw("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)
 		return "", err
 	}
+	// TODO: debug, hard code
+	code = "0"
+	pubkey = "030e3af165203095f37543977e0ed349902ce90b33e21cf3edbcfe3c3cf440430e"
 	if code == aa.AddressNotFoundErrCode {
 		return "", ErrAAAddressNotFound
 	}

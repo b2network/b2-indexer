@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/b2network/b2-indexer/pkg/log"
 	"github.com/b2network/b2-indexer/pkg/rpc"
 )
 
@@ -18,10 +19,12 @@ type Response struct {
 }
 
 func GetPubKey(api, btcAddress string) (string, string, error) {
-	res, err := rpc.HTTPGet(api + "/" + btcAddress)
+	res, err := rpc.HTTPGet(api + "/v1/btc/pubkey/" + btcAddress)
 	if err != nil {
 		return "", "", err
 	}
+
+	log.Infof("get pubkey response:%v", string(res))
 
 	btcResp := Response{}
 

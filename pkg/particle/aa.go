@@ -7,9 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 	"time"
+
+	"github.com/b2network/b2-indexer/pkg/log"
+	"github.com/google/uuid"
 )
 
 type Particle struct {
@@ -72,12 +74,12 @@ func (p *Particle) AAGetBTCAccount(btcPubKeys []string) (*AAGetBTCAccountResult,
 	for _, pubkey := range btcPubKeys {
 		params = append(params, AAGetBTCAccountReqParams{
 			Name:         "BTC",
-			Version:      "1.0.0",
+			Version:      "2.0.0",
 			BtcPublicKey: pubkey,
 		})
 	}
 	particleReq := Req{
-		ID:      strconv.FormatInt(time.Now().UnixMicro(), 10),
+		ID:      uuid.New().String(),
 		ChainID: p.chainID,
 		Method:  "particle_aa_getBTCAccount",
 		Params:  params,
@@ -96,6 +98,8 @@ func (p *Particle) do(particleReq Req, particleResponse any) error {
 	if err != nil {
 		return err
 	}
+
+	log.Infof("particle req:", string(bodyJSON))
 
 	b := strings.NewReader(string(bodyJSON))
 	httpClient := &http.Client{
@@ -121,6 +125,7 @@ func (p *Particle) do(particleReq Req, particleResponse any) error {
 	if err != nil {
 		return err
 	}
+	log.Infof("particle body:", string(body))
 	err = json.Unmarshal(body, &particleResponse)
 	if err != nil {
 		return err

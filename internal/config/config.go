@@ -60,12 +60,10 @@ type BridgeConfig struct {
 	ContractAddress string `mapstructure:"contract-address" env:"BITCOIN_BRIDGE_CONTRACT_ADDRESS"`
 	// ABI defines the l1 -> l2 bridge contract abi
 	ABI string `mapstructure:"abi" env:"BITCOIN_BRIDGE_ABI"`
-	// GasLimit defines the  contract gas limit
-	GasLimit uint64 `mapstructure:"gas-limit" env:"BITCOIN_BRIDGE_GAS_LIMIT"`
 	// if deposit invoke b2 failed(status != 1), Whether to allow invoke eoa trnasfer
 	EnableEoaTransfer bool `mapstructure:"enable-eoa-transfer" env:"BITCOIN_BRIDGE_ENABLE_EOA_TRANSFER" envDefault:"true"`
-	// AAPubKeyAPI get pubkey by btc address
-	AAPubKeyAPI string `mapstructure:"aa-pubkey-api" env:"BITCOIN_BRIDGE_AA_PUBKEY_API"`
+	// AAB2PI get pubkey by btc address
+	AAB2PI string `mapstructure:"aa-b2-api" env:"BITCOIN_BRIDGE_AA_B2_API"`
 	// AAParticleRPC defines the particle api
 	AAParticleRPC string `mapstructure:"aa-particle-rpc" env:"BITCOIN_BRIDGE_AA_PARTICLE_RPC"`
 	// AAParticleProjectID defines the particle project id
@@ -96,23 +94,7 @@ type BridgeConfig struct {
 	EnableRollupListener bool `mapstructure:"enable-rollup-listener" env:"BITCOIN_BRIDGE_ROLLUP_ENABLE_LISTENER"`
 }
 
-type EvmConfig struct {
-	// EnableListener defines whether to enable the listener
-	EnableWithdrawListener bool `mapstructure:"enable-withdraw-listener" env:"BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER"`
-	// Deposit defines the deposit event hash
-	Deposit string `mapstructure:"deposit" env:"BITCOIN_BRIDGE_DEPOSIT"`
-	// Withdraw defines the withdraw event hash
-	Withdraw string `mapstructure:"withdraw" env:"BITCOIN_BRIDGE_WITHDRAW"`
-	// UnisatApiKey defines unisat api_key
-	UnisatAPIKey string `mapstructure:"unisat-api-key" env:"BITCOIN_BRIDGE_UNISAT_API_KEY"`
-	// PublicKeys defines signer publickey
-	PublicKeys []string `mapstructure:"publickeys" env:"BITCOIN_BRIDGE_PUBLICKEYS"`
-	// TimeInterval defines withdraw time interval
-	TimeInterval int64 `mapstructure:"time-interval" env:"BITCOIN_BRIDGE_TIME_INTERVAL"`
-	// MultisigNum defines withdraw multisig number
-	MultisigNum int `mapstructure:"multisig-num" env:"BITCOIN_BRIDGE_MULTISIG_NUM"`
-}
-
+// TODO: @robertcc0410 env prefix, mapstructure and env,  env prefix in the rule must be the same
 type EpsConfig struct {
 	EnableEps     bool   `mapstructure:"enable-eps" env:"ENABLE_EPS"`
 	URL           string `mapstructure:"url" env:"EPS_URL"`

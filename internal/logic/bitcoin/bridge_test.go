@@ -45,7 +45,6 @@ func TestNewBridge(t *testing.T) {
 		ContractAddress:     "0x123456789abcdef",
 		EthPrivKey:          "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
 		ABI:                 "abi.json",
-		GasLimit:            1000000,
 		AAParticleRPC:       "http://localhost:8545",
 		AAParticleProjectID: "1111",
 		AAParticleServerKey: "",

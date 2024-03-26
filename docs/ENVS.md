@@ -22,7 +22,6 @@
 | BITCOIN_RPC_USER                            | `string`   | bitcoin rpc user                                      | Required       |               |                                      |
 | BITCOIN_RPC_PASS                            | `string`   | bitcoin rpc password                                  | Required       |               |                                      |
 | BITCOIN_DISABLE_TLS                         | `bool`     | bitcoin disable tls                                   | Required       | `true`        |                                      |
-| BITCOIN_WALLET_NAME                         | `string`   | bitcoin wallet name                                   | Required       |               |                                      |
 | BITCOIN_ENABLE_INDEXER                      | `bool`     | enable indexer service                                | Required       |               | `false true`                         |
 | BITCOIN_INDEXER_LISTEN_ADDRESS              | `string`   | indexer service listen btc address                    | Required       |               |                                      |
 | BITCOIN_INDEXER_LISTEN_TARGET_CONFIRMATIONS | `number`   | target confirmations, adjust as needed                | -              | `1`           |                                      |
@@ -30,14 +29,7 @@
 | BITCOIN_BRIDGE_ETH_PRIV_KEY                 | `string`   | bridge contract eth invoke priv key                   | Required       |               |                                      |
 | BITCOIN_BRIDGE_CONTRACT_ADDRESS             | `string`   | bridge contract address                               | Required       |               |                                      |
 | BITCOIN_BRIDGE_ABI                          | `string`   | bridge contract abi, if not set, will use default abi | -              |               |                                      |
-| BITCOIN_BRIDGE_GAS_LIMIT                    | `number`   | bridge contract gas limit                             | Required       |               | `3000000`                            |
-| BITCOIN_BRIDGE_AA_SCA_REGISTRY              | `string`   | aa sca registry                                       | Required       |               |                                      |
-| BITCOIN_BRIDGE_AA_KERNEL_FACTORY            | `string`   | aa sca registry                                       | Required       |               |                                      |
-| BITCOIN_BRIDGE_B2_NODE_API                  | `string`   | b2 node api                                           | Required       |               |                                      |
-| BITCOIN_BRIDGE_B2_NODE_PRIV_KEY             | `string`   | b2 node priv key                                      | Required       |               |                                      |
-| BITCOIN_BRIDGE_B2_NODE_GRPC_HOST            | `string`   | b2 node grpc host                                     | Required       |               |                                      |
-| BITCOIN_BRIDGE_B2_NODE_GRPC_PORT            | `string`   | b2 node grpc port                                     | Required       |               |                                      |
-| BITCOIN_BRIDGE_B2_NODE_DENOM                | `string`   | b2 node denom                                         | Required       | `aphoton`     |                                      |
+| BITCOIN_BRIDGE_AA_B2_API                    | `string`   | b2 aa api                                             | Required       |               |                                      |
 | ENABLE_EPS                                  | `bool`     | enable eps service                                    | Required       |               | false true                           |
 | EPS_URL                                     | `string`   | eps url                                               | Required       |               |                                      |
 | EPS_AUTHORIZATION                           | `string`   | eps authorization                                     | Required       |               |                                      |
@@ -63,6 +55,13 @@
 ## b2-indexer
 
 ```
+INDEXER_LOG_LEVEL
+INDEXER_LOG_FORMAT
+INDEXER_DATABASE_SOURCE
+INDEXER_DATABASE_MAX_IDLE_CONNS
+INDEXER_DATABASE_MAX_OPEN_CONNS
+INDEXER_DATABASE_CONN_MAX_LIFETIME
+
 BITCOIN_NETWORK_NAME
 BITCOIN_RPC_HOST
 BITCOIN_RPC_PORT
@@ -70,26 +69,30 @@ BITCOIN_RPC_USER
 BITCOIN_RPC_PASS
 BITCOIN_ENABLE_INDEXER
 BITCOIN_INDEXER_LISTEN_ADDRESS
+
 BITCOIN_BRIDGE_ETH_RPC_URL
 BITCOIN_BRIDGE_CONTRACT_ADDRESS
 BITCOIN_BRIDGE_ETH_PRIV_KEY
-BITCOIN_BRIDGE_GAS_LIMIT
+
 BITCOIN_BRIDGE_GAS_PRICE_MULTIPLE
 BITCOIN_BRIDGE_B2_EXPLORER_URL
+
+BITCOIN_BRIDGE_AA_B2_API
+
 BITCOIN_BRIDGE_AA_PARTICLE_RPC
 BITCOIN_BRIDGE_AA_PARTICLE_PROJECT_ID
 BITCOIN_BRIDGE_AA_PARTICLE_SERVER_KEY
 BITCOIN_BRIDGE_AA_PARTICLE_CHAIN_ID
-BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER
-INDEXER_LOG_LEVEL
-INDEXER_LOG_FORMAT
-INDEXER_DATABASE_SOURCE
-INDEXER_DATABASE_MAX_IDLE_CONNS
-INDEXER_DATABASE_MAX_OPEN_CONNS
-INDEXER_DATABASE_CONN_MAX_LIFETIME
+
 BITCOIN_BRIDGE_DEPOSIT
-BITCOIN_BRIDGE_WITHDRAW
 BITCOIN_BRIDGE_ROLLUP_ENABLE_LISTENER
+
+BITCOIN_BRIDGE_WITHDRAW_ENABLE_LISTENER=false
+
+
+ENABLE_EPS
+EPS_URL
+EPS_AUTHORIZATION
 ```
 
 ## b2-indexer-http
@@ -104,5 +107,4 @@ INDEXER_DATABASE_MAX_IDLE_CONNS
 INDEXER_DATABASE_MAX_OPEN_CONNS
 INDEXER_DATABASE_CONN_MAX_LIFETIME
 HTTP_PORT
-HTTP_GRPC_PORT
 ```
