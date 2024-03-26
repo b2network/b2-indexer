@@ -36,7 +36,7 @@ func (RollupDeposit) Column() RollupDepositColumns {
 		BtcTxHash:        "btc_tx_hash",
 		BtcFromAAAddress: "btc_from_aa_address",
 		BtcValue:         "btc_value",
-		B2TxFrom:         "2_tx_from",
+		B2TxFrom:         "b2_tx_from",
 		B2TxHash:         "b2_tx_hash",
 		B2BlockNumber:    "b2_block_number",
 		B2BlockHash:      "b2_block_hash",
