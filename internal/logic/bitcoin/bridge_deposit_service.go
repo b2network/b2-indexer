@@ -404,6 +404,8 @@ func (bis *BridgeDepositService) HandleDeposit(deposit model.Deposit, oldTx *eth
 // 1. tx mined, update status
 // 2. tx not mined, isPending, need reset gasprice
 // 3. tx not mined, tx not mempool, need retry send tx
+//
+// nolint:dupl
 func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit) error {
 	resetNonce := false
 	// 1. nonce to low, need reset nonce
@@ -724,6 +726,9 @@ func (bis *BridgeDepositService) UnconfirmedEoa() error {
 	return nil
 }
 
+// HandleUnconfirmedEoa
+//
+// nolint:dupl
 func (bis *BridgeDepositService) HandleUnconfirmedEoa(deposit model.Deposit) error {
 	resetNonce := false
 	if deposit.B2EoaTxStatus == model.DepositB2EoaTxStatusNonceToLow ||
