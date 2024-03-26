@@ -442,7 +442,7 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 
 // BitcoinAddressToEthAddress bitcoin address to eth address
 func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
-	//TODO: debug
+	// TODO: debug
 	return "0xECaf3a0D6d3249840491C911292b026a2BdC4596", nil
 	code, pubkey, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
 	if err != nil {

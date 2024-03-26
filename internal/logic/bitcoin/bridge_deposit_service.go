@@ -723,6 +723,7 @@ func (bis *BridgeDepositService) UnconfirmedEoa() error {
 	}
 	return nil
 }
+
 func (bis *BridgeDepositService) HandleUnconfirmedEoa(deposit model.Deposit) error {
 	resetNonce := false
 	if deposit.B2EoaTxStatus == model.DepositB2EoaTxStatusNonceToLow ||
