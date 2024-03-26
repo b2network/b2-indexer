@@ -163,7 +163,6 @@ func (bis *IndexerService) OnStart() error {
 			}
 		}
 	}
-
 }
 
 func handelWithdrawEvent(vlog ethtypes.Log, db *gorm.DB, listenAddress string) error {
