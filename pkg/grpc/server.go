@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/b2network/b2-indexer/internal/app/middleware"
@@ -54,28 +55,46 @@ func Run(ctx context.Context, cfg *config.HTTPConfig, grpcOpts grpc.ServerOption
 	}
 	grpcSvc := grpc.NewServer(grpcOpts)
 	grpcFn(grpcSvc)
-	handler := middleware.Cors(mux)
+
+	errChan := make(chan error)
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%v", cfg.HTTPPort),
+		Handler:      middleware.Cors(mux),
+		ReadTimeout:  TimeoutSecond * time.Second,
+		WriteTimeout: TimeoutSecond * time.Second,
+	}
 	go func() {
-		server := &http.Server{
-			Addr:         fmt.Sprintf(":%v", cfg.HTTPPort),
-			Handler:      handler,
-			ReadTimeout:  TimeoutSecond * time.Second,
-			WriteTimeout: TimeoutSecond * time.Second,
+		if err := server.ListenAndServe(); err != nil {
+			errChan <- fmt.Errorf("HTTP server error: %v", err)
 		}
-		log.Fatal(server.ListenAndServe().Error())
 	}()
 	go func() {
 		lis, err := net.Listen("tcp", fmt.Sprintf(":%v", cfg.GrpcPort))
 		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
+			errChan <- fmt.Errorf("gRPC server listen error: %v", err)
+			return
 		}
-		err = grpcSvc.Serve(lis)
-		if err != nil {
-			log.Fatalf("failed to listen: %v", err)
+		if err := grpcSvc.Serve(lis); err != nil {
+			errChan <- fmt.Errorf("gRPC server error: %v", err)
 		}
 	}()
 	reflection.Register(grpcSvc)
 	log.Println("http server started in port", cfg.HTTPPort)
 	log.Println("grpc server started in port", cfg.GrpcPort)
-	select {}
+	for err := range errChan {
+		log.Printf("Error occurred: %v, stopping servers", err)
+		switch {
+		case strings.Contains(err.Error(), "HTTP server"):
+			if err := server.Shutdown(context.Background()); err != nil {
+				log.Printf("HTTP server shutdown failed: %v", err)
+				return err
+			}
+		case strings.Contains(err.Error(), "gRPC server"):
+			grpcSvc.GracefulStop()
+		default:
+			log.Printf("HTTP server error: %v", err)
+			return err
+		}
+	}
+	return nil
 }

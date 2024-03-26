@@ -43,6 +43,7 @@ func TestBitcoinConfig(t *testing.T) {
 	os.Unsetenv("BITCOIN_BRIDGE_PUBLICKEYS")
 	os.Unsetenv("BITCOIN_BRIDGE_TIME_INTERVAL")
 	os.Unsetenv("BITCOIN_BRIDGE_MULTISIG_NUM")
+	os.Unsetenv("BITCOIN_ROLLUP_ENABLE_LISTENER")
 	config, err := config.LoadBitcoinConfig("./testdata")
 	require.NoError(t, err)
 	require.Equal(t, "signet", config.NetworkName)
@@ -75,6 +76,7 @@ func TestBitcoinConfig(t *testing.T) {
 	require.Equal(t, int64(0), config.Bridge.TimeInterval)
 	require.Equal(t, []string{""}, config.Bridge.PublicKeys)
 	require.Equal(t, 0, config.Bridge.MultisigNum)
+	require.Equal(t, false, config.Bridge.EnableRollupListener)
 }
 
 func TestBitcoinConfigEnv(t *testing.T) {
@@ -111,6 +113,7 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	os.Setenv("BITCOIN_BRIDGE_TIME_INTERVAL", strconv.FormatInt(0, 10))
 	os.Setenv("BITCOIN_BRIDGE_PUBLICKEYS", "")
 	os.Setenv("BITCOIN_BRIDGE_MULTISIG_NUM", strconv.FormatInt(0, 10))
+	os.Setenv("BITCOIN_ROLLUP_ENABLE_LISTENER", "false")
 
 	config, err := config.LoadBitcoinConfig("./")
 	require.NoError(t, err)
@@ -144,6 +147,7 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	require.Equal(t, int64(0), config.Bridge.TimeInterval)
 	require.Equal(t, []string(nil), config.Bridge.PublicKeys)
 	require.Equal(t, 0, config.Bridge.MultisigNum)
+	require.Equal(t, false, config.Bridge.EnableRollupListener)
 }
 
 func TestChainParams(t *testing.T) {

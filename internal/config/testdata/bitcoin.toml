@@ -29,6 +29,7 @@ unisat-api-key = ""
 publickeys = [""]
 time-interval = 0
 multisig-num = 0
+enable-rollup-listener = false
 
 [eps]
 enable-eps = true

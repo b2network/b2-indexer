@@ -52,6 +52,11 @@ func NewIndexerService(
 // OnStart implements service.Service by subscribing for new blocks
 // and indexing them by events.
 func (bis *IndexerService) OnStart() error {
+	defer func() {
+		if r := recover(); r != nil {
+			bis.log.Errorw("BridgeWithdrawService panic", "error", r)
+		}
+	}()
 	if !bis.db.Migrator().HasTable(&model.RollupIndex{}) {
 		err := bis.db.AutoMigrate(&model.RollupIndex{})
 		if err != nil {
@@ -59,7 +64,6 @@ func (bis *IndexerService) OnStart() error {
 			return err
 		}
 	}
-
 	for {
 		// listen server scan blocks
 		time.Sleep(time.Duration(WaitHandleTime) * time.Second)
@@ -101,63 +105,61 @@ func (bis *IndexerService) OnStart() error {
 				common.HexToHash(bis.config.Bridge.Withdraw),
 			},
 		}
-		for {
-			time.Sleep(time.Duration(WaitHandleTime) * time.Second)
-			latestBlock, err := bis.ethCli.BlockNumber(context.Background())
+
+		latestBlock, err := bis.ethCli.BlockNumber(context.Background())
+		if err != nil {
+			bis.log.Errorw("IndexerService HeaderByNumber is failed:", "error", err)
+			continue
+		}
+		bis.log.Infow("IndexerService ethClient height", "height", latestBlock, "currentBlock", currentBlock)
+		if latestBlock == currentBlock {
+			continue
+		}
+		for i := currentBlock; i <= latestBlock; i++ {
+			bis.log.Infow("IndexerService get log height:", "height", i)
+			query := ethereum.FilterQuery{
+				FromBlock: big.NewInt(0).SetUint64(i),
+				ToBlock:   big.NewInt(0).SetUint64(i),
+				Topics:    topics,
+				Addresses: addresses,
+			}
+			logs, err := bis.ethCli.FilterLogs(context.Background(), query)
 			if err != nil {
-				bis.log.Errorw("IndexerService HeaderByNumber is failed:", "error", err)
-				continue
+				bis.log.Errorw("IndexerService failed to fetch block", "height", i, "error", err)
+				return err
 			}
-			bis.log.Infow("IndexerService ethClient height", "height", latestBlock, "currentBlock", currentBlock)
-			if latestBlock == currentBlock {
-				continue
-			}
-			for i := currentBlock; i <= latestBlock; i++ {
-				bis.log.Infow("IndexerService get log height:", "height", i)
-				query := ethereum.FilterQuery{
-					FromBlock: big.NewInt(0).SetUint64(i),
-					ToBlock:   big.NewInt(0).SetUint64(i),
-					Topics:    topics,
-					Addresses: addresses,
-				}
-				logs, err := bis.ethCli.FilterLogs(context.Background(), query)
-				if err != nil {
-					bis.log.Errorw("IndexerService failed to fetch block", "height", i, "error", err)
+
+			for _, vlog := range logs {
+				if currentBlock == vlog.BlockNumber && currentTxIndex == vlog.TxIndex && currentLogIndex == vlog.Index {
 					continue
 				}
-
-				for _, vlog := range logs {
-					if currentBlock == vlog.BlockNumber && currentTxIndex == vlog.TxIndex && currentLogIndex == vlog.Index {
-						continue
+				eventHash := common.BytesToHash(vlog.Topics[0].Bytes())
+				if eventHash == common.HexToHash(bis.config.Bridge.Withdraw) {
+					err = handelWithdrawEvent(vlog, bis.db, bis.config.IndexerListenAddress)
+					if err != nil {
+						bis.log.Errorw("IndexerService handelWithdrawEvent err: ", "error", err)
+						return err
 					}
-					eventHash := common.BytesToHash(vlog.Topics[0].Bytes())
-					if eventHash == common.HexToHash(bis.config.Bridge.Withdraw) {
-						err = handelWithdrawEvent(vlog, bis.db, bis.config.IndexerListenAddress)
-						if err != nil {
-							bis.log.Errorw("IndexerService handelWithdrawEvent err: ", "error", err)
-							continue
-						}
-					}
-					if eventHash == common.HexToHash(bis.config.Bridge.Deposit) {
-						bis.log.Warnw("vlog", "vlog", vlog)
-						err = handelDepositEvent(vlog, bis.db)
-						if err != nil {
-							bis.log.Errorw("IndexerService handelDepositEvent err: ", "error", err)
-							continue
-						}
-					}
-					currentTxIndex = vlog.TxIndex
-					currentLogIndex = vlog.Index
 				}
-				currentBlock = i
-				rollupIndex.B2IndexBlock = currentBlock
-				rollupIndex.B2IndexTx = currentTxIndex
-				rollupIndex.B2LogIndex = currentLogIndex
-				if err := bis.db.Save(&rollupIndex).Error; err != nil {
-					bis.log.Errorw("failed to save b2 index block", "error", err, "currentBlock", i,
-						"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
+				if eventHash == common.HexToHash(bis.config.Bridge.Deposit) {
+					bis.log.Warnw("vlog", "vlog", vlog)
+					err = handelDepositEvent(vlog, bis.db)
+					if err != nil {
+						bis.log.Errorw("IndexerService handelDepositEvent err: ", "error", err)
+						return err
+					}
 				}
-				time.Sleep(100 * time.Millisecond)
+				currentTxIndex = vlog.TxIndex
+				currentLogIndex = vlog.Index
+			}
+			currentBlock = i
+			rollupIndex.B2IndexBlock = currentBlock
+			rollupIndex.B2IndexTx = currentTxIndex
+			rollupIndex.B2LogIndex = currentLogIndex
+			if err := bis.db.Save(&rollupIndex).Error; err != nil {
+				bis.log.Errorw("failed to save b2 index block", "error", err, "currentBlock", i,
+					"currentTxIndex", currentTxIndex, "latestBlock", latestBlock)
+				return err
 			}
 		}
 	}
