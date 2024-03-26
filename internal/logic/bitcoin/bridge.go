@@ -445,9 +445,6 @@ func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) 
 		b.logger.Errorw("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)
 		return "", err
 	}
-	// TODO: debug, hard code
-	code = "0"
-	pubkey = "030e3af165203095f37543977e0ed349902ce90b33e21cf3edbcfe3c3cf440430e"
 	if code == aa.AddressNotFoundErrCode {
 		return "", ErrAAAddressNotFound
 	}

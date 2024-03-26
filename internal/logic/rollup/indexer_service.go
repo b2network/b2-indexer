@@ -167,6 +167,9 @@ func (bis *IndexerService) OnStart() error {
 	}
 }
 
+// handelWithdrawEvent
+//
+//lint:ignore U1000 Ignore unused function temporarily for debugging
 func handelWithdrawEvent(vlog ethtypes.Log, db *gorm.DB, listenAddress string) error {
 	amount := DataToBigInt(vlog, 1)
 	destAddrStr := DataToString(vlog, 0)
