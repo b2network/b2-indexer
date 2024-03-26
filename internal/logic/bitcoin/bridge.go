@@ -440,16 +440,20 @@ func (b *Bridge) ABIPack(abiData string, method string, args ...interface{}) ([]
 
 // BitcoinAddressToEthAddress bitcoin address to eth address
 func (b *Bridge) BitcoinAddressToEthAddress(bitcoinAddress b2types.BitcoinFrom) (string, error) {
-	code, pubkey, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
+	pubkeyResp, err := aa.GetPubKey(b.AAPubKeyAPI, bitcoinAddress.Address)
 	if err != nil {
-		b.logger.Errorw("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)
+		b.logger.Errorw("get pub key:", "pubkey", pubkeyResp, "address", bitcoinAddress.Address)
 		return "", err
 	}
-	if code == aa.AddressNotFoundErrCode {
-		return "", ErrAAAddressNotFound
+	if pubkeyResp.Code != "0" {
+		if pubkeyResp.Code == aa.AddressNotFoundErrCode {
+			return "", ErrAAAddressNotFound
+		}
+		return "", fmt.Errorf("get pubkey code err:%v", pubkeyResp)
 	}
-	b.logger.Infow("get pub key:", "pubkey", pubkey, "address", bitcoinAddress.Address)
-	aaBtcAccount, err := b.particle.AAGetBTCAccount([]string{pubkey})
+
+	b.logger.Infow("get pub key:", "pubkey", pubkeyResp, "address", bitcoinAddress.Address)
+	aaBtcAccount, err := b.particle.AAGetBTCAccount([]string{pubkeyResp.Data.Pubkey})
 	if err != nil {
 		return "", err
 	}
