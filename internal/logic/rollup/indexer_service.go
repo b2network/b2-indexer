@@ -134,13 +134,14 @@ func (bis *IndexerService) OnStart() error {
 					continue
 				}
 				eventHash := common.BytesToHash(vlog.Topics[0].Bytes())
-				if eventHash == common.HexToHash(bis.config.Bridge.Withdraw) {
-					err = handelWithdrawEvent(vlog, bis.db, bis.config.IndexerListenAddress)
-					if err != nil {
-						bis.log.Errorw("IndexerService handelWithdrawEvent err: ", "error", err)
-						return err
-					}
-				}
+				// TODO: withdraw event disable, wait withdraw flow finished
+				// if eventHash == common.HexToHash(bis.config.Bridge.Withdraw) {
+				// 	err = handelWithdrawEvent(vlog, bis.db, bis.config.IndexerListenAddress)
+				// 	if err != nil {
+				// 		bis.log.Errorw("IndexerService handelWithdrawEvent err: ", "error", err)
+				// 		return err
+				// 	}
+				// }
 				if eventHash == common.HexToHash(bis.config.Bridge.Deposit) {
 					bis.log.Warnw("vlog", "vlog", vlog)
 					err = handelDepositEvent(vlog, bis.db)

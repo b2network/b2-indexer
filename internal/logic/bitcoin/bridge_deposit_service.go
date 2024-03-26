@@ -22,7 +22,7 @@ const (
 	BatchDepositWaitTimeout  = 10 * time.Second
 	DepositErrTimeout        = 10 * time.Second
 	BatchDepositLimit        = 100
-	WaitMinedTimeout         = 2 * time.Minute
+	WaitMinedTimeout         = 10 * time.Minute
 	HandleDepositTimeout     = 1 * time.Second
 	DepositRetry             = 10 // temp fix, Increase retry times
 )
@@ -62,7 +62,6 @@ func NewBridgeDepositService(
 func (bis *BridgeDepositService) OnStart() error {
 	bis.wg.Add(2)
 	go bis.Deposit()
-	// TODO: check rollup indexer tx status
 	go bis.CheckDeposit()
 	bis.stopChan = make(chan struct{})
 	select {}
@@ -435,7 +434,7 @@ func (bis *BridgeDepositService) HandleUnconfirmedDeposit(deposit model.Deposit)
 		// tx in mempool, isPending
 		tx, isPending, err := bis.bridge.TransactionByHash(deposit.B2TxHash)
 		if err != nil {
-			if errors.Is(err, ethereum.NotFound) {
+			if errors.Is(err, ethereum.NotFound) || strings.Contains(err.Error(), "not found") {
 				// case 3
 				bis.log.Errorf("TransactionByHash not found, try send tx by nonce")
 				return bis.HandleDeposit(deposit, nil, deposit.B2TxNonce, resetNonce)

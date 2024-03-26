@@ -43,7 +43,7 @@ func TestBitcoinConfig(t *testing.T) {
 	os.Unsetenv("BITCOIN_BRIDGE_PUBLICKEYS")
 	os.Unsetenv("BITCOIN_BRIDGE_TIME_INTERVAL")
 	os.Unsetenv("BITCOIN_BRIDGE_MULTISIG_NUM")
-	os.Unsetenv("BITCOIN_ROLLUP_ENABLE_LISTENER")
+	os.Unsetenv("BITCOIN_BRIDGE_ROLLUP_ENABLE_LISTENER")
 	config, err := config.LoadBitcoinConfig("./testdata")
 	require.NoError(t, err)
 	require.Equal(t, "signet", config.NetworkName)
@@ -113,7 +113,7 @@ func TestBitcoinConfigEnv(t *testing.T) {
 	os.Setenv("BITCOIN_BRIDGE_TIME_INTERVAL", strconv.FormatInt(0, 10))
 	os.Setenv("BITCOIN_BRIDGE_PUBLICKEYS", "")
 	os.Setenv("BITCOIN_BRIDGE_MULTISIG_NUM", strconv.FormatInt(0, 10))
-	os.Setenv("BITCOIN_ROLLUP_ENABLE_LISTENER", "false")
+	os.Setenv("BITCOIN_BRIDGE_ROLLUP_ENABLE_LISTENER", "false")
 
 	config, err := config.LoadBitcoinConfig("./")
 	require.NoError(t, err)
